@@ -109,6 +109,7 @@ DATABASES = {
         "PORT": config("DB_PORT", default="5432"),
         "OPTIONS": {
             "sslmode": config("DB_SSLMODE", default="require"),  # Neon.tech requiere SSL
+            "options": "-c client_encoding=UTF8",  # Fuerza UTF-8 a nivel de protocolo
         },
         "CONN_MAX_AGE": 60,  # Connection pooling básico
     }
