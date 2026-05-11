@@ -1,0 +1,156 @@
+# ============================================================
+# MarketMind IA — Docker Compose (desarrollo local)
+# Servicios: backend Django, PostgreSQL local, Redis, n8n
+# Producción: Render (Django) + Neon.tech (PG) + Vercel (React)
+# ============================================================
+
+version: "3.9"
+
+services:
+
+  # ────────────────────────────────────────────
+  # BACKEND — Django REST Framework
+  # ────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: marketmind_backend
+    command: >
+      sh -c "python manage.py migrate --settings=core.settings.dev &&
+             python manage.py runserver 0.0.0.0:8000 --settings=core.settings.dev"
+    volumes:
+      - ./backend:/app                    # Hot-reload en desarrollo
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - marketmind_net
+    restart: unless-stopped
+
+  # ────────────────────────────────────────────
+  # POSTGRESQL — Solo para desarrollo local
+  # En producción: Neon.tech (configurar DATABASE_URL en .env)
+  # ────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: marketmind_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-marketmind_db}
+      POSTGRES_USER: ${DB_USER:-marketmind_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-marketmind_user} -d ${DB_NAME:-marketmind_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - marketmind_net
+    restart: unless-stopped
+
+  # ────────────────────────────────────────────
+  # REDIS — Broker para Celery (preparado para Sprint 2)
+  # Ya definido, sin workers activos en Sprint 1
+  # ────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: marketmind_redis
+    command: redis-server --appendonly yes     # Persistencia AOF
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - marketmind_net
+    restart: unless-stopped
+
+  # ────────────────────────────────────────────
+  # N8N — Automatización de workflows (HU3 y HU4)
+  # Workflows exportados se guardan en ./n8n/
+  # Exponer con ngrok para obtener URL pública
+  # ────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:1.45.1
+    container_name: marketmind_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - GENERIC_TIMEZONE=America/Lima
+      - TZ=America/Lima
+      # Clave de encriptación para credenciales guardadas en n8n
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n              # Datos y credenciales de n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows  # Workflows del repo
+    networks:
+      - marketmind_net
+    restart: unless-stopped
+    # Nota: usar ngrok aparte para exponer el puerto 5678 públicamente
+    # comando: ngrok http 5678
+
+  # ────────────────────────────────────────────
+  # CELERY WORKER — Descomenta en Sprint 2
+  # ────────────────────────────────────────────
+  # celery_worker:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: marketmind_celery
+  #   command: celery -A core worker --loglevel=info
+  #   volumes:
+  #     - ./backend:/app
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - DJANGO_SETTINGS_MODULE=core.settings.dev
+  #   depends_on:
+  #     - redis
+  #     - postgres
+  #   networks:
+  #     - marketmind_net
+  #   restart: unless-stopped
+
+
+# ────────────────────────────────────────────
+# VOLUMES
+# ────────────────────────────────────────────
+volumes:
+  postgres_data:
+    name: marketmind_postgres_data
+  redis_data:
+    name: marketmind_redis_data
+  n8n_data:
+    name: marketmind_n8n_data
+
+
+# ────────────────────────────────────────────
+# NETWORKS
+# ────────────────────────────────────────────
+networks:
+  marketmind_net:
+    name: marketmind_network
+    driver: bridge

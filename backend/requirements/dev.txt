@@ -1,0 +1,27 @@
+# ============================================================
+# MarketMind IA — Backend Dependencies (Development only)
+# Instalar con: pip install -r requirements/dev.txt
+# ============================================================
+
+-r base.txt                     # Incluye todas las de producción
+
+# --- Testing ---
+pytest==8.2.2
+pytest-django==4.8.0
+pytest-cov==5.0.0               # Coverage >= 80% (criterio HU20)
+pytest-asyncio==0.23.7
+factory-boy==3.3.0              # Fixtures de modelos para tests
+faker==25.2.0                   # Datos falsos para tests
+
+# --- Code Quality ---
+flake8==7.1.0
+black==24.4.2
+isort==5.13.2
+mypy==1.10.0
+django-stubs==5.0.2             # Type hints para Django
+
+# --- Debugging ---
+django-debug-toolbar==4.4.2
+ipython==8.25.0
+
+# --- API Testing local ---
