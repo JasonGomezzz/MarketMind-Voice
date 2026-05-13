@@ -1,17 +1,10 @@
-# Environments
 venv/
 venv_mac/
 backend/venv/
 backend/venv_mac/
-
-# Python
 __pycache__/
 *.pyc
 *.pyo
-
-# Environment variables
 .env
 backend/.env
-
-# macOS
 .DS_Store
