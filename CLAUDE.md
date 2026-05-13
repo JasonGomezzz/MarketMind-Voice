@@ -51,6 +51,17 @@ Monolito modular. Separación estricta de responsabilidades.
 - JWT blacklist activado
 - Input sanitization en todos los endpoints
 
+## Higiene de sesión
+
+Higiene de sesión 
+
+Si detectas que llevamos más de ~30-40 mensajes 
+en la misma sesión y noto que repites contexto,
+Ignoras reglas de este CLAUDE.md, o sugieres cosas 
+que ya descartamos, sugiéreme ‘/clear’ o cerrar la sesión.
+
+No intentes seguir si la sesión está envenenada: es peor el remiendo que la pausa.
+
 ## Observaciones críticas
 
 1. Frontend es React + Vite, NO Next.js
