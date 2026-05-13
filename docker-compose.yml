@@ -44,6 +44,14 @@ services:
       - N8N_BASIC_AUTH_PASSWORD=localpass123
       - N8N_ENCRYPTION_KEY=dev-encryption-key-cambiar-en-prod
       - GENERIC_TIMEZONE=America/Lima
+      - NO_PROXY=*
+      - no_proxy=*
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - https_proxy=
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - N8N_ENV_CUSTOM_PREFIX=GEMINI_
     volumes:
       - n8n_data:/home/node/.n8n
     networks:

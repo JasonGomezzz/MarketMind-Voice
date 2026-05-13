@@ -1,0 +1,87 @@
+{
+  "name": "HU4 - Gemini Campaign Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marketmind",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "marketmind-hu4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={{$env.GEMINI_API_KEY}}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Eres un experto en marketing digital. Crea una campaña publicitaria para la industria '{{ $json.body.industria }}' en la plataforma '{{ $json.body.plataforma }}' con tono '{{ $json.body.tono }}'.\\n\\nRequerimiento adicional: {{ $json.body.prompt }}\\n\\nResponde en JSON con estructura: { headline, copy, cta, hashtags[] }\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 1024\n  }\n}",
+        "options": {
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 5000
+        }
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Gemini HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Contenido generado por Gemini 2.0 Flash\",\n  \"data\": {\n    \"generated\": {{ JSON.stringify($json.candidates[0].content.parts[0].text) }},\n    \"model\": \"gemini-2.0-flash\",\n    \"prompt_tokens\": {{ $json.usageMetadata.promptTokenCount }},\n    \"output_tokens\": {{ $json.usageMetadata.candidatesTokenCount }}\n  }\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Gemini HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "hu4-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "marketmind-local"
+  },
+  "id": "hu4-gemini-flow",
+  "tags": ["HU4", "Gemini", "Sprint1"]
+}

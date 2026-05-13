@@ -62,6 +62,20 @@ que ya descartamos, sugiéreme ‘/clear’ o cerrar la sesión.
 
 No intentes seguir si la sesión está envenenada: es peor el remiendo que la pausa.
 
+## Estado actual del Sprint 1
+- HU1 (Registro usuario): ✅ Completa
+- HU2 (Login JWT): ✅ Completa
+- HU3 (Webhook n8n): ✅ Completa — POST /webhook/marketmind, 200 OK en 88ms
+- HU4 (Gemini): ❌ Pendiente — agregar nodo HTTP Request en n8n
+
+## Contexto técnico actual
+- n8n corriendo en Docker localhost:5678
+- Workflow "My workflow" activo con Webhook + Respond to Webhook
+- ngrok URL cambia cada sesión — relanzar con: ngrok http 5678
+- GEMINI_API_KEY configurada en .env
+- venv en Mac: source backend/venv_mac/bin/activate
+- Docker levantar con: docker compose up -d postgres n8n
+
 ## Observaciones críticas
 
 1. Frontend es React + Vite, NO Next.js
