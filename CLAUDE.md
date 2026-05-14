@@ -66,7 +66,7 @@ No intentes seguir si la sesión está envenenada: es peor el remiendo que la pa
 - HU1 (Registro usuario): ✅ Completa
 - HU2 (Login JWT): ✅ Completa
 - HU3 (Webhook n8n): ✅ Completa — POST /webhook/marketmind, 200 OK en 88ms
-- HU4 (Gemini): ❌ Pendiente — agregar nodo HTTP Request en n8n
+- HU4 (Gemini): HU4 está ✅,  Completa — agregar nodo HTTP Request en n8n
 
 ## Contexto técnico actual
 - n8n corriendo en Docker localhost:5678
