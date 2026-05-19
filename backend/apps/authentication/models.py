@@ -151,6 +151,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Acceso al admin de Django.",
     )
 
+    # ── Plan de suscripción ──────────────────────────────────
+    tokens_disponibles = models.IntegerField(
+        default=100,
+        verbose_name="Tokens disponibles",
+        help_text="Cuota de generaciones IA restantes en el plan actual.",
+    )
+
     # ── Token version (para invalidar JWTs al suspender — HU18) ──
     token_version = models.IntegerField(
         default=0,

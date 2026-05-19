@@ -230,7 +230,6 @@ CACHES = {
 # ─────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -258,8 +257,10 @@ N8N_WEBHOOK_BASE_URL = config("N8N_WEBHOOK_URL", default="http://localhost:5678"
 N8N_WEBHOOK_TIMEOUT = 10            # segundos — el webhook debe responder < 500ms
 
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-1.5-flash"
 GEMINI_TIMEOUT = 10                 # segundos — manejo de timeout según HU4
+
+USE_MOCK_AI = config("USE_MOCK_AI", cast=bool, default=False)
 
 # Resend (activo en Sprint 4)
 RESEND_API_KEY = config("RESEND_API_KEY", default="")
