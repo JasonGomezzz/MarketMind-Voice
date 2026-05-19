@@ -57,6 +57,7 @@ class UserManager(BaseUserManager):
             email=email,
             nombre=nombre,
             rol=rol,
+            tokens_disponibles=100,
             **extra_fields,
         )
         user.set_password(password)  # Django usa bcrypt si está configurado
