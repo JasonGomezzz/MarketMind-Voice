@@ -20,13 +20,11 @@ Validar cuota ANTES de disparar n8n — nunca después.
 ## Stack oficial
 - Backend: Django REST Framework + simplejwt + Python 3.11.9
 - Base de datos: PostgreSQL local (Docker) + Neon.tech en producción
-- Automatización IA: n8n + Gemini 1.5 Flash (dev) /
-  2.0 Flash (demo) + Stability AI (imágenes, HU21)
+- Automatización IA: n8n + Gemini 2.0 Flash + Stability AI (imágenes, HU21)
 - Frontend: React 18 + Vite + Tailwind + Axios + Recharts
 - Mobile: Android Kotlin + Jetpack Compose + Retrofit + Hilt
 - Contenedores: Docker + OrbStack (Mac)
-- Deploy: Render (backend) + Vercel (frontend) + Neon.tech +
-  APK Android
+- Deploy: Render (backend) + Vercel (frontend) + Neon.tech + APK Android
 - n8n: local con ngrok en dev, n8n Cloud en producción
 
 ## Arquitectura
@@ -62,8 +60,8 @@ sin llamar a n8n ni Gemini. Para no quemar cuota en desarrollo.
   Devuelve {success, message, data:{generated}}
 
 ## Estado Sprint 2
-- HU5 Modelo Campaign + FSM ← EN PROGRESO
-- HU6 CampaignSerializer + endpoint + trigger_ia_generation()
+- HU5 Modelo Campaign + FSM ✅ COMPLETO
+- HU6 CampaignSerializer + endpoint + trigger_ia_generation() ← ACTIVO
 - HU7 React Login + rutas protegidas (NO antes de HU6)
 - HU8 Dashboard React tabla campañas
 - HU9 Formulario React + panel resultado IA
@@ -73,8 +71,7 @@ REGLA: NO empezar React hasta que HU5+HU6 funcionen con mock.
 ## Decisiones técnicas fijas
 1. USE_MOCK_AI=True en .env para desarrollo. Cuando está activa,
    el endpoint devuelve texto/imagen fijos sin llamar a n8n.
-2. Gemini 1.5 Flash para desarrollo (1500 RPD gratis).
-   Gemini 2.0 Flash solo para demo final.
+2. Gemini 2.0 Flash para todo (dev y demo).
 3. FSM Campaign: VALID_TRANSITIONS dict + método transition_to().
    Lanza InvalidTransitionError si la transición no es válida.
 4. Stability AI para imágenes — HU21, Sprint 4, prometido al
@@ -83,24 +80,25 @@ REGLA: NO empezar React hasta que HU5+HU6 funcionen con mock.
 6. Validar tokens_disponibles ANTES de disparar n8n, nunca después.
    Si tokens == 0: HTTP 402 con mensaje claro.
 
-## Deuda técnica resuelta (fixes aplicados antes de HU5)
+## Deuda técnica resuelta
 - core/asgi.py creado (ASGI_APPLICATION lo declaraba en base.py)
 - USE_MOCK_AI=False agregado a base.py y .env.example
-- GEMINI_MODEL cambiado a gemini-1.5-flash en base.py
+- GEMINI_MODEL cambiado a gemini-2.0-flash en base.py
 - STATICFILES_STORAGE movido de base.py a prod.py
+- tokens_disponibles=100 agregado en create_user() de models.py
 
 ## Cómo arrancar el entorno (Mac)
-1. docker compose --env-file backend/.env up -d postgres n8n
+1. docker compose --env-file backend/.env up -d postgres redis n8n
 2. ngrok http 5678 (URL cambia cada sesión — solo desarrollo)
 3. source backend/venv_mac/bin/activate
 4. cd backend && python manage.py runserver
 
 ## Aprendizajes clave Sprint 1
-- Gemini free tier 2.0: 20 RPD — se agota rápido en debug
-- Gemini 1.5 Flash: 1500 RPD gratis — usar para desarrollo
+- Gemini 2.0 Flash free tier: 20 RPD — se agota rápido en debug
 - En n8n los datos del webhook se acceden con $json.body.*
 - Respond to Webhook debe usar modo TEXT con JSON.stringify
 - Los __pycache__ y venv NUNCA van al repo
+- Redis debe estar corriendo para que el rate limiting funcione
 
 ## Reglas de código
 - Type hints obligatorios en todas las funciones
@@ -110,10 +108,11 @@ REGLA: NO empezar React hasta que HU5+HU6 funcionen con mock.
 - Settings: base.py / dev.py / prod.py
 - Variables de entorno en .env, nunca hardcodeadas
 - Commits: feat: / fix: / refactor: / docs:
+- Un commit por HU terminada
 
 ## Seguridad
 - CORS whitelist solo orígenes permitidos
-- Rate limiting en register y login
+- Rate limiting en register y login (requiere Redis)
 - Django ORM siempre, nunca SQL raw
 - JWT blacklist activado
 - Input sanitization en todos los endpoints
@@ -148,6 +147,8 @@ backend/
 5. Anderson y José aparecen en el backlog pero Jason hace
    el código. Documentar evidencias como equipo para la
    rúbrica es válido académicamente.
+6. n8n-mcp y n8n-skills instalados en Claude Code para
+   construir flujos n8n complejos en Sprint 4.
 
 ## Repo
 github.com/Tecsupsoft/2026-1-4c24-pi-2b

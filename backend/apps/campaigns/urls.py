@@ -1,3 +1,8 @@
-﻿from django.urls import path
+from rest_framework.routers import SimpleRouter
 
-urlpatterns = []
+from .views import CampaignViewSet
+
+router = SimpleRouter()
+router.register(r"", CampaignViewSet, basename="campaign")
+
+urlpatterns = router.urls
