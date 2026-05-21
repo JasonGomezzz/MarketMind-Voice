@@ -5,6 +5,7 @@ Endpoint REST para crear, listar y gestionar campañas publicitarias.
 
 from typing import Any
 
+from django.core.exceptions import ValidationError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +16,7 @@ from core.exceptions import api_response
 from services.n8n_service import trigger_ia_generation
 
 from .models import Campaign, CampaignStatus
-from .serializers import CampaignSerializer
+from .serializers import CampaignEditSerializer, CampaignSerializer
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
@@ -144,6 +145,111 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 },
             ),
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """GET /api/campaigns/{id}/ — devuelve campaña individual con envoltura api_response."""
+        campaign = self.get_object()
+        return Response(
+            api_response(
+                success=True,
+                message="Campaña obtenida.",
+                data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_200_OK,
+        )
+
+    def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """
+        PATCH /api/campaigns/{id}/
+
+        Actualiza texto_generado. Bloqueado si estado es aprobado o rechazado.
+        """
+        campaign = self.get_object()
+
+        if campaign.estado in [CampaignStatus.APROBADO, CampaignStatus.RECHAZADO]:
+            return Response(
+                api_response(
+                    success=False,
+                    message=f"No se puede editar una campaña en estado '{campaign.estado}'.",
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        serializer = CampaignEditSerializer(campaign, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(
+                api_response(
+                    success=False,
+                    message="Error de validación.",
+                    data={"errors": serializer.errors},
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+        return Response(
+            api_response(
+                success=True,
+                message="Cambios guardados.",
+                data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="submit")
+    def submit(self, request: Request, pk: int = None) -> Response:
+        """
+        POST /api/campaigns/{id}/submit/
+
+        Transiciona GENERADO → PENDIENTE_APROBACION.
+        Solo rol marketero puede ejecutarlo.
+        """
+        if request.user.rol != "marketero":
+            return Response(
+                api_response(
+                    success=False,
+                    message="Solo el marketero puede enviar al cliente.",
+                    data={},
+                ),
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        campaign = self.get_object()
+
+        if campaign.estado != CampaignStatus.GENERADO:
+            return Response(
+                api_response(
+                    success=False,
+                    message=(
+                        f"Solo campañas en estado 'generado' pueden enviarse. "
+                        f"Estado actual: '{campaign.estado}'."
+                    ),
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        try:
+            campaign.transition_to(CampaignStatus.PENDIENTE_APROBACION)
+        except ValidationError as e:
+            return Response(
+                api_response(
+                    success=False,
+                    message=e.message,
+                    data={},
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            api_response(
+                success=True,
+                message="Campaña enviada al cliente para aprobación.",
+                data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_200_OK,
         )
 
     @action(detail=False, methods=["get"], url_path="stats")

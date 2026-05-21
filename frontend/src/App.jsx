@@ -3,6 +3,7 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import CampaignListPage from './pages/CampaignListPage'
 import NewCampaignPage from './pages/NewCampaignPage'
+import CampaignDetailPage from './pages/CampaignDetailPage'
 import PrivateRoute from './components/PrivateRoute'
 import AppLayout from './components/AppLayout'
 
@@ -17,6 +18,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/campaigns" element={<CampaignListPage />} />
             <Route path="/campaigns/new" element={<NewCampaignPage />} />
+            <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
             <Route path="/admin" element={<div className="text-gray-500">Admin — HU18</div>} />
           </Route>
         </Route>

@@ -104,7 +104,11 @@ export default function CampaignListPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {campaigns.map(c => (
-              <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+              <tr
+                key={c.id}
+                onClick={() => navigate(`/campaigns/${c.id}`)}
+                className="hover:bg-gray-50 transition-colors cursor-pointer"
+              >
                 <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px] truncate">{c.titulo}</td>
                 <td className="px-4 py-3 text-gray-600">{c.cliente_nombre}</td>
                 <td className="px-4 py-3 text-gray-600 capitalize">{c.industria}</td>

@@ -107,3 +107,17 @@ class CampaignSerializer(serializers.ModelSerializer):
                 f"Plataforma inválida. Opciones: {', '.join(CampaignPlataforma.values)}."
             )
         return value
+
+
+class CampaignEditSerializer(serializers.ModelSerializer):
+    """Serializer para edición de texto_generado por el marketero (HU10)."""
+
+    class Meta:
+        model = Campaign
+        fields = ["texto_generado"]
+
+    def validate_texto_generado(self, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("El texto no puede estar vacío.")
+        return value

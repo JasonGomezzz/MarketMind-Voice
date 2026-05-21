@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import api from '../services/api'
 
 export default function DashboardPage() {
@@ -10,6 +11,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const location = useLocation()
 
   useEffect(() => {
     let cancelled = false
@@ -35,7 +37,7 @@ export default function DashboardPage() {
 
     fetchData()
     return () => { cancelled = true }
-  }, [retryCount])
+  }, [retryCount, location.key])
 
   const activeCampaigns = stats
     ? (stats.generado ?? 0) + (stats.pendiente_aprobacion ?? 0) + (stats.aprobado ?? 0)
