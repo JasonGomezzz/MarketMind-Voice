@@ -127,3 +127,23 @@ class LogoutView(APIView):
                 ),
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class MeView(APIView):
+    """
+    GET /api/auth/me/
+    tokens_disponibles cambia tras cada generación — no puede leerse del JWT.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        serializer = UserResponseSerializer(request.user)
+        return Response(
+            api_response(
+                success=True,
+                message="Datos del usuario autenticado.",
+                data={"user": serializer.data},
+            ),
+            status=status.HTTP_200_OK,
+        )

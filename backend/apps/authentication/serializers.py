@@ -142,5 +142,5 @@ class UserResponseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "nombre", "rol", "is_active", "fecha_creacion"]
+        fields = ["id", "email", "nombre", "rol", "is_active", "fecha_creacion", "tokens_disponibles"]
         read_only_fields = fields
