@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 
 const ESTADO_BADGE = {
@@ -21,6 +22,7 @@ const ESTADO_LABEL = {
 
 export default function CampaignListPage() {
   const role = localStorage.getItem('user_role') || ''
+  const navigate = useNavigate()
 
   const [campaigns, setCampaigns] = useState([])
   const [count, setCount] = useState(0)
@@ -68,20 +70,28 @@ export default function CampaignListPage() {
 
   if (campaigns.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
-        <p className="text-lg font-medium">
-          {role === 'cliente' ? 'No tienes campañas asignadas.' : 'Aún no hay campañas.'}
-        </p>
+      <div>
+        <PageHeader role={role} count={0} onNew={() => navigate('/campaigns/new')} />
+        <div className="text-center py-16 text-gray-400">
+          <p className="text-lg font-medium">
+            {role === 'cliente' ? 'No tienes campañas asignadas.' : 'Aún no hay campañas.'}
+          </p>
+          {role === 'marketero' && (
+            <button
+              onClick={() => navigate('/campaigns/new')}
+              className="mt-4 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Crear primera campaña
+            </button>
+          )}
+        </div>
       </div>
     )
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Campañas</h2>
-        <p className="text-sm text-gray-500">{count} total</p>
-      </div>
+      <PageHeader role={role} count={count} onNew={() => navigate('/campaigns/new')} />
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
@@ -131,6 +141,25 @@ export default function CampaignListPage() {
             Siguiente
           </button>
         </div>
+      )}
+    </div>
+  )
+}
+
+function PageHeader({ role, count, onNew }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-xl font-semibold text-gray-900">Campañas</h2>
+        {count > 0 && <p className="text-sm text-gray-500">{count} total</p>}
+      </div>
+      {role === 'marketero' && (
+        <button
+          onClick={onNew}
+          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+        >
+          + Nueva Campaña
+        </button>
       )}
     </div>
   )
