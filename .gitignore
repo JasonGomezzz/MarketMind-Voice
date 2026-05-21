@@ -1,33 +1,33 @@
-# Python / Django
+# Python
 venv/
 venv_mac/
 __pycache__/
 *.pyc
 *.pyo
-*.egg-info/
 
-# Secrets
+# Env
 .env
-.env.local
 backend/.env
+frontend/.env
 
-# Claude Code
-CLAUDE.md
+# Node
+node_modules/
+dist/
+build/
 
-# macOS
+# Mac
 .DS_Store
 
-# React / Node
-frontend/node_modules/
-frontend/dist/
-frontend/build/
+# Claude
+CLAUDE.md
+.claude/
 
-# Kotlin
+# Mobile
 mobile/.gradle/
 mobile/build/
 mobile/local.properties
 
 # Tests
-.coverage
+coverage/
 .pytest_cache/
 htmlcov/
