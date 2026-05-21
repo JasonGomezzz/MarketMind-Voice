@@ -16,7 +16,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.exceptions import api_response
 from .serializers import RegisterSerializer, UserResponseSerializer
-from .throttles import AuthRateThrottle
+from .throttles import RegisterRateThrottle
 
 
 class RegisterView(APIView):
@@ -35,7 +35,7 @@ class RegisterView(APIView):
     """
 
     permission_classes = [AllowAny]
-    throttle_classes = [AuthRateThrottle]  # 10 intentos por minuto
+    throttle_classes = [RegisterRateThrottle]  # 5 intentos / 10 min
 
     def post(self, request: Request) -> Response:
         """

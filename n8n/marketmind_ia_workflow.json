@@ -1,0 +1,319 @@
+{
+  "name": "MarketMind IA — Generación Asíncrona",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "Webhook MarketMind",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "marketmind-main",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marketmind",
+        "responseMode": "onReceived",
+        "responseCode": 200,
+        "options": {}
+      }
+    },
+    {
+      "id": "node-if-mock",
+      "name": "¿Usar Mock?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-use-mock",
+              "leftValue": "={{ $json.body.use_mock }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node-fn-mock",
+      "name": "Generar Texto Mock",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 160],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = $input.first().json.body;\n\nconst mockCopy = [\n  `🚀 [MOCK] ¡Atención ${body.industria}! Descubre la solución que transforma tu negocio.`,\n  `✨ Campaña para ${body.plataforma}: Tono ${body.tono}. Lorem ipsum dolor sit amet, conecta con tu audiencia hoy.`,\n  `💡 MarketMind IA generó este copy para campaña #${body.campaign_id}. Industria: ${body.industria}.`,\n].join(' ');\n\nreturn [{\n  json: {\n    ...body,\n    generated_copy: mockCopy\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-http-callback-mock",
+      "name": "Callback Éxito (Mock)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [960, 160],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"n8n_callback_token\": \"{{ $json.n8n_callback_token }}\",\n  \"success\": true,\n  \"copy\": \"{{ $json.generated_copy }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "node-fn-prompt",
+      "name": "Prompt Engineering",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 440],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = $input.first().json.body;\n\nconst tonoInstrucciones = {\n  profesional: 'Usa un lenguaje formal, corporativo y confiable.',\n  casual: 'Usa un lenguaje amigable, cercano y conversacional.',\n  urgente: 'Crea urgencia y escasez. Usa verbos de acción y plazos.',\n  inspiracional: 'Motiva e inspira. Usa metáforas y lenguaje aspiracional.',\n  humoristico: 'Usa humor ligero y witty. Hazlo memorable y entretenido.',\n  persuasivo: 'Destaca beneficios claros. Incluye llamada a la acción fuerte.',\n};\n\nconst plataformaLimites = {\n  instagram: 'Máximo 2200 caracteres. Usa emojis estratégicamente.',\n  facebook: 'Máximo 500 caracteres para mayor engagement.',\n  twitter: 'Máximo 280 caracteres. Directo y conciso.',\n  linkedin: 'Máximo 600 caracteres. Tono profesional.',\n  google_ads: 'Titular: 30 chars. Descripción: 90 chars. Muy conciso.',\n  tiktok: 'Máximo 150 caracteres. Energético y juvenil.',\n};\n\nconst instruccionTono = tonoInstrucciones[body.tono] || 'Usa un lenguaje claro y efectivo.';\nconst restriccionPlataforma = plataformaLimites[body.plataforma] || 'Máximo 280 caracteres.';\n\nconst prompt = `Eres un experto en marketing digital y copywriting para campañas publicitarias.\n\nCrea un anuncio publicitario con las siguientes especificaciones:\n- Industria: ${body.industria}\n- Plataforma: ${body.plataforma}\n- Tono: ${body.tono}\n- Brief del cliente: ${body.prompt}\n\nInstrucciones de tono: ${instruccionTono}\nRestricciones de plataforma: ${restriccionPlataforma}\n\nDevuelve ÚNICAMENTE el texto del anuncio, sin explicaciones ni formato adicional.\nEl texto debe estar listo para publicarse directamente en ${body.plataforma}.`;\n\nreturn [{\n  json: {\n    ...body,\n    gemini_prompt: prompt\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-http-gemini",
+      "name": "Gemini 2.5 Flash",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [960, 440],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        { \"text\": \"{{ $json.gemini_prompt }}\" }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"topK\": 40,\n    \"topP\": 0.95,\n    \"maxOutputTokens\": 1024\n  }\n}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "node-if-error",
+      "name": "¿Hubo Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 440],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-error",
+              "leftValue": "={{ $json.error }}",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node-http-callback-fail",
+      "name": "Callback Fallo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1440, 320],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Prompt Engineering').first().json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"n8n_callback_token\": \"{{ $('Prompt Engineering').first().json.n8n_callback_token }}\",\n  \"success\": false,\n  \"error\": \"{{ $json.error.message || 'Gemini no disponible o cuota agotada.' }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "node-fn-extract",
+      "name": "Extraer Texto Gemini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 560],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const geminiResponse = $input.first().json;\nconst promptData = $('Prompt Engineering').first().json;\n\nlet generatedText;\ntry {\n  generatedText = geminiResponse.candidates[0].content.parts[0].text;\n  if (!generatedText || generatedText.trim() === '') {\n    throw new Error('Gemini devolvió texto vacío.');\n  }\n} catch (err) {\n  // Fallback si la estructura de respuesta es inesperada\n  generatedText = `Error extrayendo texto: ${err.message}`;\n  console.error('Error al extraer texto de Gemini:', err.message);\n  console.error('Respuesta recibida:', JSON.stringify(geminiResponse).substring(0, 500));\n}\n\nreturn [{\n  json: {\n    ...promptData,\n    generated_copy: generatedText.trim()\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-http-callback-success",
+      "name": "Callback Éxito (Real)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1680, 560],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"n8n_callback_token\": \"{{ $json.n8n_callback_token }}\",\n  \"success\": true,\n  \"copy\": \"{{ $json.generated_copy }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook MarketMind": {
+      "main": [
+        [
+          {
+            "node": "¿Usar Mock?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Usar Mock?": {
+      "main": [
+        [
+          {
+            "node": "Generar Texto Mock",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prompt Engineering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Texto Mock": {
+      "main": [
+        [
+          {
+            "node": "Callback Éxito (Mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt Engineering": {
+      "main": [
+        [
+          {
+            "node": "Gemini 2.5 Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 2.5 Flash": {
+      "main": [
+        [
+          {
+            "node": "¿Hubo Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hubo Error?": {
+      "main": [
+        [
+          {
+            "node": "Callback Fallo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extraer Texto Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Texto Gemini": {
+      "main": [
+        [
+          {
+            "node": "Callback Éxito (Real)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": ["marketmind", "ia", "async"]
+}

@@ -5,17 +5,21 @@ Endpoint REST para crear, listar y gestionar campañas publicitarias.
 
 from typing import Any
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.exceptions import api_response
 from services.n8n_service import trigger_ia_generation
 
 from .models import Campaign, CampaignStatus
+from .permissions import N8nCallbackPermission
 from .serializers import CampaignEditSerializer, CampaignSerializer
 
 
@@ -59,15 +63,14 @@ class CampaignViewSet(viewsets.ModelViewSet):
         """
         POST /api/campaigns/
 
-        Crea una campaña y dispara la generación de contenido IA.
-        Solo rol 'marketero' puede ejecutar este endpoint.
+        Crea una campaña en BORRADOR y dispara la generación IA de forma asíncrona.
+        Django responde HTTP 202 inmediatamente; el resultado llega por callback n8n.
 
         Returns:
-            HTTP 201 con campaña creada y contenido generado.
-            HTTP 400 si hay errores de validación en los datos.
-            HTTP 402 si el marketero no tiene tokens disponibles.
-            HTTP 403 si el usuario no tiene rol 'marketero'.
-            HTTP 503 si el servicio IA no está disponible.
+            HTTP 202 — campaña creada, generación en proceso.
+            HTTP 400 — errores de validación.
+            HTTP 402 — sin tokens disponibles.
+            HTTP 403 — rol no autorizado.
         """
         if request.user.rol != "marketero":
             return Response(
@@ -108,43 +111,166 @@ class CampaignViewSet(viewsets.ModelViewSet):
             marketero=request.user,
         )
 
-        resultado = trigger_ia_generation(
-            campaign_id=campaign.id,
-            prompt=campaign.prompt,
-            industria=campaign.industria,
-            tono=campaign.tono,
-            plataforma=campaign.plataforma,
-        )
+        # Recargar user para reflejar cambios de tokens hechos en el servicio
+        request.user.refresh_from_db()
+        resultado = trigger_ia_generation(campaign)
 
-        if resultado["success"]:
-            campaign.texto_generado = resultado["copy"]
-            campaign.imagen_url = resultado["imagen_url"]
-            campaign.transition_to(CampaignStatus.PENDIENTE_IA)
-            campaign.transition_to(CampaignStatus.GENERADO)
-            campaign.save()
+        # Recargar campaña — el servicio pudo haber cambiado estado y texto
+        campaign.refresh_from_db()
 
-            request.user.tokens_disponibles -= 1
-            request.user.save(update_fields=["tokens_disponibles"])
-
-            return Response(
-                api_response(
-                    success=True,
-                    message="Campaña creada y contenido generado exitosamente.",
-                    data={"campaign": CampaignSerializer(campaign).data},
-                ),
-                status=status.HTTP_201_CREATED,
-            )
+        if resultado.get("mock"):
+            message = "Campaña creada y contenido generado (modo mock)."
+        elif resultado["dispatched"]:
+            message = "Campaña creada. Generando contenido IA en segundo plano..."
+        else:
+            message = "Campaña creada como borrador. El servicio IA no está disponible."
 
         return Response(
             api_response(
-                success=False,
-                message="Campaña guardada como borrador. El servicio IA no está disponible.",
-                data={
-                    "campaign": CampaignSerializer(campaign).data,
-                    "error": resultado.get("error", "Error desconocido"),
-                },
+                success=True,
+                message=message,
+                data={"campaign": CampaignSerializer(campaign).data},
             ),
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="generate")
+    def generate(self, request: Request, pk: int = None) -> Response:
+        """
+        POST /api/campaigns/{id}/generate/
+
+        Dispara (o re-dispara) la generación IA para una campaña en BORRADOR.
+        Máximo 3 intentos por campaña.
+
+        Returns:
+            HTTP 202 — generación en proceso.
+            HTTP 402 — sin tokens disponibles.
+            HTTP 409 — estado incorrecto o intentos agotados.
+        """
+        if request.user.rol != "marketero":
+            return Response(
+                api_response(success=False, message="Solo el marketero puede generar.", data={}),
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        campaign = self.get_object()
+
+        if campaign.estado != CampaignStatus.BORRADOR:
+            return Response(
+                api_response(
+                    success=False,
+                    message=f"Solo campañas en 'borrador' pueden generarse. Estado actual: '{campaign.estado}'.",
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if request.user.tokens_disponibles <= 0:
+            return Response(
+                api_response(
+                    success=False,
+                    message="Sin tokens disponibles. Contacta al administrador.",
+                    data={"tokens_disponibles": 0},
+                ),
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        request.user.refresh_from_db()
+        resultado = trigger_ia_generation(campaign)
+        campaign.refresh_from_db()
+
+        if not resultado["dispatched"]:
+            return Response(
+                api_response(
+                    success=False,
+                    message=resultado.get("error", "No se pudo iniciar la generación."),
+                    data={"campaign": CampaignSerializer(campaign).data},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if resultado.get("mock"):
+            message = "Contenido generado (modo mock)."
+        else:
+            message = "Generación IA iniciada. El resultado llegará en breve."
+
+        return Response(
+            api_response(
+                success=True,
+                message=message,
+                data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="regenerate")
+    def regenerate(self, request: Request, pk: int = None) -> Response:
+        """
+        POST /api/campaigns/{id}/regenerate/
+
+        Regenera el contenido IA de una campaña que ya fue rechazada o falló.
+        La campaña debe estar en BORRADOR (estado tras rechazo o fallo previo).
+        Máximo 3 intentos acumulados.
+
+        Returns:
+            HTTP 202 — regeneración en proceso.
+            HTTP 402 — sin tokens disponibles.
+            HTTP 409 — estado incorrecto o intentos agotados.
+        """
+        if request.user.rol != "marketero":
+            return Response(
+                api_response(success=False, message="Solo el marketero puede regenerar.", data={}),
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        campaign = self.get_object()
+
+        if campaign.estado != CampaignStatus.BORRADOR:
+            return Response(
+                api_response(
+                    success=False,
+                    message=f"Solo campañas en 'borrador' pueden regenerarse. Estado actual: '{campaign.estado}'.",
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if request.user.tokens_disponibles <= 0:
+            return Response(
+                api_response(
+                    success=False,
+                    message="Sin tokens disponibles. Contacta al administrador.",
+                    data={"tokens_disponibles": 0},
+                ),
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        request.user.refresh_from_db()
+        resultado = trigger_ia_generation(campaign)
+        campaign.refresh_from_db()
+
+        if not resultado["dispatched"]:
+            return Response(
+                api_response(
+                    success=False,
+                    message=resultado.get("error", "No se pudo iniciar la regeneración."),
+                    data={"campaign": CampaignSerializer(campaign).data},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if resultado.get("mock"):
+            message = "Contenido regenerado (modo mock)."
+        else:
+            message = "Regeneración IA iniciada. El resultado llegará en breve."
+
+        return Response(
+            api_response(
+                success=True,
+                message=message,
+                data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_202_ACCEPTED,
         )
 
     def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -257,26 +383,131 @@ class CampaignViewSet(viewsets.ModelViewSet):
         """
         GET /api/campaigns/stats/
 
-        Retorna conteo de campañas agrupadas por estado para el usuario
-        autenticado (superadmin ve todo, marketero solo las suyas).
+        Retorna conteo de campañas agrupadas por estado.
+        Resultado cacheado 30s en Redis por usuario; el signal post_save
+        de Campaign invalida la caché cuando cambia una campaña.
 
         Returns:
             HTTP 200 con conteos por estado.
         """
-        qs = self.get_queryset()
+        cache_key = f"campaign_stats_{request.user.id}"
+        cached_data = cache.get(cache_key)
 
+        if cached_data is not None:
+            return Response(
+                api_response(
+                    success=True,
+                    message="Estadísticas de campañas.",
+                    data=cached_data,
+                ),
+                status=status.HTTP_200_OK,
+            )
+
+        qs = self.get_queryset()
         conteos: dict[str, int] = {estado: 0 for estado in CampaignStatus.values}
         for campaign in qs.values("estado"):
             conteos[campaign["estado"]] += 1
+
+        data = {
+            "total": sum(conteos.values()),
+            **conteos,
+        }
+        cache.set(cache_key, data, timeout=30)
 
         return Response(
             api_response(
                 success=True,
                 message="Estadísticas de campañas.",
-                data={
-                    "total": sum(conteos.values()),
-                    **conteos,
-                },
+                data=data,
             ),
             status=status.HTTP_200_OK,
         )
+
+
+class IaResultCallbackView(APIView):
+    """
+    POST /api/campaigns/webhook/ia-result/
+
+    Endpoint de callback para n8n. Recibe el resultado de la generación IA
+    (éxito o fallo) y actualiza el estado de la campaña en consecuencia.
+
+    Autenticación: N8nCallbackPermission (valida n8n_callback_token UUID).
+    No requiere JWT — diseñado para llamadas machine-to-machine desde n8n.
+
+    Body éxito:
+        {n8n_callback_token, success: true, copy: str}
+    Body fallo:
+        {n8n_callback_token, success: false, error: str}
+    """
+
+    authentication_classes: list = []
+    permission_classes = [N8nCallbackPermission]
+
+    def post(self, request: Request) -> Response:
+        """
+        Procesa el resultado de generación IA enviado por n8n.
+
+        Éxito: PENDIENTE_IA → GENERADO, guarda texto_generado.
+        Fallo: PENDIENTE_IA → BORRADOR, devuelve 1 token al marketero.
+        Todo en transaction.atomic() para consistencia.
+        """
+        token = request.data.get("n8n_callback_token")
+        success = request.data.get("success", False)
+
+        try:
+            with transaction.atomic():
+                campaign = (
+                    Campaign.objects.select_related("marketero")
+                    .select_for_update()
+                    .get(n8n_callback_token=token)
+                )
+
+                if success:
+                    copy = request.data.get("copy", "")
+                    campaign.texto_generado = copy
+                    campaign.save(update_fields=["texto_generado", "fecha_actualizacion"])
+                    campaign.transition_to(CampaignStatus.GENERADO)
+
+                    return Response(
+                        api_response(
+                            success=True,
+                            message="Contenido IA generado y guardado.",
+                            data={"campaign_id": campaign.id, "estado": campaign.estado},
+                        ),
+                        status=status.HTTP_200_OK,
+                    )
+
+                # Fallo: devolver token + estado → borrador
+                error_msg = request.data.get("error", "Error desconocido en n8n/Gemini.")
+                campaign.ia_error_message = error_msg
+                campaign.save(update_fields=["ia_error_message", "fecha_actualizacion"])
+
+                user = campaign.marketero
+                user.tokens_disponibles += 1
+                user.save(update_fields=["tokens_disponibles"])
+
+                campaign.transition_to(CampaignStatus.BORRADOR)
+
+                return Response(
+                    api_response(
+                        success=False,
+                        message="Generación IA fallida. Token devuelto al usuario.",
+                        data={
+                            "campaign_id": campaign.id,
+                            "estado": campaign.estado,
+                            "error": error_msg,
+                        },
+                    ),
+                    status=status.HTTP_200_OK,
+                )
+
+        except Campaign.DoesNotExist:
+            return Response(
+                api_response(success=False, message="Campaña no encontrada.", data={}),
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except ValidationError as e:
+            return Response(
+                api_response(success=False, message=str(e.message), data={}),
+                status=status.HTTP_409_CONFLICT,
+            )

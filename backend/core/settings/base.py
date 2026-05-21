@@ -153,7 +153,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/hour",
         "user": "1000/hour",
-        "auth": "10/minute",      # Para register y login (clase custom)
+        "register": "5/minute",   # RegisterRateThrottle sobrescribe duration → 600s (5/10min)
+        "login": "10/minute",     # LoginRateThrottle sobrescribe duration → 300s (10/5min)
     },
     # Renderer solo JSON, sin BrowsableAPI en producción
     "DEFAULT_RENDERER_CLASSES": [
@@ -215,12 +216,16 @@ CELERY_TASK_TIME_LIMIT = 30 * 60      # 30 minutos máximo por tarea
 
 
 # ─────────────────────────────────────────────
-# CACHE — Redis
+# CACHE — Redis con django-redis
 # ─────────────────────────────────────────────
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": config("REDIS_URL", default="redis://localhost:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,  # Si Redis cae, la app sigue funcionando
+        },
     }
 }
 
@@ -254,7 +259,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # SERVICIOS EXTERNOS — URLs centralizadas
 # ─────────────────────────────────────────────
 N8N_WEBHOOK_BASE_URL = config("N8N_WEBHOOK_URL", default="http://localhost:5678")
-N8N_WEBHOOK_TIMEOUT = 10            # segundos — el webhook debe responder < 500ms
+N8N_WEBHOOK_TIMEOUT = 5             # segundos — "Respond Immediately" debe responder < 500ms
+DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://localhost:8000")
 
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 GEMINI_MODEL = "gemini-2.5-flash"

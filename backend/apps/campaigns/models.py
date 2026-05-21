@@ -4,6 +4,7 @@ Modelo central del sistema: representa una campaña publicitaria
 con máquina de estados finitos (FSM) para controlar el ciclo de vida.
 """
 
+import uuid
 from typing import ClassVar
 
 from django.conf import settings
@@ -125,6 +126,30 @@ class Campaign(models.Model):
         null=True,
         verbose_name="URL de imagen",
         help_text="Imagen generada por Stability AI (HU21, Sprint 4).",
+    )
+
+    # ── Auditoría IA ────────────────────────────────────────
+    n8n_callback_token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        verbose_name="Token callback n8n",
+        help_text="UUID para autenticar el callback de n8n. No exponer al frontend.",
+    )
+    tokens_consumidos = models.IntegerField(
+        default=0,
+        verbose_name="Tokens consumidos",
+    )
+    intentos_generacion = models.IntegerField(
+        default=0,
+        verbose_name="Intentos de generación",
+        help_text="Máximo 3 intentos por campaña.",
+    )
+    ia_error_message = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Error IA",
+        help_text="Último error devuelto por n8n/Gemini.",
     )
 
     # ── FSM ─────────────────────────────────────────────────
