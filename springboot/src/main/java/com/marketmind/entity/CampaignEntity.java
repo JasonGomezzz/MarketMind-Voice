@@ -50,8 +50,8 @@ public class CampaignEntity {
     @Column(name = "imagen_url", updatable = false)
     private String imagenUrl;
 
-    @Column(name = "n8n_callback_token", updatable = false)
-    private String n8nCallbackToken;
+    @Column(name = "n8n_callback_token", columnDefinition = "uuid", updatable = false)
+    private java.util.UUID n8nCallbackToken;
 
     @Column(name = "tokens_consumidos", updatable = false)
     private Integer tokensConsumidos;

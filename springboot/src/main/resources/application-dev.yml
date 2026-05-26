@@ -16,7 +16,7 @@ spring:
 
 app:
   jwt:
-    secret: ${SECRET_KEY}
+    secret: ${SECRET_KEY:django-insecure-dev-key-marketmind-2026-local}
 
 logging:
   level:
