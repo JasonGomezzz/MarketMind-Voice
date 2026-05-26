@@ -152,6 +152,12 @@ class Campaign(models.Model):
         help_text="Último error devuelto por n8n/Gemini.",
     )
 
+    # ── Optimistic locking — Spring Boot JPA usa @Version sobre este campo ──
+    version = models.IntegerField(
+        default=1,
+        verbose_name="Versión",
+    )
+
     # ── FSM ─────────────────────────────────────────────────
     estado = models.CharField(
         max_length=30,

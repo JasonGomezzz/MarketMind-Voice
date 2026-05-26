@@ -58,6 +58,28 @@ services:
       - marketmind_net
     restart: unless-stopped
 
+  springboot:
+    build:
+      context: ./springboot
+      dockerfile: Dockerfile
+    container_name: marketmind_springboot
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-marketmind_db}
+      - DB_USER=${DB_USER:-marketmind_user}
+      - DB_PASSWORD=${DB_PASSWORD:-localpass123}
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - marketmind_net
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
