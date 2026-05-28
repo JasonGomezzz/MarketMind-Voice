@@ -76,7 +76,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"n8n_callback_token\": \"{{ $json.n8n_callback_token }}\",\n  \"success\": true,\n  \"copy\": \"{{ $json.generated_copy }}\"\n}",
+        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy}) }}",
         "options": {
           "timeout": 10000
         }
@@ -90,7 +90,7 @@
       "position": [720, 440],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const body = $input.first().json.body;\n\nconst tonoInstrucciones = {\n  profesional: 'Usa un lenguaje formal, corporativo y confiable.',\n  casual: 'Usa un lenguaje amigable, cercano y conversacional.',\n  urgente: 'Crea urgencia y escasez. Usa verbos de acción y plazos.',\n  inspiracional: 'Motiva e inspira. Usa metáforas y lenguaje aspiracional.',\n  humoristico: 'Usa humor ligero y witty. Hazlo memorable y entretenido.',\n  persuasivo: 'Destaca beneficios claros. Incluye llamada a la acción fuerte.',\n};\n\nconst plataformaLimites = {\n  instagram: 'Máximo 2200 caracteres. Usa emojis estratégicamente.',\n  facebook: 'Máximo 500 caracteres para mayor engagement.',\n  twitter: 'Máximo 280 caracteres. Directo y conciso.',\n  linkedin: 'Máximo 600 caracteres. Tono profesional.',\n  google_ads: 'Titular: 30 chars. Descripción: 90 chars. Muy conciso.',\n  tiktok: 'Máximo 150 caracteres. Energético y juvenil.',\n};\n\nconst instruccionTono = tonoInstrucciones[body.tono] || 'Usa un lenguaje claro y efectivo.';\nconst restriccionPlataforma = plataformaLimites[body.plataforma] || 'Máximo 280 caracteres.';\n\nconst prompt = `Eres un experto en marketing digital y copywriting para campañas publicitarias.\n\nCrea un anuncio publicitario con las siguientes especificaciones:\n- Industria: ${body.industria}\n- Plataforma: ${body.plataforma}\n- Tono: ${body.tono}\n- Brief del cliente: ${body.prompt}\n\nInstrucciones de tono: ${instruccionTono}\nRestricciones de plataforma: ${restriccionPlataforma}\n\nDevuelve ÚNICAMENTE el texto del anuncio, sin explicaciones ni formato adicional.\nEl texto debe estar listo para publicarse directamente en ${body.plataforma}.`;\n\nreturn [{\n  json: {\n    ...body,\n    gemini_prompt: prompt\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body;\n\nconst tonoInstrucciones = {\n  profesional: 'Usa un lenguaje formal, corporativo y confiable.',\n  casual: 'Usa un lenguaje amigable, cercano y conversacional.',\n  urgente: 'Crea urgencia y escasez. Usa verbos de acción y plazos.',\n  inspiracional: 'Motiva e inspira. Usa metáforas y lenguaje aspiracional.',\n  humoristico: 'Usa humor ligero y witty. Hazlo memorable y entretenido.',\n  persuasivo: 'Destaca beneficios claros. Incluye llamada a la acción fuerte.',\n};\n\nconst plataformaLimites = {\n  instagram: 'Máximo 2200 caracteres. Usa emojis estratégicamente.',\n  facebook: 'Máximo 500 caracteres para mayor engagement.',\n  twitter: 'Máximo 280 caracteres. Directo y conciso.',\n  linkedin: 'Máximo 600 caracteres. Tono profesional.',\n  google_ads: 'Titular: 30 chars. Descripción: 90 chars. Muy conciso.',\n  tiktok: 'Máximo 150 caracteres. Energético y juvenil.',\n};\n\nconst instruccionTono = tonoInstrucciones[body.tono] || 'Usa un lenguaje claro y efectivo.';\nconst restriccionPlataforma = plataformaLimites[body.plataforma] || 'Máximo 280 caracteres.';\n\nconst prompt = `Eres un experto en marketing digital y copywriting para campañas publicitarias.\\n\\nCrea un anuncio publicitario con las siguientes especificaciones:\\n- Industria: ${body.industria}\\n- Plataforma: ${body.plataforma}\\n- Tono: ${body.tono}\\n- Brief del cliente: ${body.prompt}\\n\\nInstrucciones de tono: ${instruccionTono}\\nRestricciones de plataforma: ${restriccionPlataforma}\\n\\nDevuelve ÚNICAMENTE el texto del anuncio, sin explicaciones ni formato adicional.\\nEl texto debe estar listo para publicarse directamente en ${body.plataforma}.`;\n\n// Pre-build the Gemini request body with proper JSON escaping\nconst geminiBody = JSON.stringify({\n  contents: [{ parts: [{ text: prompt }] }],\n  generationConfig: { temperature: 0.8, topK: 40, topP: 0.95, maxOutputTokens: 1024 }\n});\n\nreturn [{\n  json: {\n    ...body,\n    gemini_prompt: prompt,\n    gemini_body: geminiBody\n  }\n}];"
       }
     },
     {
@@ -114,7 +114,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        { \"text\": \"{{ $json.gemini_prompt }}\" }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"topK\": 40,\n    \"topP\": 0.95,\n    \"maxOutputTokens\": 1024\n  }\n}",
+        "jsonBody": "={{ $json.gemini_body }}",
         "options": {
           "timeout": 30000
         }
@@ -168,7 +168,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"n8n_callback_token\": \"{{ $('Prompt Engineering').first().json.n8n_callback_token }}\",\n  \"success\": false,\n  \"error\": \"{{ $json.error.message || 'Gemini no disponible o cuota agotada.' }}\"\n}",
+        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $('Prompt Engineering').first().json.n8n_callback_token, success: false, error: ($json.error && $json.error.message) ? $json.error.message : 'Gemini no disponible o cuota agotada.'}) }}",
         "options": {
           "timeout": 10000
         }
@@ -182,7 +182,7 @@
       "position": [1440, 560],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const geminiResponse = $input.first().json;\nconst promptData = $('Prompt Engineering').first().json;\n\nlet generatedText;\ntry {\n  generatedText = geminiResponse.candidates[0].content.parts[0].text;\n  if (!generatedText || generatedText.trim() === '') {\n    throw new Error('Gemini devolvió texto vacío.');\n  }\n} catch (err) {\n  // Fallback si la estructura de respuesta es inesperada\n  generatedText = `Error extrayendo texto: ${err.message}`;\n  console.error('Error al extraer texto de Gemini:', err.message);\n  console.error('Respuesta recibida:', JSON.stringify(geminiResponse).substring(0, 500));\n}\n\nreturn [{\n  json: {\n    ...promptData,\n    generated_copy: generatedText.trim()\n  }\n}];"
+        "jsCode": "const geminiResponse = $input.first().json;\nconst promptData = $('Prompt Engineering').first().json;\nlet generatedText;\ntry {\n  const parts = geminiResponse.candidates[0].content.parts;\n  const textPart = parts.find(p => !p.thought && p.text);\n  generatedText = textPart ? textPart.text : parts[parts.length-1].text;\n} catch(e) {\n  generatedText = 'DEBUG_RESPONSE: ' + JSON.stringify(geminiResponse).substring(0, 500);\n}\nreturn [{json: {\n  ...promptData,\n  generated_copy: generatedText\n}}];"
       }
     },
     {
@@ -205,7 +205,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"n8n_callback_token\": \"{{ $json.n8n_callback_token }}\",\n  \"success\": true,\n  \"copy\": \"{{ $json.generated_copy }}\"\n}",
+        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy}) }}",
         "options": {
           "timeout": 10000
         }
