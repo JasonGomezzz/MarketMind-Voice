@@ -14,7 +14,7 @@ import java.util.Optional;
 /**
  * Valida JWT emitidos por Django simplejwt.
  * Algoritmo: HS256. Clave: SECRET_KEY bytes (igual que Django).
- * sub = PK entero del usuario como string (simplejwt default).
+ * claim "user_id" = PK del usuario (simplejwt default; NO usa 'sub').
  * claim "role" = valor del campo 'rol' del User (minúsculas).
  * Spring Boot NUNCA emite tokens — solo valida.
  */
@@ -35,7 +35,11 @@ public class JwtTokenValidator {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            Long userId = Long.parseLong(claims.getSubject());
+            // simplejwt no usa 'sub'; el id va en el claim 'user_id'.
+            // Number (no Long) porque JJWT/Jackson puede deserializar como Integer.
+            Number userIdClaim = claims.get("user_id", Number.class);
+            if (userIdClaim == null) return Optional.empty();
+            Long userId = userIdClaim.longValue();
             String role = claims.get("role", String.class);
             String nombre = claims.get("nombre", String.class);
 
