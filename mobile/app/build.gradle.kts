@@ -1,15 +1,16 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android)
 }
 
 android {
     namespace = "com.marketmind.mobile"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.marketmind.mobile"
@@ -22,12 +23,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL_DJANGO", "\"http://10.0.2.2:8000/\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "BASE_URL_DJANGO", "\"https://CHANGE-ME-RENDER.onrender.com/\"")
         }
     }
     compileOptions {
@@ -36,6 +41,13 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_11
     }
 }
 
@@ -48,6 +60,25 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+
+    implementation(libs.androidx.security.crypto)
+
+    implementation(libs.kotlinx.coroutines.android)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
