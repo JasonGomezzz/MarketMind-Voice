@@ -9,3 +9,7 @@ annotation class AuthHttp
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class ApiHttp
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class SpringHttp

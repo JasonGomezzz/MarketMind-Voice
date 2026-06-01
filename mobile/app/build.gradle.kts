@@ -25,6 +25,7 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "BASE_URL_DJANGO", "\"http://10.0.2.2:8000/\"")
+            buildConfigField("String", "BASE_URL_SPRING", "\"http://10.0.2.2:8080/\"")
         }
         release {
             isMinifyEnabled = false
@@ -33,6 +34,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "BASE_URL_DJANGO", "\"https://CHANGE-ME-RENDER.onrender.com/\"")
+            buildConfigField("String", "BASE_URL_SPRING", "\"https://CHANGE-ME-SPRING-RENDER.onrender.com/\"")
         }
     }
     compileOptions {

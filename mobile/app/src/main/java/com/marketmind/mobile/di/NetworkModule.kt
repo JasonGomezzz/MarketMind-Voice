@@ -3,6 +3,7 @@ package com.marketmind.mobile.di
 import com.marketmind.mobile.BuildConfig
 import com.marketmind.mobile.data.remote.AuthApiService
 import com.marketmind.mobile.data.remote.AuthInterceptor
+import com.marketmind.mobile.data.remote.CampaignApiService
 import com.marketmind.mobile.data.remote.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
@@ -93,4 +94,25 @@ object NetworkModule {
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
+
+    // ──────────────── Cliente "spring" (reusa OkHttp de @ApiHttp) ────────────────
+    // Apunta a Spring Boot :8080. Comparte AuthInterceptor + TokenAuthenticator
+    // con @ApiHttp porque el JWT es el mismo (firmado por Django).
+
+    @Provides
+    @Singleton
+    @SpringHttp
+    fun provideSpringRetrofit(
+        @ApiHttp client: OkHttpClient,
+    ): Retrofit = Retrofit.Builder()
+        .baseUrl(BuildConfig.BASE_URL_SPRING)
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    @Provides
+    @Singleton
+    fun provideCampaignApiService(
+        @SpringHttp retrofit: Retrofit,
+    ): CampaignApiService = retrofit.create(CampaignApiService::class.java)
 }
