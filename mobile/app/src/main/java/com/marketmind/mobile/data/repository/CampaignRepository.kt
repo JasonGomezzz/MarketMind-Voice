@@ -34,6 +34,30 @@ class CampaignRepository @Inject constructor(
             Result.failure(CampaignFetchException("No se pudo conectar con el servidor. Revisa tu conexión."))
         }
     }
+
+    suspend fun getCampaignById(id: Long): Result<CampaignDto> {
+        return try {
+            val envelope = api.getCampaignById(id)
+            val data = envelope.data
+            if (envelope.success && data != null) {
+                Result.success(data)
+            } else {
+                Result.failure(CampaignFetchException(envelope.message ?: "Respuesta inválida del servidor."))
+            }
+        } catch (http: HttpException) {
+            Result.failure(
+                when (http.code()) {
+                    401 -> CampaignFetchException("Tu sesión expiró. Vuelve a iniciar sesión.")
+                    403 -> CampaignFetchException("No tienes permiso para ver esta campaña.")
+                    404 -> CampaignFetchException("Campaña no encontrada.")
+                    in 500..599 -> CampaignFetchException("El servidor no respondió correctamente. Intenta más tarde.")
+                    else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
+                }
+            )
+        } catch (io: IOException) {
+            Result.failure(CampaignFetchException("No se pudo conectar con el servidor. Revisa tu conexión."))
+        }
+    }
 }
 
 class CampaignFetchException(message: String) : Exception(message)

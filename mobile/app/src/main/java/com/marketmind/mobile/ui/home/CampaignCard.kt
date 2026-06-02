@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marketmind.mobile.data.remote.dto.CampaignDto
+import com.marketmind.mobile.ui.campaigns.formatEstado
+import com.marketmind.mobile.ui.campaigns.formatFecha
 
 @Composable
 fun CampaignCard(
@@ -88,13 +90,3 @@ fun CampaignCard(
     }
 }
 
-private fun formatEstado(raw: String): String =
-    raw.replace('_', ' ').replaceFirstChar { it.uppercase() }
-
-private fun formatFecha(iso: String): String =
-    iso.take(10).let { date ->
-        runCatching {
-            val (y, m, d) = date.split("-")
-            "$d/$m/$y"
-        }.getOrDefault(date)
-    }

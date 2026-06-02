@@ -1,16 +1,10 @@
 package com.marketmind.mobile.ui.navigation
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -18,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.marketmind.mobile.session.SessionEvent
+import com.marketmind.mobile.ui.campaigns.CampaignDetailScreen
 import com.marketmind.mobile.ui.home.HomeScreen
 import com.marketmind.mobile.ui.login.LoginScreen
 import kotlinx.coroutines.flow.collectLatest
@@ -69,24 +64,10 @@ fun NavGraph(
             arguments = listOf(
                 navArgument(Routes.CAMPAIGN_DETAIL_ARG_ID) { type = NavType.LongType }
             ),
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getLong(Routes.CAMPAIGN_DETAIL_ARG_ID) ?: -1L
-            CampaignDetailPlaceholder(id = id)
+        ) {
+            CampaignDetailScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
-    }
-}
-
-@Composable
-private fun CampaignDetailPlaceholder(id: Long) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Detalle de campaña #$id — HU13",
-            style = MaterialTheme.typography.titleMedium,
-        )
     }
 }
