@@ -6,9 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.marketmind.mobile.data.repository.CampaignRepository
 import com.marketmind.mobile.ui.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,11 +28,44 @@ class CampaignDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<CampaignDetailUiState>(CampaignDetailUiState.Loading)
     val uiState: StateFlow<CampaignDetailUiState> = _uiState.asStateFlow()
 
+    private val _events = Channel<CampaignDetailEvent>(Channel.BUFFERED)
+    val events: Flow<CampaignDetailEvent> = _events.receiveAsFlow()
+
     init {
         load()
     }
 
     fun retry() = load()
+
+    fun approve() = submit(estado = "aprobado", successMessage = "Campaña aprobada ✓")
+
+    fun reject() = submit(estado = "rechazado", successMessage = "Campaña rechazada")
+
+    private fun submit(estado: String, successMessage: String) {
+        val current = _uiState.value as? CampaignDetailUiState.Success ?: return
+        if (current.submitting) return
+
+        viewModelScope.launch {
+            _uiState.value = current.copy(submitting = true)
+            repository.updateStatus(
+                id = current.campaign.id,
+                estado = estado,
+                version = current.campaign.version,
+            )
+                .onSuccess {
+                    _events.send(CampaignDetailEvent.ShowSnackbar(successMessage))
+                    _events.send(CampaignDetailEvent.NavigateBack)
+                }
+                .onFailure { err ->
+                    _uiState.value = current.copy(submitting = false)
+                    _events.send(
+                        CampaignDetailEvent.ShowSnackbar(
+                            err.message ?: "Error desconocido al actualizar la campaña."
+                        )
+                    )
+                }
+        }
+    }
 
     private fun load() {
         viewModelScope.launch {
