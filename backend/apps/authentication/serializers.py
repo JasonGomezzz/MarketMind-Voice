@@ -144,3 +144,12 @@ class UserResponseSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "email", "nombre", "rol", "is_active", "fecha_creacion", "tokens_disponibles"]
         read_only_fields = fields
+
+
+class AdminUserUpdateSerializer(serializers.Serializer):
+    """
+    Serializer de escritura para PATCH /api/admin/users/{id}/ (HU18).
+    Solo permite cambiar is_active — suspender o reactivar la cuenta.
+    """
+
+    is_active = serializers.BooleanField(required=True)

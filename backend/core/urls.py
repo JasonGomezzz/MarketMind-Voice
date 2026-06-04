@@ -2,6 +2,11 @@
 from django.contrib import admin
 from django.urls import include, path
 
+from apps.authentication.admin_views import (
+    AdminResetQuotaView,
+    AdminUserDetailView,
+    AdminUsersListView,
+)
 from apps.campaigns.views import AdminAnalyticsView
 
 urlpatterns = [
@@ -9,6 +14,9 @@ urlpatterns = [
     path('api/auth/', include('apps.authentication.urls')),
     path('api/campaigns/', include('apps.campaigns.urls')),
     path('api/admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
+    path('api/admin/users/', AdminUsersListView.as_view(), name='admin-users-list'),
+    path('api/admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-users-detail'),
+    path('api/admin/users/<int:pk>/reset-quota/', AdminResetQuotaView.as_view(), name='admin-users-reset-quota'),
 ]
 
 if settings.DEBUG:

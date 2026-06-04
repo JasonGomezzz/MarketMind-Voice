@@ -134,9 +134,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # REST FRAMEWORK
 # ─────────────────────────────────────────────
 REST_FRAMEWORK = {
-    # JWT como autenticación por defecto
+    # JWT como autenticación por defecto.
+    # TokenVersionJWTAuthentication (HU18) valida token_version del JWT
+    # contra BD → invalida tokens cuando un admin suspende/reactiva al usuario.
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.authentication.authentication.TokenVersionJWTAuthentication",
     ),
     # Requiere autenticación por defecto en todos los endpoints
     "DEFAULT_PERMISSION_CLASSES": (
