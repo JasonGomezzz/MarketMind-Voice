@@ -3,11 +3,14 @@ MarketMind IA — Campaign Views
 Endpoint REST para crear, listar y gestionar campañas publicitarias.
 """
 
+from datetime import timedelta
 from typing import Any
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -15,6 +18,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
 from services.n8n_service import trigger_ia_generation
 
@@ -511,3 +515,90 @@ class IaResultCallbackView(APIView):
                 api_response(success=False, message=str(e.message), data={}),
                 status=status.HTTP_409_CONFLICT,
             )
+
+
+_PERIOD_DAYS: dict[str, int] = {"week": 7, "month": 30, "quarter": 90}
+
+
+class AdminAnalyticsView(APIView):
+    """
+    GET /api/admin/analytics/?period=week|month|quarter
+
+    Dashboard de analytics para superadmin.
+    Devuelve KPIs, campañas por marketero y distribución de estados
+    para el periodo seleccionado.
+
+    Requiere rol superadmin — HTTP 403 para cualquier otro rol.
+    """
+
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def get(self, request: Request) -> Response:
+        """
+        Calcula métricas agregadas de campañas para el periodo indicado.
+
+        Query params:
+            period: week | month | quarter (default: month)
+
+        Returns:
+            HTTP 200 con kpi, campanas_por_marketero y estados_globales.
+        """
+        period = request.query_params.get("period", "month")
+        days = _PERIOD_DAYS.get(period, 30)
+        desde = timezone.now() - timedelta(days=days)
+
+        qs = Campaign.objects.filter(fecha_creacion__gte=desde)
+
+        # KPIs
+        total = qs.count()
+        aprobadas = qs.filter(estado=CampaignStatus.APROBADO).count()
+        tasa = round(aprobadas / total * 100, 1) if total > 0 else 0
+
+        duracion_avg = (
+            qs.filter(estado=CampaignStatus.APROBADO)
+            .annotate(
+                duracion=ExpressionWrapper(
+                    F("fecha_actualizacion") - F("fecha_creacion"),
+                    output_field=DurationField(),
+                )
+            )
+            .aggregate(avg=Avg("duracion"))["avg"]
+        )
+        dias_promedio = (
+            round(duracion_avg.total_seconds() / 86400, 1) if duracion_avg else None
+        )
+
+        # Campañas por marketero
+        por_marketero = list(
+            qs.values("marketero__nombre")
+            .annotate(total=Count("id"))
+            .order_by("-total")
+        )
+
+        # Distribución de estados (todos los estados con conteo 0 si no hay datos)
+        conteos: dict[str, int] = {s: 0 for s in CampaignStatus.values}
+        for row in qs.values("estado").annotate(total=Count("id")):
+            conteos[row["estado"]] = row["total"]
+
+        return Response(
+            api_response(
+                success=True,
+                message="Analytics generadas.",
+                data={
+                    "periodo": period,
+                    "kpi": {
+                        "total_campanas": total,
+                        "tasa_aprobacion": tasa,
+                        "tiempo_promedio_aprobacion_dias": dias_promedio,
+                    },
+                    "campanas_por_marketero": [
+                        {"marketero": r["marketero__nombre"], "total": r["total"]}
+                        for r in por_marketero
+                    ],
+                    "estados_globales": [
+                        {"estado": k, "total": v} for k, v in conteos.items()
+                    ],
+                },
+            ),
+            status=status.HTTP_200_OK,
+        )
