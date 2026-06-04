@@ -45,17 +45,28 @@ public class CampaignService {
     }
 
     /**
-     * HU14 — aprobar o rechazar una campaña.
+     * HU14/HU15 — aprobar o rechazar una campaña.
+     * Al rechazar, feedback es obligatorio (10-500 chars).
      * JPA lanza ObjectOptimisticLockingFailureException si la versión no coincide.
      */
     @Transactional
-    public CampaignResponseDTO updateStatus(Long id, String newStatus) {
+    public CampaignResponseDTO updateStatus(Long id, String newStatus, String feedback) {
         CampaignEntity campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new CampaignNotFoundException(id));
 
         Set<String> allowed = ALLOWED_TRANSITIONS.getOrDefault(campaign.getEstado(), Set.of());
         if (!allowed.contains(newStatus)) {
             throw new InvalidStatusTransitionException(campaign.getEstado(), newStatus);
+        }
+
+        if ("rechazado".equals(newStatus)) {
+            if (feedback == null || feedback.isBlank()
+                    || feedback.strip().length() < 10 || feedback.strip().length() > 500) {
+                throw new IllegalArgumentException(
+                        "El feedback de rechazo es obligatorio (entre 10 y 500 caracteres)."
+                );
+            }
+            campaign.setFeedbackRechazo(feedback.strip());
         }
 
         campaign.setEstado(newStatus);
@@ -76,6 +87,7 @@ public class CampaignService {
                 .tokensConsumidos(e.getTokensConsumidos())
                 .intentosGeneracion(e.getIntentosGeneracion())
                 .estado(e.getEstado())
+                .feedbackRechazo(e.getFeedbackRechazo())
                 .marketeroId(e.getMarketeroId())
                 .fechaCreacion(e.getFechaCreacion())
                 .fechaActualizacion(e.getFechaActualizacion())

@@ -13,6 +13,7 @@ data class CampaignDto(
     val tokensConsumidos: Int?,
     val intentosGeneracion: Int?,
     val estado: String,
+    val feedbackRechazo: String? = null,
     val marketeroId: Long?,
     val fechaCreacion: String?,
     val fechaActualizacion: String?,

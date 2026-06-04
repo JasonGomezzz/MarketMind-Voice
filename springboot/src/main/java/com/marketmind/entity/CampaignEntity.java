@@ -62,7 +62,10 @@ public class CampaignEntity {
     @Column(name = "ia_error_message", updatable = false)
     private String iaErrorMessage;
 
-    // Único campo que Spring Boot puede escribir
+    @Column(name = "feedback_rechazo")
+    private String feedbackRechazo;
+
+    // Campos que Spring Boot puede escribir (estado + feedbackRechazo al rechazar)
     @Column(name = "estado", nullable = false)
     private String estado;
 
@@ -83,5 +86,9 @@ public class CampaignEntity {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public void setFeedbackRechazo(String feedbackRechazo) {
+        this.feedbackRechazo = feedbackRechazo;
     }
 }

@@ -10,8 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,6 +30,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,7 +54,8 @@ fun CampaignDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showRejectDialog by remember { mutableStateOf(false) }
+    var showRejectSheet by remember { mutableStateOf(false) }
+    var feedbackText by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -81,7 +84,7 @@ fun CampaignDetailScreen(
             DetailActionsBar(
                 state = state,
                 onApproveClick = viewModel::approve,
-                onRejectClick = { showRejectDialog = true },
+                onRejectClick = { showRejectSheet = true },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -102,28 +105,18 @@ fun CampaignDetailScreen(
         }
     }
 
-    if (showRejectDialog) {
-        AlertDialog(
-            onDismissRequest = { showRejectDialog = false },
-            title = { Text("Rechazar campaña") },
-            text = {
-                Text("¿Seguro que querés rechazar esta campaña? Esta acción no se puede deshacer.")
+    if (showRejectSheet) {
+        RejectFeedbackSheet(
+            feedbackText = feedbackText,
+            onFeedbackChange = { if (it.length <= 500) feedbackText = it },
+            onDismiss = {
+                showRejectSheet = false
+                feedbackText = ""
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showRejectDialog = false
-                        viewModel.reject()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) { Text("Rechazar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRejectDialog = false }) {
-                    Text("Cancelar")
-                }
+            onConfirm = { feedback ->
+                viewModel.reject(feedback)
+                showRejectSheet = false
+                feedbackText = ""
             },
         )
     }
@@ -304,6 +297,70 @@ private fun MetadataCard(campaign: CampaignDto) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RejectFeedbackSheet(
+    feedbackText: String,
+    onFeedbackChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val isValid = feedbackText.trim().length in 10..500
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Motivo del rechazo", style = MaterialTheme.typography.titleMedium)
+
+            OutlinedTextField(
+                value = feedbackText,
+                onValueChange = onFeedbackChange,
+                label = { Text("Motivo del rechazo") },
+                placeholder = { Text("Describe el motivo (mínimo 10 caracteres)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 4,
+                maxLines = 6,
+                isError = feedbackText.isNotEmpty() && feedbackText.trim().length < 10,
+            )
+
+            Text(
+                text = "${feedbackText.length} / 500 (mínimo 10)",
+                color = if (feedbackText.trim().length in 10..500 || feedbackText.isEmpty())
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.align(Alignment.End),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar")
+                }
+                Button(
+                    onClick = { onConfirm(feedbackText.trim()) },
+                    enabled = isValid,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text("Confirmar rechazo")
+                }
             }
         }
     }

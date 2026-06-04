@@ -152,6 +152,17 @@ class Campaign(models.Model):
         help_text="Último error devuelto por n8n/Gemini.",
     )
 
+    # ── Feedback del cliente (HU15) — escrito por Spring Boot al rechazar ──
+    feedback_rechazo = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Feedback de rechazo",
+        help_text=(
+            "Motivo escrito por el cliente cuando rechaza la campaña (HU15). "
+            "Null para campañas aprobadas o en otros estados."
+        ),
+    )
+
     # ── Optimistic locking — Spring Boot JPA usa @Version sobre este campo ──
     version = models.IntegerField(
         default=1,

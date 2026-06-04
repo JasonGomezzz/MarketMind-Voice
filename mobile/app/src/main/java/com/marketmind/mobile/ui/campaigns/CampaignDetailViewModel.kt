@@ -39,9 +39,9 @@ class CampaignDetailViewModel @Inject constructor(
 
     fun approve() = submit(estado = "aprobado", successMessage = "Campaña aprobada ✓")
 
-    fun reject() = submit(estado = "rechazado", successMessage = "Campaña rechazada")
+    fun reject(feedback: String) = submit(estado = "rechazado", successMessage = "Campaña rechazada", feedback = feedback)
 
-    private fun submit(estado: String, successMessage: String) {
+    private fun submit(estado: String, successMessage: String, feedback: String? = null) {
         val current = _uiState.value as? CampaignDetailUiState.Success ?: return
         if (current.submitting) return
 
@@ -51,6 +51,7 @@ class CampaignDetailViewModel @Inject constructor(
                 id = current.campaign.id,
                 estado = estado,
                 version = current.campaign.version,
+                feedback = feedback,
             )
                 .onSuccess {
                     _events.send(CampaignDetailEvent.ShowSnackbar(successMessage))

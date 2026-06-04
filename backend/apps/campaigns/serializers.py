@@ -40,6 +40,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "estado",
             "texto_generado",
             "imagen_url",
+            "feedback_rechazo",
             "marketero",
             "fecha_creacion",
         ]
@@ -48,6 +49,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "estado",
             "texto_generado",
             "imagen_url",
+            "feedback_rechazo",
             "marketero",
             "fecha_creacion",
         ]

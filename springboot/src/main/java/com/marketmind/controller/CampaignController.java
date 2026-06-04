@@ -56,7 +56,7 @@ public class CampaignController {
             @PathVariable Long id,
             @RequestBody @Valid StatusUpdateRequest request) {
 
-        CampaignResponseDTO dto = campaignService.updateStatus(id, request.getEstado());
+        CampaignResponseDTO dto = campaignService.updateStatus(id, request.getEstado(), request.getFeedback());
         return ResponseEntity.ok(ApiResponse.ok("Estado de campaña actualizado.", dto));
     }
 }

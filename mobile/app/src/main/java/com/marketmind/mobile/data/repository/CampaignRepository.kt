@@ -60,9 +60,9 @@ class CampaignRepository @Inject constructor(
         }
     }
 
-    suspend fun updateStatus(id: Long, estado: String, version: Int): Result<CampaignDto> {
+    suspend fun updateStatus(id: Long, estado: String, version: Int, feedback: String? = null): Result<CampaignDto> {
         return try {
-            val envelope = api.updateStatus(id, StatusUpdateRequestDto(estado = estado, version = version))
+            val envelope = api.updateStatus(id, StatusUpdateRequestDto(estado = estado, version = version, feedback = feedback))
             val data = envelope.data
             if (envelope.success && data != null) {
                 Result.success(data)
