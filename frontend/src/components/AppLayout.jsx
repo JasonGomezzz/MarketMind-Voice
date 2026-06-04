@@ -10,6 +10,7 @@ const NAV_ITEMS = {
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/campaigns', label: 'Campañas' },
     { to: '/admin', label: 'Administración' },
+    { to: '/admin/analytics', label: 'Analytics' },
   ],
   cliente: [
     { to: '/dashboard', label: 'Dashboard' },

@@ -15,7 +15,8 @@
     "react-dom": "^19.2.6",
     "react-hook-form": "^7.76.0",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^7.15.1"
+    "react-router-dom": "^7.15.1",
+    "recharts": "^2.15.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
