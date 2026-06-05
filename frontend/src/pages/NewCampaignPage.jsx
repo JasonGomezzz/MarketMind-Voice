@@ -137,22 +137,44 @@ export default function NewCampaignPage() {
             <FieldError message={errors.titulo?.message} />
           </div>
 
-          {/* Cliente */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre del cliente
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: Empresa S.A.C."
-              className={inputCls(errors.cliente_nombre)}
-              disabled={submitting}
-              {...register('cliente_nombre', {
-                required: 'El nombre del cliente es obligatorio.',
-                maxLength: { value: 150, message: 'Máximo 150 caracteres.' },
-              })}
-            />
-            <FieldError message={errors.cliente_nombre?.message} />
+          {/* Cliente — nombre + email */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nombre del cliente
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Empresa S.A.C."
+                className={inputCls(errors.cliente_nombre)}
+                disabled={submitting}
+                {...register('cliente_nombre', {
+                  required: 'El nombre del cliente es obligatorio.',
+                  maxLength: { value: 150, message: 'Máximo 150 caracteres.' },
+                })}
+              />
+              <FieldError message={errors.cliente_nombre?.message} />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email del cliente
+              </label>
+              <input
+                type="email"
+                placeholder="cliente@empresa.com"
+                className={inputCls(errors.cliente_email)}
+                disabled={submitting}
+                {...register('cliente_email', {
+                  required: 'El email del cliente es obligatorio.',
+                  pattern: {
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: 'Formato de email inválido.',
+                  },
+                })}
+              />
+              <FieldError message={errors.cliente_email?.message} />
+            </div>
           </div>
 
           {/* Industria + Tono en 2 columnas */}
