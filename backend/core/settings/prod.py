@@ -11,6 +11,10 @@ from .base import *  # noqa: F401, F403
 # ─────────────────────────────────────────────
 DEBUG = False
 
+# Render termina SSL en su edge y reenvía HTTP interno con este header.
+# Sin esto SECURE_SSL_REDIRECT entra en bucle infinito.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 SECURE_HSTS_SECONDS = 31536000           # 1 año — HTTPS obligatorio
