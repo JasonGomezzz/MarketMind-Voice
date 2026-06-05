@@ -18,6 +18,12 @@ app:
   jwt:
     secret: ${SECRET_KEY:django-insecure-dev-key-marketmind-2026-local}
 
+# HU17 — n8n webhook para notificación de email al marketero.
+# host.docker.internal apunta al host Mac desde el container Spring Boot;
+# si Spring Boot corre fuera de Docker, sobrescribir a http://localhost:5678.
+n8n:
+  webhook-url: ${N8N_WEBHOOK_URL:http://host.docker.internal:5678}
+
 logging:
   level:
     com.marketmind: DEBUG

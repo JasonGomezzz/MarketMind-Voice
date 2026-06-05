@@ -29,6 +29,7 @@ public class CampaignService {
     );
 
     private final CampaignRepository campaignRepository;
+    private final N8nEmailClient n8nEmailClient;
 
     /** HU12 — lista todas las campañas pendientes de aprobación. */
     public Page<CampaignResponseDTO> findPending(Pageable pageable) {
@@ -70,7 +71,14 @@ public class CampaignService {
         }
 
         campaign.setEstado(newStatus);
-        return toDTO(campaignRepository.save(campaign));
+        CampaignEntity saved = campaignRepository.save(campaign);
+
+        // HU17 — notificar al marketero vía n8n + Resend.
+        // Fire-and-forget interno (N8nEmailClient absorbe excepciones);
+        // si el HTTP demora, agregamos hasta N8N_WEBHOOK_TIMEOUT a la respuesta.
+        n8nEmailClient.notify(saved, newStatus);
+
+        return toDTO(saved);
     }
 
     private CampaignResponseDTO toDTO(CampaignEntity e) {

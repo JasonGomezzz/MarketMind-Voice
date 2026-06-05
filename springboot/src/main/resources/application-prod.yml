@@ -17,6 +17,10 @@ app:
   jwt:
     secret: ${SECRET_KEY}
 
+# HU17 — n8n webhook (Railway URL en prod).
+n8n:
+  webhook-url: ${N8N_WEBHOOK_URL}
+
 logging:
   level:
     com.marketmind: INFO
