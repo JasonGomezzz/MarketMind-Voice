@@ -33,6 +33,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "id",
             "titulo",
             "cliente_nombre",
+            "cliente_email",
             "industria",
             "tono",
             "plataforma",
@@ -41,6 +42,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "texto_generado",
             "imagen_url",
             "feedback_rechazo",
+            "email_enviado",
             "marketero",
             "fecha_creacion",
         ]
@@ -50,6 +52,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "texto_generado",
             "imagen_url",
             "feedback_rechazo",
+            "email_enviado",
             "marketero",
             "fecha_creacion",
         ]

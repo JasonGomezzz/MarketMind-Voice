@@ -517,6 +517,51 @@ class IaResultCallbackView(APIView):
             )
 
 
+class EmailSentCallbackView(APIView):
+    """
+    POST /api/campaigns/webhook/email-sent/
+
+    Callback de n8n tras enviar email vía Resend (HU16). Solo el evento
+    pendiente_aprobacion persiste flag (email_enviado=True); HU17 no incluye
+    callback_url en el payload disparador y por lo tanto nunca llega aquí.
+
+    Autenticación: N8nCallbackPermission (valida n8n_callback_token UUID).
+
+    Body:
+        {n8n_callback_token: str, success: bool, event_type: str}
+    """
+
+    authentication_classes: list = []
+    permission_classes = [N8nCallbackPermission]
+
+    def post(self, request: Request) -> Response:
+        """Marca email_enviado=True si el envío Resend fue exitoso (HU16)."""
+        token = request.data.get("n8n_callback_token")
+        success = bool(request.data.get("success", False))
+        event_type = request.data.get("event_type")
+
+        try:
+            campaign = Campaign.objects.get(n8n_callback_token=token)
+        except Campaign.DoesNotExist:
+            return Response(
+                api_response(success=False, message="Campaña no encontrada.", data={}),
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if success and event_type == "pendiente_aprobacion":
+            campaign.email_enviado = True
+            campaign.save(update_fields=["email_enviado", "fecha_actualizacion"])
+
+        return Response(
+            api_response(
+                success=True,
+                message="Callback de email procesado.",
+                data={"campaign_id": campaign.id, "email_enviado": campaign.email_enviado},
+            ),
+            status=status.HTTP_200_OK,
+        )
+
+
 _PERIOD_DAYS: dict[str, int] = {"week": 7, "month": 30, "quarter": 90}
 
 

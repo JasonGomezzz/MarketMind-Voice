@@ -90,6 +90,12 @@ class Campaign(models.Model):
         max_length=150,
         verbose_name="Nombre del cliente",
     )
+    cliente_email = models.EmailField(
+        null=True,
+        blank=True,
+        verbose_name="Email del cliente",
+        help_text="Destino del email de notificación cuando la campaña está lista para aprobación (HU16).",
+    )
     industria = models.CharField(
         max_length=100,
         verbose_name="Industria",
@@ -161,6 +167,13 @@ class Campaign(models.Model):
             "Motivo escrito por el cliente cuando rechaza la campaña (HU15). "
             "Null para campañas aprobadas o en otros estados."
         ),
+    )
+
+    # ── Email cliente (HU16) — flag de entrega tras Resend OK ──
+    email_enviado = models.BooleanField(
+        default=False,
+        verbose_name="Email cliente enviado",
+        help_text="True tras confirmación del callback n8n de envío exitoso vía Resend (HU16).",
     )
 
     # ── Optimistic locking — Spring Boot JPA usa @Version sobre este campo ──
