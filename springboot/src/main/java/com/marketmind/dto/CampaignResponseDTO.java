@@ -26,6 +26,7 @@ public class CampaignResponseDTO {
     private String prompt;
     private String textoGenerado;
     private String imagenUrl;
+    private String imagenB64;
     private Integer tokensConsumidos;
     private Integer intentosGeneracion;
     private String estado;

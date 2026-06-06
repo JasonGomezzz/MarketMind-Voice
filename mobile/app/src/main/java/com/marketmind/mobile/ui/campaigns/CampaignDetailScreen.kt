@@ -37,8 +37,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -233,6 +239,28 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
                 ?: "Sin contenido generado.",
             style = MaterialTheme.typography.bodyLarge,
         )
+        HorizontalDivider()
+        val imagenB64 = campaign.imagenB64
+        if (imagenB64 != null) {
+            val imageBytes = Base64.decode(imagenB64, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            bitmap?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = "Imagen generada",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium),
+                    contentScale = ContentScale.FillWidth,
+                )
+            }
+        } else {
+            Text(
+                text = "Imagen no generada aún",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

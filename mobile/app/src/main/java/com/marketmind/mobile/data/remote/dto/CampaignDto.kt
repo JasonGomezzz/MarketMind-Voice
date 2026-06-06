@@ -10,6 +10,7 @@ data class CampaignDto(
     val prompt: String?,
     val textoGenerado: String?,
     val imagenUrl: String?,
+    val imagenB64: String? = null,
     val tokensConsumidos: Int?,
     val intentosGeneracion: Int?,
     val estado: String,

@@ -92,6 +92,7 @@ public class CampaignService {
                 .prompt(e.getPrompt())
                 .textoGenerado(e.getTextoGenerado())
                 .imagenUrl(e.getImagenUrl())
+                .imagenB64(e.getImagenB64())
                 .tokensConsumidos(e.getTokensConsumidos())
                 .intentosGeneracion(e.getIntentosGeneracion())
                 .estado(e.getEstado())
