@@ -468,15 +468,21 @@ class IaResultCallbackView(APIView):
 
                 if success:
                     copy = request.data.get("copy", "")
+                    imagen_b64 = request.data.get("imagen_b64")
                     campaign.texto_generado = copy
-                    campaign.save(update_fields=["texto_generado", "fecha_actualizacion"])
+                    campaign.imagen_b64 = imagen_b64
+                    campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])
                     campaign.transition_to(CampaignStatus.GENERADO)
 
                     return Response(
                         api_response(
                             success=True,
                             message="Contenido IA generado y guardado.",
-                            data={"campaign_id": campaign.id, "estado": campaign.estado},
+                            data={
+                                "campaign_id": campaign.id,
+                                "estado": campaign.estado,
+                                "tiene_imagen": imagen_b64 is not None,
+                            },
                         ),
                         status=status.HTTP_200_OK,
                     )

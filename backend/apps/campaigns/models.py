@@ -133,6 +133,12 @@ class Campaign(models.Model):
         verbose_name="URL de imagen",
         help_text="Imagen generada por Stability AI (HU21, Sprint 4).",
     )
+    imagen_b64 = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Imagen base64",
+        help_text="Imagen generada por Gemini Imagen 3 en base64 (HU21). Mostrar con data:image/png;base64,<valor>.",
+    )
 
     # ── Auditoría IA ────────────────────────────────────────
     n8n_callback_token = models.UUIDField(

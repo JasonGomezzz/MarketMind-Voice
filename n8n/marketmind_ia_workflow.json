@@ -62,7 +62,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const body = $input.first().json.body;\n\nconst mockCopy = [\n  `🚀 [MOCK] ¡Atención ${body.industria}! Descubre la solución que transforma tu negocio.`,\n  `✨ Campaña para ${body.plataforma}: Tono ${body.tono}. Lorem ipsum dolor sit amet, conecta con tu audiencia hoy.`,\n  `💡 MarketMind IA generó este copy para campaña #${body.campaign_id}. Industria: ${body.industria}.`,\n].join(' ');\n\nreturn [{\n  json: {\n    ...body,\n    generated_copy: mockCopy\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body;\n\nconst mockCopy = [\n  `🚀 [MOCK] ¡Atención ${body.industria}! Descubre la solución que transforma tu negocio.`,\n  `✨ Campaña para ${body.plataforma}: Tono ${body.tono}. Lorem ipsum dolor sit amet, conecta con tu audiencia hoy.`,\n  `💡 MarketMind IA generó este copy para campaña #${body.campaign_id}. Industria: ${body.industria}.`,\n].join(' ');\n\nreturn [{\n  json: {\n    ...body,\n    generated_copy: mockCopy,\n    imagen_b64: null\n  }\n}];"
       }
     },
     {
@@ -88,7 +88,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy}) }}",
+        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy, imagen_b64: $json.imagen_b64}) }}",
         "options": {
           "timeout": 10000
         }
@@ -218,7 +218,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        1680,
+        2400,
         560
       ],
       "parameters": {
@@ -235,7 +235,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy}) }}",
+        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy, imagen_b64: $json.imagen_b64}) }}",
         "options": {
           "timeout": 10000
         }
@@ -465,6 +465,64 @@
           "timeout": 10000
         }
       }
+    },
+    {
+      "id": "node-fn-imagen-prompt",
+      "name": "Construir Prompt Imagen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        560
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const data = $input.first().json;\nconst imagenPrompt = 'Professional advertising image for a ' + data.industria + ' brand. Campaign concept: ' + data.generated_copy.substring(0, 200) + ' Platform: ' + data.plataforma + '. Style: clean, modern, commercial photography, photorealistic. No text overlay.';\nconst imagenBody = JSON.stringify({\n  instances: [{ prompt: imagenPrompt }],\n  parameters: { sampleCount: 1, aspectRatio: \"1:1\" }\n});\nreturn [{ json: { ...data, imagen_prompt: imagenPrompt, imagen_body: imagenBody } }];"
+      }
+    },
+    {
+      "id": "node-http-imagen3",
+      "name": "Gemini Imagen 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1920,
+        560
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=' + $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.imagen_body }}",
+        "options": {
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "node-fn-extract-imagen",
+      "name": "Extraer Base64 Imagen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        560
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const imgResponse = $input.first().json;\nconst prevData = $('Construir Prompt Imagen').first().json;\nlet imagen_b64 = null;\ntry {\n  const pred = imgResponse.predictions;\n  if (pred && pred[0] && pred[0].bytesBase64Encoded) {\n    imagen_b64 = pred[0].bytesBase64Encoded;\n  }\n} catch (e) {\n  // imagen queda null — copy se guarda igual\n}\nreturn [{ json: { ...prevData, imagen_b64 } }];"
+      }
     }
   ],
   "connections": {
@@ -552,7 +610,7 @@
       "main": [
         [
           {
-            "node": "Callback Éxito (Real)",
+            "node": "Construir Prompt Imagen",
             "type": "main",
             "index": 0
           }
@@ -661,6 +719,39 @@
         ],
         []
       ]
+    },
+    "Construir Prompt Imagen": {
+      "main": [
+        [
+          {
+            "node": "Gemini Imagen 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Imagen 3": {
+      "main": [
+        [
+          {
+            "node": "Extraer Base64 Imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Base64 Imagen": {
+      "main": [
+        [
+          {
+            "node": "Callback Éxito (Real)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -673,9 +764,5 @@
   "meta": {
     "templateCredsSetupCompleted": false
   },
-  "tags": [
-    "marketmind",
-    "ia",
-    "async"
-  ]
+  "id": "QAkaxptDCI9ahjQU"
 }

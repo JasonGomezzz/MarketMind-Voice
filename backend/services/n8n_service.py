@@ -92,7 +92,8 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             "Transforma tu marca hoy con MarketMind IA."
         )
         campaign.texto_generado = mock_copy
-        campaign.save(update_fields=["texto_generado", "fecha_actualizacion"])
+        campaign.imagen_b64 = None  # mock no llama Gemini Imagen 3
+        campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])
         campaign.transition_to(CampaignStatus.GENERADO)
         return {"dispatched": True, "mock": True}
 
