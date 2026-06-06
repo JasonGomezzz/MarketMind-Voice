@@ -100,7 +100,11 @@ export default function CampaignDetailPage() {
       toast.success('Campaña enviada al cliente')
       setTimeout(() => navigate('/dashboard'), 1200)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error al enviar')
+      if (err.response?.status === 402) {
+        toast.error('Sin tokens disponibles. Contacta al administrador para renovar tu plan.')
+      } else {
+        toast.error(err.response?.data?.message || 'Error al enviar')
+      }
       setSubmitting(false)
     }
   }
@@ -157,7 +161,7 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
-        {/* ── Columna derecha: Editor ──────────────────────── */}
+        {/* ── Columna derecha: Editor + Imagen ────────────── */}
         <div className="flex-1 min-w-0">
 
           {isReadonly && (
@@ -217,6 +221,29 @@ export default function CampaignDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Imagen generada — HU22 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 mt-4">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Imagen generada</p>
+            {campaign.imagen_b64 ? (
+              <div className="space-y-3">
+                <img
+                  src={`data:image/png;base64,${campaign.imagen_b64}`}
+                  alt="Imagen generada por IA"
+                  className="w-full rounded-lg"
+                />
+                <a
+                  href={`data:image/png;base64,${campaign.imagen_b64}`}
+                  download={`campaign_${id}_imagen.png`}
+                  className="inline-block px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Descargar PNG
+                </a>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-6">Imagen no generada aún</p>
+            )}
           </div>
         </div>
       </div>
