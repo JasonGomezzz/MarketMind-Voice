@@ -22,6 +22,8 @@ import requests
 from django.conf import settings
 from django.db import transaction
 
+from services.version_service import save_campaign_version
+
 if TYPE_CHECKING:
     from apps.campaigns.models import Campaign
 
@@ -91,6 +93,7 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             f"Plataforma: {campaign.plataforma}. "
             "Transforma tu marca hoy con MarketMind IA."
         )
+        save_campaign_version(campaign)
         campaign.texto_generado = mock_copy
         campaign.imagen_b64 = None  # mock no llama Gemini Imagen 3
         campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])

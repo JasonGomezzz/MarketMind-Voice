@@ -10,9 +10,11 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import status, viewsets
+from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -21,10 +23,11 @@ from rest_framework.views import APIView
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
 from services.n8n_service import trigger_ia_generation
+from services.version_service import save_campaign_version
 
-from .models import Campaign, CampaignStatus
+from .models import Campaign, CampaignStatus, CampaignVersion
 from .permissions import N8nCallbackPermission
-from .serializers import CampaignEditSerializer, CampaignSerializer
+from .serializers import CampaignEditSerializer, CampaignSerializer, CampaignVersionSerializer
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
@@ -467,6 +470,7 @@ class IaResultCallbackView(APIView):
                 )
 
                 if success:
+                    save_campaign_version(campaign)
                     copy = request.data.get("copy", "")
                     imagen_b64 = request.data.get("imagen_b64")
                     campaign.texto_generado = copy
@@ -653,3 +657,36 @@ class AdminAnalyticsView(APIView):
             ),
             status=status.HTTP_200_OK,
         )
+
+
+class CampaignVersionListView(generics.ListAPIView):
+    """
+    GET /api/campaigns/{campaign_id}/versions/
+
+    Retorna las últimas 5 versiones de una campaña.
+    Solo el owner o un superadmin puede acceder.
+    """
+
+    serializer_class = CampaignVersionSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        campaign_id = self.kwargs['campaign_id']
+        campaign = get_object_or_404(
+            Campaign.objects.select_related('marketero'),
+            pk=campaign_id,
+        )
+        user = self.request.user
+        if campaign.marketero != user and user.rol != 'superadmin':
+            raise PermissionDenied("No tienes acceso a esta campaña.")
+        return CampaignVersion.objects.filter(campaign=campaign)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'message': 'Versiones obtenidas correctamente.',
+            'data': serializer.data,
+        })

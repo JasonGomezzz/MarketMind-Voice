@@ -5,7 +5,7 @@ Validación y serialización del modelo Campaign.
 
 from rest_framework import serializers
 
-from .models import Campaign, CampaignPlataforma, CampaignStatus, CampaignTono
+from .models import Campaign, CampaignPlataforma, CampaignStatus, CampaignTono, CampaignVersion
 
 # TODO: mover a TextChoices en models.py (Sprint refactor)
 INDUSTRIA_CHOICES = [
@@ -128,3 +128,23 @@ class CampaignEditSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("El texto no puede estar vacío.")
         return value
+
+
+class CampaignVersionSerializer(serializers.ModelSerializer):
+    texto_preview = serializers.SerializerMethodField()
+    tiene_imagen = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CampaignVersion
+        fields = [
+            'id', 'version_number', 'texto_preview',
+            'tiene_imagen', 'imagen_b64', 'created_at',
+        ]
+
+    def get_texto_preview(self, obj: CampaignVersion) -> str:
+        """Retorna los primeros 200 caracteres del texto para la lista."""
+        texto = obj.texto_generado or ''
+        return texto[:200] + ('…' if len(texto) > 200 else '')
+
+    def get_tiene_imagen(self, obj: CampaignVersion) -> bool:
+        return bool(obj.imagen_b64)

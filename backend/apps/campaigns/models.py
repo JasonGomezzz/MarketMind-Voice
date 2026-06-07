@@ -262,3 +262,31 @@ class Campaign(models.Model):
 
         self.estado = nuevo_estado
         self.save(update_fields=["estado", "fecha_actualizacion"])
+
+
+class CampaignVersion(models.Model):
+    """
+    Snapshot inmutable del estado de una campaña antes de ser sobreescrita.
+    Máximo 5 versiones por campaña (LRU automático en save_campaign_version).
+    """
+
+    campaign = models.ForeignKey(
+        Campaign,
+        on_delete=models.CASCADE,
+        related_name='versions',
+    )
+    version_number = models.PositiveIntegerField()
+    texto_generado = models.TextField()
+    imagen_b64 = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'campaigns_campaignversion'
+        ordering = ['-version_number']
+        unique_together = [['campaign', 'version_number']]
+        indexes = [
+            models.Index(fields=['campaign', '-version_number']),
+        ]
+
+    def __str__(self) -> str:
+        return f"Campaign {self.campaign_id} v{self.version_number}"
