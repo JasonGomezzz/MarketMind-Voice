@@ -3,6 +3,7 @@ MarketMind IA — Campaign Views
 Endpoint REST para crear, listar y gestionar campañas publicitarias.
 """
 
+import re
 from datetime import timedelta
 from typing import Any
 
@@ -10,7 +11,9 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
@@ -19,6 +22,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from weasyprint import HTML as WeasyHTML
 
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
@@ -690,3 +694,61 @@ class CampaignVersionListView(generics.ListAPIView):
             'message': 'Versiones obtenidas correctamente.',
             'data': serializer.data,
         })
+
+
+class CampaignExportPDFView(APIView):
+    """
+    GET /api/campaigns/{campaign_id}/export-pdf/
+
+    Genera y retorna un PDF descargable de una campaña aprobada.
+    Solo el owner (marketero) de la campaña o un superadmin puede acceder.
+    Requiere estado == 'aprobado'. Retorna application/pdf como attachment.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, campaign_id: int) -> HttpResponse:
+        """Renderiza el template HTML de la campaña y lo convierte a PDF con WeasyPrint."""
+        campaign = get_object_or_404(
+            Campaign.objects.select_related("marketero"),
+            pk=campaign_id,
+        )
+        user = request.user
+        if campaign.marketero != user and user.rol != "superadmin":
+            return Response(
+                {"success": False, "message": "No tienes acceso a esta campaña."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if campaign.estado != CampaignStatus.APROBADO:
+            return Response(
+                {"success": False, "message": "Solo se pueden exportar campañas aprobadas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        context = {
+            "campaign": campaign,
+            "fecha_exportacion": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
+        }
+        html_string = render_to_string("campaigns/campaign_pdf.html", context)
+        try:
+            pdf_bytes = WeasyHTML(
+                string=html_string,
+                base_url=request.build_absolute_uri("/"),
+            ).write_pdf()
+        except Exception:
+            # imagen_b64 corrupta — regenerar sin imagen y sin romper el flujo
+            original_imagen = campaign.imagen_b64
+            campaign.imagen_b64 = None
+            html_string_sin_imagen = render_to_string(
+                "campaigns/campaign_pdf.html", context
+            )
+            campaign.imagen_b64 = original_imagen  # restaurar en memoria
+            pdf_bytes = WeasyHTML(
+                string=html_string_sin_imagen,
+                base_url=request.build_absolute_uri("/"),
+            ).write_pdf()
+
+        safe_title = re.sub(r"[^\w\-]", "_", campaign.titulo[:40])
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="campana_{safe_title}.pdf"'
+        return response

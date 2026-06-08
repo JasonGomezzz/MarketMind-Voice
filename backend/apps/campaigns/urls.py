@@ -1,7 +1,13 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from .views import CampaignVersionListView, CampaignViewSet, EmailSentCallbackView, IaResultCallbackView
+from .views import (
+    CampaignExportPDFView,
+    CampaignVersionListView,
+    CampaignViewSet,
+    EmailSentCallbackView,
+    IaResultCallbackView,
+)
 
 router = SimpleRouter()
 router.register(r"", CampaignViewSet, basename="campaign")
@@ -12,4 +18,6 @@ urlpatterns = [
     path("webhook/email-sent/", EmailSentCallbackView.as_view(), name="email-sent-callback"),
     # Historial de versiones (HU23)
     path("<int:campaign_id>/versions/", CampaignVersionListView.as_view(), name="campaign-versions"),
+    # Exportar PDF (HU25)
+    path("<int:campaign_id>/export-pdf/", CampaignExportPDFView.as_view(), name="campaign-export-pdf"),
 ] + router.urls

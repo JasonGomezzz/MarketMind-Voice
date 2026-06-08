@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast, { Toaster } from 'react-hot-toast'
 import api from '../services/api'
+import VersionHistoryPanel from '../components/VersionHistoryPanel'
 
 const ESTADO_BADGE = {
   borrador: 'bg-gray-100 text-gray-600',
@@ -109,6 +110,33 @@ export default function CampaignDetailPage() {
     }
   }
 
+  async function handleExportPDF() {
+    try {
+      const response = await api.get(`/api/campaigns/${id}/export-pdf/`, {
+        responseType: 'blob',
+      })
+      const blobUrl = window.URL.createObjectURL(
+        new Blob([response.data], { type: 'application/pdf' })
+      )
+      const anchor = document.createElement('a')
+      anchor.href = blobUrl
+      anchor.download = `campana_${campaign.titulo}.pdf`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      let msg = 'Error al generar el PDF.'
+      if (error.response?.data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await error.response.data.text())
+          msg = parsed.message || msg
+        } catch { /* usar mensaje genérico */ }
+      }
+      toast.error(msg)
+    }
+  }
+
   if (loading) return <LoadingSkeleton />
   if (error) return <p className="text-sm text-red-500 p-4">Error al cargar la campaña.</p>
 
@@ -159,6 +187,8 @@ export default function CampaignDetailPage() {
               {campaign.prompt}
             </p>
           </div>
+
+          <VersionHistoryPanel campaignId={id} />
         </div>
 
         {/* ── Columna derecha: Editor + Imagen ────────────── */}
@@ -219,6 +249,14 @@ export default function CampaignDetailPage() {
                     </button>
                   )}
                 </div>
+              )}
+              {campaign.estado === 'aprobado' && (
+                <button
+                  onClick={handleExportPDF}
+                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Exportar PDF
+                </button>
               )}
             </div>
           </div>

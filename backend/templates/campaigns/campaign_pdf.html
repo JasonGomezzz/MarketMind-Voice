@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ campaign.titulo }}</title>
+  <style>
+    @page { margin: 2cm; size: A4; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      color: #1a1a1a;
+      background: #ffffff;
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .no-break { break-inside: avoid; page-break-inside: avoid; }
+
+    /* SECCIÓN 1 — Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .brand { font-size: 20px; font-weight: bold; color: #1a1a1a; }
+    .export-date { font-size: 11px; color: #9ca3af; }
+    hr.divider { border: none; border-top: 2px solid #4F46E5; margin: 8px 0 20px; }
+
+    /* SECCIÓN 2 — Metadatos */
+    table.meta { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    table.meta td { padding: 7px 0; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+    table.meta td.label { color: #6b7280; width: 35%; }
+    table.meta td.value { color: #1a1a1a; }
+
+    /* Títulos de sección */
+    .section-title {
+      color: #4F46E5;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: bold;
+      margin: 0 0 10px;
+    }
+
+    /* SECCIÓN 3 — Copy */
+    .copy-body {
+      background: #f8f8ff;
+      padding: 16px;
+      border-radius: 4px;
+      border-left: 3px solid #4F46E5;
+      margin-bottom: 24px;
+      color: #1a1a1a;
+    }
+
+    /* SECCIÓN 4 — Imagen */
+    .image-section { text-align: center; margin-bottom: 24px; }
+    .image-section img {
+      max-width: 380px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .image-empty {
+      color: #9ca3af;
+      font-style: italic;
+      text-align: center;
+      padding: 24px;
+    }
+
+    /* SECCIÓN 5 — Footer */
+    .footer {
+      border-top: 1px solid #e5e7eb;
+      margin-top: 32px;
+      padding-top: 12px;
+      text-align: center;
+      font-size: 10px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SECCIÓN 1 — Header -->
+  <div class="header no-break">
+    <span class="brand">MarketMind IA</span>
+    <span class="export-date">Exportado: {{ fecha_exportacion }}</span>
+  </div>
+  <hr class="divider">
+
+  <!-- SECCIÓN 2 — Metadatos -->
+  <table class="meta no-break">
+    <tr><td class="label">Campaña</td><td class="value">{{ campaign.titulo }}</td></tr>
+    <tr><td class="label">Cliente</td><td class="value">{{ campaign.cliente_nombre }}</td></tr>
+    <tr><td class="label">Industria</td><td class="value">{{ campaign.industria }}</td></tr>
+    <tr><td class="label">Plataforma</td><td class="value">{{ campaign.get_plataforma_display }}</td></tr>
+    <tr><td class="label">Estado</td><td class="value">{{ campaign.get_estado_display }}</td></tr>
+    <tr><td class="label">Fecha creación</td><td class="value">{{ campaign.fecha_creacion|date:"d/m/Y" }}</td></tr>
+  </table>
+
+  <!-- SECCIÓN 3 — Copy Publicitario -->
+  <div class="no-break">
+    <p class="section-title">Copy Publicitario</p>
+    <div class="copy-body">{{ campaign.texto_generado|linebreaksbr }}</div>
+  </div>
+
+  <!-- SECCIÓN 4 — Imagen Generada -->
+  <div class="no-break">
+    <p class="section-title">Imagen Generada</p>
+    <div class="image-section">
+      {% if campaign.imagen_b64 %}
+        <img src="data:image/png;base64,{{ campaign.imagen_b64 }}" alt="Imagen generada por IA">
+      {% else %}
+        <p class="image-empty">Imagen no disponible para esta campaña.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SECCIÓN 5 — Footer -->
+  <div class="footer">
+    Generado por MarketMind IA · {{ fecha_exportacion }}
+  </div>
+
+</body>
+</html>
