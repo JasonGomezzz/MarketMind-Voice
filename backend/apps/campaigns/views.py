@@ -3,6 +3,7 @@ MarketMind IA — Campaign Views
 Endpoint REST para crear, listar y gestionar campañas publicitarias.
 """
 
+import logging
 import re
 from datetime import timedelta
 from typing import Any
@@ -32,6 +33,8 @@ from services.version_service import save_campaign_version
 from .models import Campaign, CampaignStatus, CampaignVersion
 from .permissions import N8nCallbackPermission
 from .serializers import CampaignEditSerializer, CampaignSerializer, CampaignVersionSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
@@ -716,12 +719,20 @@ class CampaignExportPDFView(APIView):
         user = request.user
         if campaign.marketero != user and user.rol != "superadmin":
             return Response(
-                {"success": False, "message": "No tienes acceso a esta campaña."},
+                api_response(
+                    success=False,
+                    message="No tienes acceso a esta campaña.",
+                    data={},
+                ),
                 status=status.HTTP_403_FORBIDDEN,
             )
         if campaign.estado != CampaignStatus.APROBADO:
             return Response(
-                {"success": False, "message": "Solo se pueden exportar campañas aprobadas."},
+                api_response(
+                    success=False,
+                    message="Solo se pueden exportar campañas aprobadas.",
+                    data={},
+                ),
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -736,6 +747,11 @@ class CampaignExportPDFView(APIView):
                 base_url=request.build_absolute_uri("/"),
             ).write_pdf()
         except Exception:
+            logger.exception(
+                "WeasyPrint falló al renderizar PDF de la campaña %s; "
+                "reintentando sin imagen.",
+                campaign.id,
+            )
             # imagen_b64 corrupta — regenerar sin imagen y sin romper el flujo
             original_imagen = campaign.imagen_b64
             campaign.imagen_b64 = None
