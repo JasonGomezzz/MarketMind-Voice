@@ -43,7 +43,7 @@ RUN pip install --upgrade pip \
 COPY . .
 
 # Recopilar archivos estáticos
-RUN python manage.py collectstatic --noinput --settings=core.settings.prod || true
+RUN python manage.py collectstatic --noinput --settings=core.settings.prod
 
 # Puerto expuesto
 EXPOSE 8000

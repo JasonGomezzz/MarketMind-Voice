@@ -15,7 +15,7 @@ DEBUG = False
 # Sin esto SECURE_SSL_REDIRECT entra en bucle infinito.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 SECURE_HSTS_SECONDS = 31536000           # 1 año — HTTPS obligatorio
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
