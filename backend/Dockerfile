@@ -49,4 +49,4 @@ RUN python manage.py collectstatic --noinput --settings=core.settings.prod || tr
 EXPOSE 8000
 
 # Comando por defecto (producción con gunicorn)
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --access-logfile - --error-logfile - core.wsgi:application"]
+CMD ["sh", "-c", "python manage.py migrate --settings=core.settings.prod && gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --access-logfile - --error-logfile - core.wsgi:application"]
