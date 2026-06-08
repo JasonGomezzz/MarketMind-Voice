@@ -43,6 +43,20 @@ RUN pip install --upgrade pip \
 COPY . .
 
 # Recopilar archivos estáticos
+# Build-time dummies: collectstatic no usa estos valores realmente,
+# solo necesita que settings.py importe sin UndefinedValueError.
+# base.py lee SECRET_KEY y DB_* individuales (no DATABASE_URL).
+# En runtime Render sobreescribe con los valores reales del dashboard.
+ARG SECRET_KEY=django-insecure-build-only-not-used-in-runtime
+ARG DB_NAME=dummy
+ARG DB_USER=dummy
+ARG DB_PASSWORD=dummy
+ARG DB_HOST=localhost
+ENV SECRET_KEY=$SECRET_KEY
+ENV DB_NAME=$DB_NAME
+ENV DB_USER=$DB_USER
+ENV DB_PASSWORD=$DB_PASSWORD
+ENV DB_HOST=$DB_HOST
 RUN python manage.py collectstatic --noinput --settings=core.settings.prod
 
 # Puerto expuesto
