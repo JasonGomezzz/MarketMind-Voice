@@ -26,4 +26,5 @@ USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Render asigna PORT dinámicamente — sh -c expande la variable antes de pasarla a java.
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
