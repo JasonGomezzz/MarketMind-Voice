@@ -19,6 +19,7 @@ backend/venv/
 .env
 backend/.env
 frontend/.env
+n8n/RENDER_ENV_VARS.txt
 
 # Node
 node_modules/
