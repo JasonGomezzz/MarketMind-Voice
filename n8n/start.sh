@@ -22,11 +22,12 @@ if [ $IMPORT_EXIT -eq 0 ]; then
   # El import deja el workflow INACTIVO (n8n loggea "Deactivating workflow").
   # Activar registra los webhooks /webhook/marketmind y /webhook/marketmind-email.
   echo "==> Activando workflow..."
-  # publish:workflow reemplaza al deprecado update:workflow --active=true
-  # (el log de Render lo confirma: "Please use: publish:workflow").
-  # Publica/activa el workflow y registra sus webhooks.
-  n8n publish:workflow --id=QAkaxptDCI9ahjQU \
-    || n8n update:workflow --id=QAkaxptDCI9ahjQU --active=true \
+  # update:workflow --active=true escribe directo a la BD via CLI, sin
+  # necesitar una instancia n8n corriendo. publish:workflow NO sirve aqui:
+  # requiere la API HTTP de n8n viva, y este script corre ANTES de
+  # `exec n8n start`, asi que colgaria indefinidamente -> Render timeout.
+  n8n update:workflow --active=true --id=QAkaxptDCI9ahjQU \
+    || n8n update:workflow --all --active=true \
     || echo "==> WARN: activacion fallo, n8n start intentara activar"
 else
   echo "==> WARN: import fallo con $IMPORT_EXIT, continuando de todas formas"
