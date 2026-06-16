@@ -88,7 +88,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy, imagen_b64: $json.imagen_b64}) }}",
+        "jsonBody": "={{ {n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy, imagen_b64: $json.imagen_b64} }}",
         "options": {
           "timeout": 10000
         }
@@ -192,7 +192,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $('Prompt Engineering').first().json.n8n_callback_token, success: false, error: ($json.error && $json.error.message) ? $json.error.message : 'Gemini no disponible o cuota agotada.'}) }}",
+        "jsonBody": "={{ {n8n_callback_token: $('Prompt Engineering').first().json.n8n_callback_token, success: false, error: ($json.error && $json.error.message) ? $json.error.message : 'Gemini no disponible o cuota agotada.'} }}",
         "options": {
           "timeout": 10000
         }
@@ -235,7 +235,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy, imagen_b64: $json.imagen_b64}) }}",
+        "jsonBody": "={{ {n8n_callback_token: $json.n8n_callback_token, success: true, copy: $json.generated_copy, imagen_b64: $json.imagen_b64} }}",
         "options": {
           "timeout": 10000
         }
@@ -398,7 +398,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({from: $env.RESEND_FROM_EMAIL, to: [$json.to_email], subject: $json.subject, html: $json.html}) }}",
+        "jsonBody": "={{ {from: $env.RESEND_FROM_EMAIL, to: [$json.to_email], subject: $json.subject, html: $json.html} }}",
         "options": {
           "timeout": 15000
         }
@@ -460,7 +460,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({n8n_callback_token: $json.n8n_callback_token, success: true, event_type: $json.event_type}) }}",
+        "jsonBody": "={{ {n8n_callback_token: $json.n8n_callback_token, success: true, event_type: $json.event_type} }}",
         "options": {
           "timeout": 10000
         }
