@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# APK release (binario, no va al repo)
+app/release/
