@@ -57,3 +57,6 @@ htmlcov/
 .vscode/settings.json
 .idea/
 *.iml
+
+# Android APKs
+*.apk
