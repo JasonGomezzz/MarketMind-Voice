@@ -33,8 +33,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "BASE_URL_DJANGO", "\"https://CHANGE-ME-RENDER.onrender.com/\"")
-            buildConfigField("String", "BASE_URL_SPRING", "\"https://CHANGE-ME-SPRING-RENDER.onrender.com/\"")
+            buildConfigField("String", "BASE_URL_DJANGO", "\"https://marketmind-django.onrender.com/\"")
+            buildConfigField("String", "BASE_URL_SPRING", "\"https://marketmind-springboot.onrender.com/\"")
         }
     }
     compileOptions {
