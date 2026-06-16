@@ -260,7 +260,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ─────────────────────────────────────────────
 # SERVICIOS EXTERNOS — URLs centralizadas
 # ─────────────────────────────────────────────
-N8N_WEBHOOK_BASE_URL = config("N8N_WEBHOOK_URL", default="http://localhost:5678")
+# Env var: N8N_WEBHOOK_BASE_URL (ej: https://marketmind-n8n.onrender.com)
+N8N_WEBHOOK_BASE_URL = config("N8N_WEBHOOK_BASE_URL", default="http://localhost:5678")
 N8N_WEBHOOK_TIMEOUT = 5             # segundos — "Respond Immediately" debe responder < 500ms
 DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://localhost:8000")
 
