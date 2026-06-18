@@ -1,5 +1,6 @@
 ﻿from django.conf import settings
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 
 from apps.authentication.admin_views import (
@@ -9,7 +10,13 @@ from apps.authentication.admin_views import (
 )
 from apps.campaigns.views import AdminAnalyticsView
 
+
+def health(request):
+    return JsonResponse({"status": "ok"})
+
+
 urlpatterns = [
+    path('api/health/', health, name='health'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.authentication.urls')),
     path('api/campaigns/', include('apps.campaigns.urls')),
