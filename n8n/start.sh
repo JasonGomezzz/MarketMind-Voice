@@ -11,6 +11,16 @@ export N8N_PROTOCOL=https
 # lanza ValidationError: ERR_ERL_UNEXPECTED_X_FORWARDED_FOR en cada request.
 export N8N_PROXY_HOPS=1
 
+# ── Defaults Neon (overridables por env vars de Render) ─────────────────────
+# Neon free tier suspende la compute tras 5 min idle. Al despertar tarda
+# varios segundos: el default de n8n (20s) hace timeout y devuelve 503
+# "Database is not ready". 60s le da margen a Neon para responder.
+export DB_POSTGRESDB_CONNECTION_TIMEOUT=${DB_POSTGRESDB_CONNECTION_TIMEOUT:-60000}
+export DB_POSTGRESDB_SSL_ENABLED=${DB_POSTGRESDB_SSL_ENABLED:-true}
+# Pool chico: en free tier no hay carga concurrente y menos conexiones
+# ociosas = menos pings que Neon pueda dropear.
+export DB_POSTGRESDB_POOL_SIZE=${DB_POSTGRESDB_POOL_SIZE:-2}
+
 # ── Esperar que PostgreSQL (Neon) acepte conexiones TCP ────────────────────
 # Neon puede tardar 2-5s en salir de cold start. Sin este wait, n8n
 # import:workflow falla con "Database connection timed out" → webhooks sin

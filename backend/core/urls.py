@@ -1,5 +1,6 @@
 ﻿from django.conf import settings
 from django.contrib import admin
+from django.db import connection
 from django.http import JsonResponse
 from django.urls import include, path
 
@@ -12,7 +13,21 @@ from apps.campaigns.views import AdminAnalyticsView
 
 
 def health(request):
-    return JsonResponse({"status": "ok"})
+    """Keep-alive para cron-job.org.
+
+    Ejecuta SELECT 1 para despertar/mantener viva la compute de Neon, que
+    n8n y Spring Boot comparten. SIEMPRE responde HTTP 200: si la query
+    falla (Neon despertando), igual reportamos ok con db='waking' para que
+    cron-job.org no marque fallo — el intento de conexion ya gatilla el wake.
+    """
+    db_status = "ok"
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:
+        db_status = "waking"
+    return JsonResponse({"status": "ok", "db": db_status})
 
 
 urlpatterns = [
