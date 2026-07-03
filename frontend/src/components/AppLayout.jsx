@@ -1,20 +1,37 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Megaphone,
+  BarChart3,
+  Users,
+  LogOut,
+  LifeBuoy,
+  Coins,
+} from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
+/**
+ * Navegación por rol. Etiquetas en español, sin nav pública dentro del panel.
+ * (Se conserva la separación de roles que ya existía en la lógica.)
+ */
 const NAV_ITEMS = {
   marketero: [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/campaigns', label: 'Campañas' },
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/campaigns', label: 'Campañas', icon: Megaphone },
   ],
   superadmin: [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/campaigns', label: 'Campañas' },
-    { to: '/admin', label: 'Administración' },
-    { to: '/admin/analytics', label: 'Analytics' },
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/campaigns', label: 'Campañas', icon: Megaphone },
+    { to: '/admin', label: 'Usuarios', icon: Users },
+    { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   ],
-  cliente: [
-    { to: '/dashboard', label: 'Dashboard' },
-  ],
+  cliente: [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+}
+
+const ROLE_LABEL = {
+  superadmin: 'SuperAdmin',
+  marketero: 'Marketero',
+  cliente: 'Cliente',
 }
 
 export default function AppLayout() {
@@ -29,51 +46,93 @@ export default function AppLayout() {
     navigate('/login', { replace: true })
   }
 
+  const iniciales =
+    nombre
+      .split(' ')
+      .map((p) => p[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'U'
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-56 bg-indigo-900 text-white flex flex-col">
-        <div className="px-5 py-6 border-b border-indigo-700">
-          <span className="text-lg font-bold tracking-tight">MarketMind IA</span>
+    <div className="flex h-screen bg-background">
+      {/* Sidebar claro Lumina Creative */}
+      <aside className="flex w-64 flex-col border-r border-outline-variant bg-surface-container-low">
+        <div className="px-6 py-6">
+          <span className="text-xl font-bold tracking-tight text-primary">MarketMind IA</span>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ to, label }) => (
+
+        <nav className="flex-1 space-y-1 px-3">
+          {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
+              end={to === '/dashboard'}
               className={({ isActive }) =>
-                `block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-indigo-700 text-white'
-                    : 'text-indigo-200 hover:bg-indigo-800 hover:text-white'
+                    ? 'bg-secondary-container text-on-secondary-container'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                 }`
               }
             >
+              <Icon className="h-5 w-5" />
               {label}
             </NavLink>
           ))}
         </nav>
-        <div className="px-4 py-4 border-t border-indigo-700 text-xs text-indigo-300">
-          <p className="truncate font-medium text-white">{nombre}</p>
-          <p className="capitalize mt-0.5">{role}</p>
+
+        {/* Token Balance */}
+        <div className="px-4 py-4">
+          <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary/70">
+              Créditos de IA
+            </p>
+            <div className="flex items-center gap-2">
+              <Coins className="h-5 w-5 text-primary" />
+              <span className="text-2xl font-bold text-primary tabular-nums">—</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Usuario + rol + acciones */}
+        <div className="mx-4 mb-4 space-y-3 border-t border-outline-variant pt-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-on-primary">
+              {iniciales}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-on-surface">{nombre || 'Usuario'}</p>
+              <span className="inline-block rounded-full bg-primary-fixed px-2 py-0.5 text-xs font-semibold text-on-primary-fixed">
+                {ROLE_LABEL[role] ?? role}
+              </span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <a
+              href="#"
+              className="flex items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-primary"
+            >
+              <LifeBuoy className="h-4 w-4" />
+              Soporte
+            </a>
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-error"
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Navbar */}
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-          <h1 className="text-base font-semibold text-gray-800">MarketMind IA</h1>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-gray-500 hover:text-red-600 transition-colors"
-          >
-            Cerrar sesión
-          </button>
-        </header>
-
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+      {/* Contenido */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <main className="flex-1 overflow-auto bg-background p-8">
+          <div className="mx-auto max-w-[1440px]">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -1,25 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Plus, Megaphone, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '../services/api'
+import { Button } from '@/components/ui/button'
+import StatusBadge from '@/components/StatusBadge'
 
-const ESTADO_BADGE = {
-  borrador: 'bg-gray-100 text-gray-600',
-  pendiente_ia: 'bg-yellow-100 text-yellow-700',
-  generado: 'bg-green-100 text-green-700',
-  pendiente_aprobacion: 'bg-blue-100 text-blue-700',
-  aprobado: 'bg-emerald-100 text-emerald-700',
-  rechazado: 'bg-red-100 text-red-700',
-}
-
-const ESTADO_LABEL = {
-  borrador: 'Borrador',
-  pendiente_ia: 'Pendiente IA',
-  generado: 'Generado',
-  pendiente_aprobacion: 'Pendiente Aprobación',
-  aprobado: 'Aprobado',
-  rechazado: 'Rechazado',
-}
-
+/**
+ * Lista de campañas (Marketero/SuperAdmin). Consume Django con paginación DRF.
+ * LÓGICA INTACTA: fetch /api/campaigns/ (results/count/next/previous), navegación
+ * al detalle, header por rol, loading/error/empty.
+ * Usa StatusBadge (fuente única de estados FSM) para consistencia.
+ */
 export default function CampaignListPage() {
   const role = localStorage.getItem('user_role') || ''
   const navigate = useNavigate()
@@ -47,123 +38,133 @@ export default function CampaignListPage() {
     }
   }
 
-  useEffect(() => { fetchCampaigns() }, [])
-
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <p className="text-sm text-red-500">
-        Error al cargar campañas.{' '}
-        <button className="underline" onClick={() => fetchCampaigns()}>Reintentar</button>
-      </p>
-    )
-  }
-
-  if (campaigns.length === 0) {
-    return (
-      <div>
-        <PageHeader role={role} count={0} onNew={() => navigate('/campaigns/new')} />
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">
-            {role === 'cliente' ? 'No tienes campañas asignadas.' : 'Aún no hay campañas.'}
-          </p>
-          {role === 'marketero' && (
-            <button
-              onClick={() => navigate('/campaigns/new')}
-              className="mt-4 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Crear primera campaña
-            </button>
-          )}
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    fetchCampaigns()
+  }, [])
 
   return (
     <div>
-      <PageHeader role={role} count={count} onNew={() => navigate('/campaigns/new')} />
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-            <tr>
-              {['Título', 'Cliente', 'Industria', 'Tono', 'Plataforma', 'Estado', 'Fecha'].map(h => (
-                <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {campaigns.map(c => (
-              <tr
-                key={c.id}
-                onClick={() => navigate(`/campaigns/${c.id}`)}
-                className="hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px] truncate">{c.titulo}</td>
-                <td className="px-4 py-3 text-gray-600">{c.cliente_nombre}</td>
-                <td className="px-4 py-3 text-gray-600 capitalize">{c.industria}</td>
-                <td className="px-4 py-3 text-gray-600 capitalize">{c.tono}</td>
-                <td className="px-4 py-3 text-gray-600 capitalize">{c.plataforma}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_BADGE[c.estado] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {ESTADO_LABEL[c.estado] ?? c.estado}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-500">
-                  {new Date(c.fecha_creacion).toLocaleDateString('es-PE')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Encabezado */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-on-surface">Campañas</h1>
+          {count > 0 && (
+            <p className="mt-2 text-base text-on-surface-variant">
+              {count} {count === 1 ? 'campaña' : 'campañas'} en total
+            </p>
+          )}
+        </div>
+        {role === 'marketero' && (
+          <Button onClick={() => navigate('/campaigns/new')}>
+            <Plus className="h-4 w-4" />
+            Nueva campaña
+          </Button>
+        )}
       </div>
 
-      {(prevUrl || nextUrl) && (
-        <div className="flex justify-between mt-4">
-          <button
-            disabled={!prevUrl}
-            onClick={() => fetchCampaigns(prevUrl)}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50"
-          >
-            Anterior
-          </button>
-          <button
-            disabled={!nextUrl}
-            onClick={() => fetchCampaigns(nextUrl)}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50"
-          >
-            Siguiente
+      {/* Error */}
+      {error && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-error/20 bg-error-container px-4 py-3 text-sm text-on-error-container">
+          <AlertCircle className="h-4 w-4" />
+          No se pudieron cargar las campañas.
+          <button className="font-semibold underline" onClick={() => fetchCampaigns()}>
+            Reintentar
           </button>
         </div>
       )}
-    </div>
-  )
-}
 
-function PageHeader({ role, count, onNew }) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-baseline gap-3">
-        <h2 className="text-xl font-semibold text-gray-900">Campañas</h2>
-        {count > 0 && <p className="text-sm text-gray-500">{count} total</p>}
-      </div>
-      {role === 'marketero' && (
-        <button
-          onClick={onNew}
-          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          + Nueva Campaña
-        </button>
+      {/* Skeleton */}
+      {loading ? (
+        <div className="overflow-hidden rounded-xl border border-outline-variant bg-white shadow-sm">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 border-b border-outline-variant/40 px-4 py-4 last:border-0"
+            >
+              <div className="h-4 flex-1 animate-pulse rounded bg-surface-container-high" />
+              <div className="h-6 w-24 animate-pulse rounded-full bg-surface-container-high" />
+            </div>
+          ))}
+        </div>
+      ) : !error && campaigns.length === 0 ? (
+        /* Empty state */
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant bg-white/50 p-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-high text-outline">
+            <Megaphone className="h-7 w-7" />
+          </div>
+          <h3 className="text-lg font-semibold text-on-surface">
+            {role === 'cliente' ? 'No tienes campañas asignadas' : 'Aún no tienes campañas'}
+          </h3>
+          <p className="max-w-sm text-sm text-on-surface-variant">
+            {role === 'marketero'
+              ? 'Crea tu primera campaña y deja que la IA genere el copy y la imagen.'
+              : 'Cuando haya campañas, aparecerán aquí.'}
+          </p>
+          {role === 'marketero' && (
+            <Button className="mt-2" onClick={() => navigate('/campaigns/new')}>
+              <Plus className="h-4 w-4" />
+              Crear campaña
+            </Button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Tabla */}
+          <div className="overflow-hidden rounded-xl border border-outline-variant bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-container-low">
+                  <tr>
+                    {['Título', 'Cliente', 'Industria', 'Plataforma', 'Estado', 'Fecha'].map((h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map((c) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => navigate(`/campaigns/${c.id}`)}
+                      className="cursor-pointer border-b border-outline-variant/40 transition-colors last:border-0 hover:bg-surface-container-low"
+                    >
+                      <td className="max-w-[200px] truncate px-4 py-4 font-medium text-on-surface">
+                        {c.titulo}
+                      </td>
+                      <td className="px-4 py-4 text-on-surface-variant">{c.cliente_nombre}</td>
+                      <td className="px-4 py-4 capitalize text-on-surface-variant">{c.industria}</td>
+                      <td className="px-4 py-4 capitalize text-on-surface-variant">{c.plataforma}</td>
+                      <td className="px-4 py-4">
+                        <StatusBadge estado={c.estado} />
+                      </td>
+                      <td className="px-4 py-4 tabular-nums text-on-surface-variant">
+                        {new Date(c.fecha_creacion).toLocaleDateString('es-PE')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Paginación */}
+          {(prevUrl || nextUrl) && (
+            <div className="mt-4 flex justify-between">
+              <Button variant="outline" size="sm" disabled={!prevUrl} onClick={() => fetchCampaigns(prevUrl)}>
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </Button>
+              <Button variant="outline" size="sm" disabled={!nextUrl} onClick={() => fetchCampaigns(nextUrl)}>
+                Siguiente
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

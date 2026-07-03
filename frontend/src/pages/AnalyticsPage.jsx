@@ -12,40 +12,38 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { Megaphone, CircleCheck, Clock, AlertCircle } from 'lucide-react'
 import api from '../services/api'
 
+/**
+ * Analytics del SuperAdmin (Lumina Creative). Consume Django /api/admin/analytics/.
+ * LÓGICA INTACTA: fetch por period, estados_globales, campanas_por_marketero, kpi.
+ * Gráficos con datos REALES del backend (no inventa series que no existen).
+ * Colores de estado alineados con StatusBadge / DESIGN.md.
+ */
 const PERIODS = [
   { value: 'week', label: 'Semana' },
   { value: 'month', label: 'Mes' },
   { value: 'quarter', label: 'Trimestre' },
 ]
 
+// Colores FSM consistentes con el sistema de diseño (tokens Lumina)
 const ESTADO_COLORS = {
-  borrador: '#94a3b8',
-  pendiente_ia: '#fbbf24',
-  generado: '#60a5fa',
-  pendiente_aprobacion: '#a78bfa',
-  aprobado: '#34d399',
-  rechazado: '#f87171',
+  borrador: '#767586',
+  pendiente_ia: '#6063ee',
+  generado: '#4648d4',
+  pendiente_aprobacion: '#b55d00',
+  aprobado: '#2e7d32',
+  rechazado: '#ba1a1a',
 }
 
 const ESTADO_LABELS = {
   borrador: 'Borrador',
   pendiente_ia: 'Pendiente IA',
   generado: 'Generado',
-  pendiente_aprobacion: 'Pend. Aprobación',
+  pendiente_aprobacion: 'Pend. aprobación',
   aprobado: 'Aprobado',
   rechazado: 'Rechazado',
-}
-
-function KpiCard({ label, value, sub }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-1">
-      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
-      <span className="text-3xl font-bold text-gray-900">{value ?? '—'}</span>
-      {sub && <span className="text-xs text-gray-400">{sub}</span>}
-    </div>
-  )
 }
 
 export default function AnalyticsPage() {
@@ -60,7 +58,7 @@ export default function AnalyticsPage() {
     api
       .get('/api/admin/analytics/', { params: { period } })
       .then((res) => setData(res.data.data))
-      .catch(() => setError('No se pudo cargar el analytics. Verificá tu sesión.'))
+      .catch(() => setError('No se pudo cargar el analytics. Verifica tu sesión.'))
       .finally(() => setLoading(false))
   }, [period])
 
@@ -74,20 +72,27 @@ export default function AnalyticsPage() {
         }))
     : []
 
+  const periodLabel = period === 'week' ? '7 días' : period === 'month' ? '30 días' : '90 días'
+
   return (
     <div className="space-y-6">
       {/* Header + selector */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-800">Analytics de Campañas</h2>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-on-surface">Analytics</h1>
+          <p className="mt-2 text-base text-on-surface-variant">
+            Métricas globales de la plataforma.
+          </p>
+        </div>
         <div className="flex gap-2">
           {PERIODS.map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setPeriod(value)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 period === value
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-primary text-on-primary'
+                  : 'border border-outline-variant bg-white text-on-surface-variant hover:bg-surface-container-low'
               }`}
             >
               {label}
@@ -96,62 +101,95 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Loading skeleton */}
       {loading && (
-        <div className="text-center py-20 text-gray-400 text-sm">Cargando analytics…</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-xl border border-outline-variant bg-white" />
+          ))}
+        </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+        <div className="flex items-center gap-2 rounded-xl border border-error/20 bg-error-container px-4 py-3 text-sm text-on-error-container">
+          <AlertCircle className="h-4 w-4" />
           {error}
         </div>
       )}
 
       {!loading && !error && data && (
         <>
-          {/* KPI cards */}
-          <div className="grid grid-cols-3 gap-4">
-            <KpiCard
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard
+              icon={Megaphone}
+              tint="bg-primary/10 text-primary"
               label="Total campañas"
               value={data.kpi.total_campanas}
-              sub={`Últimos ${period === 'week' ? '7 días' : period === 'month' ? '30 días' : '90 días'}`}
+              sub={`Últimos ${periodLabel}`}
             />
-            <KpiCard
+            <StatCard
+              icon={CircleCheck}
+              tint="bg-success-container text-success"
               label="Tasa de aprobación"
               value={`${data.kpi.tasa_aprobacion}%`}
-              sub="Campañas aprobadas / total"
+              sub="Aprobadas / total"
             />
-            <KpiCard
+            <StatCard
+              icon={Clock}
+              tint="bg-tertiary-container text-tertiary"
               label="Tiempo prom. aprobación"
-              value={data.kpi.tiempo_promedio_aprobacion_dias != null ? `${data.kpi.tiempo_promedio_aprobacion_dias}d` : '—'}
-              sub="Días desde creación a aprobado"
+              value={
+                data.kpi.tiempo_promedio_aprobacion_dias != null
+                  ? `${data.kpi.tiempo_promedio_aprobacion_dias}d`
+                  : '—'
+              }
+              sub="De creación a aprobado"
             />
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* BarChart — campañas por marketero */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Campañas por Marketero</h3>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Barras — campañas por marketero */}
+            <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-on-surface">
+                Campañas por marketero
+              </h3>
               {data.campanas_por_marketero.length === 0 ? (
-                <p className="text-sm text-gray-400 py-8 text-center">Sin datos en este periodo</p>
+                <p className="py-8 text-center text-sm text-on-surface-variant">
+                  Sin datos en este periodo
+                </p>
               ) : (
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={data.campanas_por_marketero} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="marketero" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="total" name="Campañas" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <BarChart
+                    data={data.campanas_por_marketero}
+                    margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e9e6f3" />
+                    <XAxis dataKey="marketero" tick={{ fontSize: 12, fill: '#464554' }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#464554' }} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: '1px solid #c7c4d7',
+                        fontSize: 13,
+                      }}
+                    />
+                    <Bar dataKey="total" name="Campañas" fill="#4648d4" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
 
-            {/* PieChart — distribución de estados */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Distribución de Estados</h3>
+            {/* Dona — distribución de estados FSM */}
+            <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-on-surface">
+                Distribución por estado
+              </h3>
               {pieData.length === 0 ? (
-                <p className="text-sm text-gray-400 py-8 text-center">Sin datos en este periodo</p>
+                <p className="py-8 text-center text-sm text-on-surface-variant">
+                  Sin datos en este periodo
+                </p>
               ) : (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -159,6 +197,7 @@ export default function AnalyticsPage() {
                       data={pieData}
                       cx="50%"
                       cy="50%"
+                      innerRadius={55}
                       outerRadius={90}
                       dataKey="value"
                       nameKey="name"
@@ -169,7 +208,13 @@ export default function AnalyticsPage() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: '1px solid #c7c4d7',
+                        fontSize: 13,
+                      }}
+                    />
                     <Legend iconType="circle" iconSize={10} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -178,6 +223,20 @@ export default function AnalyticsPage() {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+/** Stat card según spec del DESIGN.md (misma estructura que Dashboard). */
+function StatCard({ icon: Icon, tint, label, value, sub }) {
+  return (
+    <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm transition-all hover:shadow-lg">
+      <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${tint}`}>
+        <Icon className="h-6 w-6" />
+      </div>
+      <p className="text-sm text-on-surface-variant">{label}</p>
+      <h3 className="mt-1 text-3xl font-bold tabular-nums text-on-surface">{value ?? '—'}</h3>
+      {sub && <p className="mt-1 text-xs text-on-surface-variant">{sub}</p>}
     </div>
   )
 }

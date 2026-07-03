@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
+import { Megaphone, Coins, Sparkles, CircleCheck, Clock, AlertCircle, Plus } from 'lucide-react'
 import api from '../services/api'
 
+/**
+ * Dashboard de MARKETERO / SUPERADMIN (Lumina Creative).
+ * El rol CLIENTE usa ClientDashboardPage (ruteado por rol en App.jsx).
+ * LÓGICA INTACTA: fetch de /api/campaigns/stats/ + /api/auth/me/, cálculos por
+ * estado FSM, loading/error/retry, re-fetch por location.key.
+ */
 export default function DashboardPage() {
   const nombre = localStorage.getItem('user_nombre') || 'usuario'
   const role = localStorage.getItem('user_role') || ''
@@ -36,7 +43,9 @@ export default function DashboardPage() {
     }
 
     fetchData()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [retryCount, location.key])
 
   const activeCampaigns = stats
@@ -44,49 +53,143 @@ export default function DashboardPage() {
     : null
 
   const iaGenerations = stats
-    ? (stats.pendiente_ia ?? 0) + (stats.generado ?? 0) +
-      (stats.pendiente_aprobacion ?? 0) + (stats.aprobado ?? 0) +
+    ? (stats.pendiente_ia ?? 0) +
+      (stats.generado ?? 0) +
+      (stats.pendiente_aprobacion ?? 0) +
+      (stats.aprobado ?? 0) +
       (stats.rechazado ?? 0)
     : null
 
   const cards = [
-    { label: 'Campañas activas', value: activeCampaigns },
-    { label: 'Tokens disponibles', value: tokens },
-    { label: 'Generaciones IA', value: iaGenerations },
+    {
+      label: 'Campañas activas',
+      value: activeCampaigns,
+      icon: Megaphone,
+      tint: 'bg-primary/10 text-primary',
+    },
+    {
+      label: 'Créditos de IA',
+      value: tokens,
+      icon: Coins,
+      tint: 'bg-tertiary-container text-tertiary',
+      warn: tokens === 0,
+    },
+    {
+      label: 'Generaciones IA',
+      value: iaGenerations,
+      icon: Sparkles,
+      tint: 'bg-secondary-container text-primary',
+    },
+    {
+      label: 'Aprobadas',
+      value: stats ? (stats.aprobado ?? 0) : null,
+      icon: CircleCheck,
+      tint: 'bg-success-container text-success',
+    },
   ]
 
   function displayValue(val) {
-    if (loading) return '…'
     if (error) return '—'
     return val ?? 0
   }
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">
-        Bienvenido, {nombre}
-      </h2>
-      <p className="text-sm text-gray-500 capitalize">Rol: {role}</p>
+      {/* Encabezado */}
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-on-surface">
+            Hola, {nombre.split(' ')[0]}
+          </h1>
+          <p className="mt-2 text-base text-on-surface-variant">
+            Gestiona tus campañas y monitorea el rendimiento con IA.
+          </p>
+        </div>
+        {role === 'marketero' && (
+          <Link
+            to="/campaigns/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-on-primary shadow-lg transition-all hover:bg-primary-container active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva campaña
+          </Link>
+        )}
+      </div>
 
-      {error && (
-        <p className="mt-3 text-sm text-red-500">
-          No se pudieron cargar los datos.{' '}
-          <button className="underline" onClick={() => setRetryCount(c => c + 1)}>
-            Reintentar
-          </button>
-        </p>
+      {/* Aviso de cuota agotada (HU24) */}
+      {tokens === 0 && !loading && (
+        <div className="mb-8 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary-fixed px-5 py-4">
+          <AlertCircle className="h-5 w-5 shrink-0 text-primary" />
+          <p className="text-sm text-on-primary-fixed">
+            <b>Te quedaste sin créditos de IA.</b> Puedes ver tu historial, pero no
+            crear ni regenerar campañas. Contacta a tu administrador para reponer la cuota.
+          </p>
+        </div>
       )}
 
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {cards.map(({ label, value }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">{label}</p>
-            <p className={`text-2xl font-bold mt-1 ${loading ? 'text-gray-300 animate-pulse' : 'text-gray-900'}`}>
-              {displayValue(value)}
-            </p>
+      {error && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-error/20 bg-error-container px-4 py-3 text-sm text-on-error-container">
+          <AlertCircle className="h-4 w-4" />
+          No se pudieron cargar los datos.
+          <button className="font-semibold underline" onClick={() => setRetryCount((c) => c + 1)}>
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map(({ label, value, icon: Icon, tint, warn }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm transition-all hover:shadow-lg"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${tint}`}>
+                <Icon className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-sm text-on-surface-variant">{label}</p>
+            {loading ? (
+              <div className="mt-2 h-8 w-16 animate-pulse rounded bg-surface-container-high" />
+            ) : (
+              <h3
+                className={`mt-1 text-3xl font-bold tabular-nums ${
+                  warn ? 'text-error' : 'text-on-surface'
+                }`}
+              >
+                {displayValue(value)}
+              </h3>
+            )}
           </div>
         ))}
       </div>
+
+      {/* Distribución por estado FSM */}
+      {!loading && !error && stats && (
+        <div className="mt-8 rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-xl font-semibold text-on-surface">Distribución por estado</h2>
+          <div className="flex flex-wrap gap-3">
+            <StateBadge label="Borrador" value={stats.borrador} className="bg-surface-container-high text-on-surface-variant" />
+            <StateBadge label="Pendiente IA" value={stats.pendiente_ia} className="bg-primary-fixed text-primary" icon={Clock} />
+            <StateBadge label="Generado" value={stats.generado} className="bg-secondary-container text-primary" />
+            <StateBadge label="Pendiente aprobación" value={stats.pendiente_aprobacion} className="bg-warning-container text-tertiary" />
+            <StateBadge label="Aprobado" value={stats.aprobado} className="bg-success-container text-success" />
+            <StateBadge label="Rechazado" value={stats.rechazado} className="bg-error-container text-error" />
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+/** Pill de estado FSM con su conteo. */
+function StateBadge({ label, value, className, icon: Icon }) {
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${className}`}>
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      {label}
+      <span className="tabular-nums opacity-80">{value ?? 0}</span>
+    </span>
   )
 }
