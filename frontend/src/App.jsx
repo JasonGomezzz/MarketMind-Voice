@@ -10,6 +10,8 @@ import NewCampaignPage from './pages/NewCampaignPage'
 import CampaignDetailPage from './pages/CampaignDetailPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import UsersAdminPage from './pages/UsersAdminPage'
+import AccountSettingsPage from './pages/AccountSettingsPage'
+import PromptGuidePage from './pages/PromptGuidePage'
 import PrivateRoute from './components/PrivateRoute'
 import AppLayout from './components/AppLayout'
 
@@ -40,6 +42,8 @@ export default function App() {
             <Route path="/review/:id" element={<ClientReviewPage />} />
             <Route path="/admin" element={<UsersAdminPage />} />
             <Route path="/admin/analytics" element={<AnalyticsPage />} />
+            <Route path="/settings" element={<AccountSettingsPage />} />
+            <Route path="/prompt-guide" element={<PromptGuidePage />} />
           </Route>
         </Route>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { History, X, ImageOff, GitCompareArrows } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { History, X, ImageOff, GitCompareArrows, RotateCcw } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -10,32 +11,51 @@ import { cn } from '@/lib/utils'
  * "comparativa lateral". Cada regeneración guarda copy + imagen (LRU-5).
  * GET /api/campaigns/{id}/versions/ → [{id, version_number, texto_preview,
  * tiene_imagen, imagen_b64, created_at}] (más reciente primero).
- * Ver + comparar (el backend no expone restaurar — sin botón fantasma).
+ * Restaurar: POST /versions/{vid}/restore/ — solo si `canRestore`
+ * (estado editable); guarda snapshot del contenido actual antes de copiar.
  */
-export default function VersionHistoryPanel({ campaignId }) {
+export default function VersionHistoryPanel({ campaignId, canRestore = false, onRestored }) {
   const [versions, setVersions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [open, setOpen] = useState(false)
   const [compareId, setCompareId] = useState(null)
+  const [restoringId, setRestoringId] = useState(null)
+
+  // Solo setea estado en callbacks async (.then/.catch/.finally) — apto para
+  // llamarse desde el efecto sin setState síncrono.
+  function fetchVersions() {
+    return api
+      .get(`/api/campaigns/${campaignId}/versions/`)
+      .then(({ data }) => {
+        setVersions(data.data ?? [])
+        setError(false)
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
-    let cancelled = false
-    async function fetchVersions() {
-      try {
-        const { data } = await api.get(`/api/campaigns/${campaignId}/versions/`)
-        if (!cancelled) setVersions(data.data ?? [])
-      } catch {
-        if (!cancelled) setError(true)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
     fetchVersions()
-    return () => {
-      cancelled = true
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId])
+
+  async function handleRestore(version) {
+    setRestoringId(version.id)
+    try {
+      const { data } = await api.post(
+        `/api/campaigns/${campaignId}/versions/${version.id}/restore/`,
+      )
+      toast.success(data.message || 'Versión restaurada')
+      setCompareId(null)
+      onRestored?.(data.data.campaign)
+      await fetchVersions()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo restaurar la versión')
+    } finally {
+      setRestoringId(null)
+    }
+  }
 
   // Cierre con Esc (accesibilidad)
   useEffect(() => {
@@ -107,7 +127,7 @@ export default function VersionHistoryPanel({ campaignId }) {
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Cerrar historial"
-                  className="rounded-lg p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+                  className="rounded-lg p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -115,7 +135,13 @@ export default function VersionHistoryPanel({ campaignId }) {
 
               <div className="flex-1 overflow-y-auto p-6">
                 {compared && actual ? (
-                  <CompareView left={actual} right={compared} onClose={() => setCompareId(null)} />
+                  <CompareView
+                    left={actual}
+                    right={compared}
+                    onClose={() => setCompareId(null)}
+                    onRestore={canRestore ? () => handleRestore(compared) : null}
+                    restoring={restoringId === compared.id}
+                  />
                 ) : (
                   <ul className="space-y-3">
                     {versions.map((v, i) => (
@@ -142,13 +168,27 @@ export default function VersionHistoryPanel({ campaignId }) {
                             {v.texto_preview}
                           </p>
                           {i > 0 && (
-                            <button
-                              onClick={() => setCompareId(v.id)}
-                              className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-                            >
-                              <GitCompareArrows className="h-3.5 w-3.5" />
-                              Comparar con la actual
-                            </button>
+                            <div className="mt-2 flex flex-wrap gap-3">
+                              <button
+                                onClick={() => setCompareId(v.id)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                              >
+                                <GitCompareArrows className="h-3.5 w-3.5" />
+                                Comparar con la actual
+                              </button>
+                              {canRestore && (
+                                <button
+                                  onClick={() => handleRestore(v)}
+                                  disabled={restoringId !== null}
+                                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant transition-colors hover:text-primary hover:underline disabled:opacity-50"
+                                >
+                                  <RotateCcw
+                                    className={`h-3.5 w-3.5 ${restoringId === v.id ? 'animate-spin' : ''}`}
+                                  />
+                                  {restoringId === v.id ? 'Restaurando…' : 'Restaurar'}
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       </li>
@@ -165,7 +205,7 @@ export default function VersionHistoryPanel({ campaignId }) {
 }
 
 /** Comparación lado a lado: versión actual vs seleccionada, con diff resaltado. */
-function CompareView({ left, right, onClose }) {
+function CompareView({ left, right, onClose, onRestore, restoring }) {
   const [wordsL, wordsR] = useMemo(
     () => diffWords(left.texto_preview ?? '', right.texto_preview ?? ''),
     [left, right],
@@ -183,9 +223,17 @@ function CompareView({ left, right, onClose }) {
           <GitCompareArrows className="h-4 w-4 text-primary" />
           Modo comparar
         </p>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          Volver a la lista
-        </Button>
+        <div className="flex gap-2">
+          {onRestore && (
+            <Button variant="outline" size="sm" onClick={onRestore} disabled={restoring}>
+              <RotateCcw className={`h-3.5 w-3.5 ${restoring ? 'animate-spin' : ''}`} />
+              {restoring ? 'Restaurando…' : 'Restaurar esta versión'}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Volver a la lista
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

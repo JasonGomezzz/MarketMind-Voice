@@ -21,6 +21,15 @@ export async function getPendingCampaigns(params = {}) {
 }
 
 /**
+ * Conteos de campañas por estado para las stat cards del dashboard cliente.
+ * @returns {Promise<{pendientes: number, aprobadas: number, rechazadas: number}>}
+ */
+export async function getCampaignSummary() {
+  const { data } = await userApi.get('/api/v1/campaigns/summary')
+  return data.data
+}
+
+/**
  * Detalle de una campaña por id.
  * @param {number|string} id
  * @returns {Promise<object>} campaña

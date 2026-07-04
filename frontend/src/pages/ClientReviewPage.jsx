@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
+import AppToaster from '@/components/ui/AppToaster'
 import { ArrowLeft, CircleCheck, CircleX, Download, ImageOff, AlertCircle } from 'lucide-react'
 import { getCampaignById, approveCampaign, rejectCampaign } from '../services/clientCampaigns'
 import { Button } from '@/components/ui/button'
@@ -23,10 +24,9 @@ export default function ClientReviewPage() {
   const [busy, setBusy] = useState(false)
   const [showReject, setShowReject] = useState(false)
 
+  // Sin setState síncrono en el efecto: el estado inicial cubre el primer load.
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(false)
     getCampaignById(id)
       .then((c) => {
         if (!cancelled) setCampaign(c)
@@ -89,7 +89,7 @@ export default function ClientReviewPage() {
 
   return (
     <>
-      <Toaster position="top-right" />
+      <AppToaster />
 
       {/* Encabezado */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -101,7 +101,7 @@ export default function ClientReviewPage() {
             <ArrowLeft className="h-4 w-4" />
             Volver al inicio
           </button>
-          <h1 className="truncate text-3xl font-bold tracking-tight text-on-surface">
+          <h1 className="truncate text-2xl font-bold tracking-tight text-on-surface md:text-3xl">
             {campaign.titulo}
           </h1>
         </div>
@@ -181,7 +181,10 @@ export default function ClientReviewPage() {
         {/* ── Panel lateral: metadatos + acciones ── */}
         <div className="w-full shrink-0 space-y-4 lg:sticky lg:top-6 lg:w-80">
           <div className="space-y-3 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
-            <MetaRow label="Marketero" value={`#${campaign.marketeroId ?? '—'}`} />
+            <MetaRow
+              label="Marketero"
+              value={campaign.marketeroNombre || (campaign.marketeroId ? `#${campaign.marketeroId}` : '—')}
+            />
             <MetaRow label="Industria" value={campaign.industria} capitalize />
             <MetaRow label="Tono" value={campaign.tono} capitalize />
             <MetaRow label="Plataforma" value={campaign.plataforma} capitalize />

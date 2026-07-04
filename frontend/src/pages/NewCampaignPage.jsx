@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Sparkles, Coins, Download } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { ArrowLeft, Sparkles, Download } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
@@ -21,13 +21,14 @@ const INDUSTRIAS = [
   { value: 'otro', label: 'Otro' },
 ]
 
+// Valores EXACTOS de CampaignTono/CampaignPlataforma del backend —
+// un valor fuera de choices (p. ej. 'persuasivo' o 'tiktok') devuelve 400.
 const TONOS = [
   { value: 'profesional', label: 'Profesional' },
   { value: 'casual', label: 'Casual' },
   { value: 'urgente', label: 'Urgente' },
   { value: 'inspiracional', label: 'Inspiracional' },
   { value: 'humoristico', label: 'Humorístico' },
-  { value: 'persuasivo', label: 'Persuasivo' },
 ]
 
 const PLATAFORMAS = [
@@ -36,7 +37,6 @@ const PLATAFORMAS = [
   { value: 'twitter', label: 'Twitter / X' },
   { value: 'linkedin', label: 'LinkedIn' },
   { value: 'google_ads', label: 'Google Ads' },
-  { value: 'tiktok', label: 'TikTok' },
 ]
 
 function FieldError({ message }) {
@@ -52,17 +52,24 @@ function inputCls(hasError) {
 
 export default function NewCampaignPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState(null) // { campaign, warning }
   const [serverError, setServerError] = useState('')
   const [noCredits, setNoCredits] = useState(false)
 
+  // Prellenado desde la Guía de prompts (state del router; no persiste al recargar)
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm()
+  } = useForm({
+    defaultValues: {
+      prompt: location.state?.prompt || '',
+      tono: location.state?.tono || '',
+    },
+  })
 
   async function onSubmit(formData) {
     setSubmitting(true)

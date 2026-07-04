@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import toast, { Toaster } from 'react-hot-toast'
-import { ArrowLeft, Download, FileText, ImageOff, Send } from 'lucide-react'
+import toast from 'react-hot-toast'
+import AppToaster from '@/components/ui/AppToaster'
+import { ArrowLeft, Download, FileText, ImageOff, RefreshCw, Send } from 'lucide-react'
 import api from '../services/api'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import { Button } from '@/components/ui/button'
@@ -34,6 +35,7 @@ export default function CampaignDetailPage() {
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const [autoSavedAt, setAutoSavedAt] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
@@ -58,7 +60,7 @@ export default function CampaignDetailPage() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [id])
+  }, [id, draftKey])
 
   // Autosave con debounce de 30s
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function CampaignDetailPage() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [text])
+  }, [text, campaign, draftKey])
 
   async function handleSave() {
     setSaving(true)
@@ -94,15 +96,35 @@ export default function CampaignDetailPage() {
     try {
       await api.post(`/api/campaigns/${id}/submit/`)
       localStorage.removeItem(draftKey)
-      toast.success('Campaña enviada al cliente')
+      toast.success('Enviada a aprobación del cliente')
       setTimeout(() => navigate('/dashboard'), 1200)
     } catch (err) {
       if (err.response?.status === 402) {
-        toast.error('Sin créditos disponibles. Contacta al administrador para renovar tu plan.')
+        toast.error('Cuota agotada. Pide un reset al administrador.')
       } else {
         toast.error(err.response?.data?.message || 'Error al enviar')
       }
       setSubmitting(false)
+    }
+  }
+
+  async function handleRegenerate() {
+    setRegenerating(true)
+    try {
+      const { data } = await api.post(`/api/campaigns/${id}/regenerate/`)
+      const c = data.data.campaign
+      setCampaign(c)
+      setText(c.texto_generado || '')
+      localStorage.removeItem(draftKey)
+      toast.success(data.message || 'Regeneración iniciada')
+    } catch (err) {
+      if (err.response?.status === 402) {
+        toast.error('Cuota agotada. Pide un reset al administrador.')
+      } else {
+        toast.error(err.response?.data?.message || 'No se pudo regenerar')
+      }
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -145,10 +167,12 @@ export default function CampaignDetailPage() {
 
   const isReadonly = READONLY_STATES.includes(campaign.estado)
   const canSubmit = campaign.estado === 'generado'
+  // HU regenerar: borrador (fallo previo) o rechazado (vuelve a borrador en backend)
+  const canRegenerate = ['borrador', 'rechazado'].includes(campaign.estado)
 
   return (
     <>
-      <Toaster position="top-right" />
+      <AppToaster />
 
       {/* Encabezado */}
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -195,7 +219,15 @@ export default function CampaignDetailPage() {
             </p>
           </div>
 
-          <VersionHistoryPanel campaignId={id} />
+          <VersionHistoryPanel
+            campaignId={id}
+            canRestore={['borrador', 'generado'].includes(campaign.estado)}
+            onRestored={(c) => {
+              setCampaign(c)
+              setText(c.texto_generado || '')
+              localStorage.removeItem(draftKey)
+            }}
+          />
         </div>
 
         {/* ── Columna derecha: Editor + Imagen ── */}
@@ -210,7 +242,7 @@ export default function CampaignDetailPage() {
             >
               {campaign.estado === 'aprobado'
                 ? 'Esta campaña fue aprobada. El texto está bloqueado.'
-                : 'Esta campaña fue rechazada. El texto está bloqueado.'}
+                : 'Esta campaña fue rechazada. Revisa el feedback del cliente y regenérala con IA.'}
             </div>
           )}
 
@@ -262,6 +294,12 @@ export default function CampaignDetailPage() {
                     )}
                   </>
                 )}
+                {canRegenerate && (
+                  <Button size="sm" onClick={handleRegenerate} disabled={regenerating}>
+                    <RefreshCw className={`h-4 w-4 ${regenerating ? 'animate-spin' : ''}`} />
+                    {regenerating ? 'Regenerando…' : 'Regenerar con IA'}
+                  </Button>
+                )}
                 {campaign.estado === 'aprobado' && (
                   <Button size="sm" onClick={handleExportPDF}>
                     <FileText className="h-4 w-4" />
@@ -295,6 +333,13 @@ export default function CampaignDetailPage() {
               <div className="flex flex-col items-center gap-2 py-8 text-center text-on-surface-variant">
                 <ImageOff className="h-8 w-8 text-outline" />
                 <p className="text-sm">Imagen no generada aún</p>
+                {campaign.estado === 'generado' && (
+                  <p className="glass-soft mt-2 max-w-sm rounded-lg px-3 py-2 text-xs">
+                    <span className="font-semibold text-primary">Activo provisional: </span>
+                    el copy está listo, pero falta el activo visual. Regenerar (1 crédito)
+                    vuelve a intentar copy e imagen.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -338,10 +383,23 @@ function LoadingSkeleton() {
 }
 
 function SubmitModal({ preview, wordTotal, onConfirm, onCancel }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl">
-        <h3 className="mb-1 text-lg font-semibold text-on-surface">Enviar al cliente</h3>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="submit-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 p-4 backdrop-blur-sm"
+    >
+      <div className="glass-liquid w-full max-w-lg rounded-3xl p-8">
+        <h3 id="submit-title" className="mb-1 text-lg font-semibold text-on-surface">Enviar al cliente</h3>
         <p className="mb-4 text-sm text-on-surface-variant">
           El cliente verá el siguiente copy para aprobación:
         </p>

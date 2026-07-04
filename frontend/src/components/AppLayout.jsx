@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Megaphone,
@@ -7,7 +8,10 @@ import {
   LogOut,
   LifeBuoy,
   Coins,
+  Settings,
+  Lightbulb,
 } from 'lucide-react'
+import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 
 /**
@@ -18,14 +22,21 @@ const NAV_ITEMS = {
   marketero: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/campaigns', label: 'Campañas', icon: Megaphone },
+    { to: '/prompt-guide', label: 'Guía de prompts', icon: Lightbulb },
+    { to: '/settings', label: 'Configuración', icon: Settings },
   ],
   superadmin: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/campaigns', label: 'Campañas', icon: Megaphone },
     { to: '/admin', label: 'Usuarios', icon: Users },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/prompt-guide', label: 'Guía de prompts', icon: Lightbulb },
+    { to: '/settings', label: 'Configuración', icon: Settings },
   ],
-  cliente: [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+  cliente: [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/settings', label: 'Configuración', icon: Settings },
+  ],
 }
 
 const ROLE_LABEL = {
@@ -37,9 +48,30 @@ const ROLE_LABEL = {
 export default function AppLayout() {
   const { logout, getRole, getNombre } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const role = getRole() || 'cliente'
   const nombre = getNombre() || ''
   const navItems = NAV_ITEMS[role] ?? NAV_ITEMS.cliente
+
+  // Créditos de IA vivos (solo roles que crean campañas en Django).
+  // Re-fetch en cada navegación: el backend cachea 30s, la llamada es barata.
+  const [tokens, setTokens] = useState(null)
+  const showCredits = role === 'marketero' || role === 'superadmin'
+  useEffect(() => {
+    if (!showCredits) return
+    let cancelled = false
+    api
+      .get('/api/campaigns/stats/')
+      .then(({ data }) => {
+        if (!cancelled && data?.data?.tokens_disponibles != null) {
+          setTokens(data.data.tokens_disponibles)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [showCredits, location.key])
 
   async function handleLogout() {
     await logout()
@@ -83,17 +115,26 @@ export default function AppLayout() {
         </nav>
 
         {/* Token Balance */}
-        <div className="px-4 py-4">
-          <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary/70">
-              Créditos de IA
-            </p>
-            <div className="flex items-center gap-2">
-              <Coins className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold text-primary tabular-nums">—</span>
+        {showCredits && (
+          <div className="px-4 py-4">
+            <div className="glass-soft glass-float rounded-xl p-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary/70">
+                Créditos de IA
+              </p>
+              <div className="flex items-center gap-2">
+                <Coins className="h-5 w-5 text-primary" />
+                <span className="text-2xl font-bold text-primary tabular-nums">
+                  {tokens ?? '—'}
+                </span>
+              </div>
+              {tokens === 0 && (
+                <p className="mt-1 text-xs font-medium text-error">
+                  Cuota agotada — pide reset al admin
+                </p>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Usuario + rol + acciones */}
         <div className="mx-4 mb-4 space-y-3 border-t border-outline-variant pt-4">
@@ -110,7 +151,7 @@ export default function AppLayout() {
           </div>
           <div className="space-y-1">
             <a
-              href="#"
+              href="mailto:soporte@marketmind.ia?subject=Soporte%20MarketMind%20IA"
               className="flex items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-primary"
             >
               <LifeBuoy className="h-4 w-4" />

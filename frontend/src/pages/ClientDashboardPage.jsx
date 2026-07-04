@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ClipboardCheck, CircleCheck, CircleX, AlertCircle, ArrowRight, Inbox } from 'lucide-react'
-import { getPendingCampaigns } from '../services/clientCampaigns'
+import { getPendingCampaigns, getCampaignSummary } from '../services/clientCampaigns'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -15,14 +15,15 @@ export default function ClientDashboardPage() {
   const location = useLocation()
 
   const [pending, setPending] = useState([])
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [retry, setRetry] = useState(0)
 
+  // Sin setState síncrono en el efecto: el estado inicial cubre el primer
+  // load; el retry resetea en su handler; location.key refresca en silencio.
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(false)
 
     getPendingCampaigns()
       .then((data) => {
@@ -34,6 +35,13 @@ export default function ClientDashboardPage() {
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
+
+    // Conteos para las stat cards — si falla, las cards muestran "—" sin romper el feed
+    getCampaignSummary()
+      .then((data) => {
+        if (!cancelled) setSummary(data)
+      })
+      .catch(() => {})
 
     return () => {
       cancelled = true
@@ -50,8 +58,8 @@ export default function ClientDashboardPage() {
       icon: ClipboardCheck,
       highlight: true,
     },
-    { key: 'aprobadas', label: 'Aprobadas', value: null, icon: CircleCheck, tint: 'bg-success-container text-success' },
-    { key: 'rechazadas', label: 'Rechazadas', value: null, icon: CircleX, tint: 'bg-error-container text-error' },
+    { key: 'aprobadas', label: 'Aprobadas', value: summary?.aprobadas ?? null, icon: CircleCheck, tint: 'bg-success-container text-success' },
+    { key: 'rechazadas', label: 'Rechazadas', value: summary?.rechazadas ?? null, icon: CircleX, tint: 'bg-error-container text-error' },
   ]
 
   return (
@@ -118,7 +126,14 @@ export default function ClientDashboardPage() {
         <div className="flex items-center gap-2 rounded-xl border border-error/20 bg-error-container px-4 py-3 text-sm text-on-error-container">
           <AlertCircle className="h-4 w-4" />
           No se pudieron cargar las campañas.
-          <button className="font-semibold underline" onClick={() => setRetry((c) => c + 1)}>
+          <button
+            className="font-semibold underline"
+            onClick={() => {
+              setLoading(true)
+              setError(false)
+              setRetry((c) => c + 1)
+            }}
+          >
             Reintentar
           </button>
         </div>
