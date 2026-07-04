@@ -28,7 +28,7 @@ from weasyprint import HTML as WeasyHTML
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
 from services.n8n_service import trigger_ia_generation
-from services.version_service import save_campaign_version
+from services.version_service import restore_campaign_version, save_campaign_version
 
 from .models import Campaign, CampaignStatus, CampaignVersion
 from .permissions import N8nCallbackPermission
@@ -223,8 +223,9 @@ class CampaignViewSet(viewsets.ModelViewSet):
         POST /api/campaigns/{id}/regenerate/
 
         Regenera el contenido IA de una campaña que ya fue rechazada o falló.
-        La campaña debe estar en BORRADOR (estado tras rechazo o fallo previo).
-        Máximo 3 intentos acumulados.
+        Acepta BORRADOR (fallo previo) y RECHAZADO: en este último caso aplica
+        primero la transición FSM rechazado → borrador (documentada) para
+        habilitar el nuevo intento. Máximo 3 intentos acumulados.
 
         Returns:
             HTTP 202 — regeneración en proceso.
@@ -239,11 +240,14 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
         campaign = self.get_object()
 
-        if campaign.estado != CampaignStatus.BORRADOR:
+        if campaign.estado not in [CampaignStatus.BORRADOR, CampaignStatus.RECHAZADO]:
             return Response(
                 api_response(
                     success=False,
-                    message=f"Solo campañas en 'borrador' pueden regenerarse. Estado actual: '{campaign.estado}'.",
+                    message=(
+                        "Solo campañas en 'borrador' o 'rechazado' pueden regenerarse. "
+                        f"Estado actual: '{campaign.estado}'."
+                    ),
                     data={},
                 ),
                 status=status.HTTP_409_CONFLICT,
@@ -258,6 +262,11 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 ),
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
+
+        # Transición FSM documentada: rechazado → borrador (habilita el reintento).
+        # Se hace después del check de tokens para no mutar estado en un 402.
+        if campaign.estado == CampaignStatus.RECHAZADO:
+            campaign.transition_to(CampaignStatus.BORRADOR)
 
         request.user.refresh_from_db()
         resultado = trigger_ia_generation(campaign)
@@ -397,7 +406,8 @@ class CampaignViewSet(viewsets.ModelViewSet):
         """
         GET /api/campaigns/stats/
 
-        Retorna conteo de campañas agrupadas por estado.
+        Retorna conteo de campañas agrupadas por estado y los créditos de IA
+        disponibles del usuario (tokens_disponibles, para el sidebar).
         Resultado cacheado 30s en Redis por usuario; el signal post_save
         de Campaign invalida la caché cuando cambia una campaña.
 
@@ -424,6 +434,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
         data = {
             "total": sum(conteos.values()),
+            "tokens_disponibles": request.user.tokens_disponibles,
             **conteos,
         }
         cache.set(cache_key, data, timeout=30)
@@ -603,7 +614,8 @@ class AdminAnalyticsView(APIView):
             period: week | month | quarter (default: month)
 
         Returns:
-            HTTP 200 con kpi, campanas_por_marketero y estados_globales.
+            HTTP 200 con kpi, campanas_por_marketero, estados_globales
+            y campanas_por_plataforma.
         """
         period = request.query_params.get("period", "month")
         days = _PERIOD_DAYS.get(period, 30)
@@ -642,6 +654,13 @@ class AdminAnalyticsView(APIView):
         for row in qs.values("estado").annotate(total=Count("id")):
             conteos[row["estado"]] = row["total"]
 
+        # Campañas por plataforma (barra horizontal del panel analytics)
+        por_plataforma = list(
+            qs.values("plataforma")
+            .annotate(total=Count("id"))
+            .order_by("-total")
+        )
+
         return Response(
             api_response(
                 success=True,
@@ -659,6 +678,10 @@ class AdminAnalyticsView(APIView):
                     ],
                     "estados_globales": [
                         {"estado": k, "total": v} for k, v in conteos.items()
+                    ],
+                    "campanas_por_plataforma": [
+                        {"plataforma": r["plataforma"], "total": r["total"]}
+                        for r in por_plataforma
                     ],
                 },
             ),
@@ -697,6 +720,57 @@ class CampaignVersionListView(generics.ListAPIView):
             'message': 'Versiones obtenidas correctamente.',
             'data': serializer.data,
         })
+
+
+class CampaignVersionRestoreView(APIView):
+    """
+    POST /api/campaigns/{campaign_id}/versions/{version_id}/restore/
+
+    Restaura el texto e imagen de un snapshot del historial (HU23) a la campaña.
+    Guarda el contenido actual como nueva versión antes de sobreescribir.
+    Solo el owner (marketero) o un superadmin; solo estados editables
+    (borrador/generado). No consume créditos de IA.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, campaign_id: int, version_id: int) -> Response:
+        """Valida acceso y estado, delega la copia a restore_campaign_version()."""
+        campaign = get_object_or_404(
+            Campaign.objects.select_related("marketero"),
+            pk=campaign_id,
+        )
+        user = request.user
+        if campaign.marketero != user and user.rol != "superadmin":
+            return Response(
+                api_response(success=False, message="No tienes acceso a esta campaña.", data={}),
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if campaign.estado not in [CampaignStatus.BORRADOR, CampaignStatus.GENERADO]:
+            return Response(
+                api_response(
+                    success=False,
+                    message=(
+                        "Solo se puede restaurar en estados editables (borrador/generado). "
+                        f"Estado actual: '{campaign.estado}'."
+                    ),
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        version = get_object_or_404(CampaignVersion, pk=version_id, campaign=campaign)
+        campaign = restore_campaign_version(campaign, version)
+
+        return Response(
+            api_response(
+                success=True,
+                message=f"Versión {version.version_number} restaurada.",
+                data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_200_OK,
+        )
 
 
 class CampaignExportPDFView(APIView):

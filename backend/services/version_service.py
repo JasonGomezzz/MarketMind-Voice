@@ -50,3 +50,27 @@ def save_campaign_version(campaign: Campaign) -> None:
         )
         if ids_to_delete:
             CampaignVersion.objects.filter(id__in=ids_to_delete).delete()
+
+
+def restore_campaign_version(campaign: Campaign, version: CampaignVersion) -> Campaign:
+    """
+    Restaura el contenido (texto_generado + imagen_b64) de un snapshot a la campaña.
+
+    Antes de sobreescribir guarda el contenido actual como nueva versión,
+    de modo que restaurar nunca pierde información (el LRU-5 sigue aplicando).
+    No consume créditos de IA: es una operación de solo-copia en BD.
+
+    Args:
+        campaign: Campaña destino (debe estar en estado editable).
+        version: Snapshot CampaignVersion perteneciente a la misma campaña.
+
+    Returns:
+        La campaña actualizada (refrescada desde BD).
+    """
+    with transaction.atomic():
+        save_campaign_version(campaign)
+        campaign.texto_generado = version.texto_generado
+        campaign.imagen_b64 = version.imagen_b64
+        campaign.save(update_fields=['texto_generado', 'imagen_b64', 'fecha_actualizacion'])
+    campaign.refresh_from_db()
+    return campaign
