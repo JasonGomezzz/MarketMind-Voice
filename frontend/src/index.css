@@ -142,6 +142,24 @@ body {
   border: 1px solid rgb(199 196 215 / 0.6);
 }
 
+/* Micro-interacción para tarjetas glass FLOTANTES (hero, créditos, avisos):
+   leve elevación + borde más luminoso al hover. NO usar en modales/drawer
+   (no reaccionan al hover) ni en superficies de lectura. La transición se
+   anula sola con prefers-reduced-motion (regla global de abajo). */
+.glass-float {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+.glass-float:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 14px 40px rgb(45 40 90 / 0.22),
+    inset 0 1px 0 rgb(255 255 255 / 0.7);
+  border-color: rgb(255 255 255 / 0.8);
+}
+
 /* Degradado indigo para íconos de pasos / acentos */
 .step-gradient {
   background: linear-gradient(135deg, #4648d4 0%, #6063ee 100%);

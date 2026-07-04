@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { Megaphone, CircleCheck, Clock, AlertCircle } from 'lucide-react'
 import api from '../services/api'
+import { STATES } from '@/lib/campaignStates'
 
 /**
  * Analytics del SuperAdmin (Lumina Creative). Consume Django /api/admin/analytics/.
@@ -21,30 +22,32 @@ import api from '../services/api'
  * Gráficos con datos REALES del backend (no inventa series que no existen).
  * Colores de estado alineados con StatusBadge / DESIGN.md.
  */
+const PLATAFORMA_LABELS = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  twitter: 'Twitter / X',
+  linkedin: 'LinkedIn',
+  google_ads: 'Google Ads',
+}
+
 const PERIODS = [
   { value: 'week', label: 'Semana' },
   { value: 'month', label: 'Mes' },
   { value: 'quarter', label: 'Trimestre' },
 ]
 
-// Colores FSM consistentes con el sistema de diseño (tokens Lumina)
+// Colores FSM para los charts — paleta validada con dataviz (chroma floor,
+// banda de luminosidad, separación CVD y contraste ≥3:1 sobre card blanca).
+// Recharts no acepta clases Tailwind; los hex viven solo aquí.
 const ESTADO_COLORS = {
-  borrador: '#767586',
-  pendiente_ia: '#6063ee',
-  generado: '#4648d4',
+  borrador: '#8678c8',
+  pendiente_ia: '#7c7ff2',
+  generado: '#3a3cb8',
   pendiente_aprobacion: '#b55d00',
   aprobado: '#2e7d32',
   rechazado: '#ba1a1a',
 }
 
-const ESTADO_LABELS = {
-  borrador: 'Borrador',
-  pendiente_ia: 'Pendiente IA',
-  generado: 'Generado',
-  pendiente_aprobacion: 'Pend. aprobación',
-  aprobado: 'Aprobado',
-  rechazado: 'Rechazado',
-}
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('month')
@@ -52,9 +55,9 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // El reset de loading/error ocurre en el handler del selector (no en el
+  // efecto): el efecto solo dispara el fetch y setea estado async.
   useEffect(() => {
-    setLoading(true)
-    setError(null)
     api
       .get('/api/admin/analytics/', { params: { period } })
       .then((res) => setData(res.data.data))
@@ -62,11 +65,17 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false))
   }, [period])
 
+  function handlePeriodChange(value) {
+    setPeriod(value)
+    setLoading(true)
+    setError(null)
+  }
+
   const pieData = data
     ? data.estados_globales
         .filter((e) => e.total > 0)
         .map((e) => ({
-          name: ESTADO_LABELS[e.estado] ?? e.estado,
+          name: STATES[e.estado]?.label ?? e.estado,
           value: e.total,
           color: ESTADO_COLORS[e.estado] ?? '#cbd5e1',
         }))
@@ -88,7 +97,7 @@ export default function AnalyticsPage() {
           {PERIODS.map(({ value, label }) => (
             <button
               key={value}
-              onClick={() => setPeriod(value)}
+              onClick={() => handlePeriodChange(value)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 period === value
                   ? 'bg-primary text-on-primary'
@@ -165,17 +174,34 @@ export default function AnalyticsPage() {
                     data={data.campanas_por_marketero}
                     margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e9e6f3" />
-                    <XAxis dataKey="marketero" tick={{ fontSize: 12, fill: '#464554' }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#464554' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e9e6f3" vertical={false} />
+                    <XAxis
+                      dataKey="marketero"
+                      tick={{ fontSize: 12, fill: '#464554' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 12, fill: '#464554' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <Tooltip
+                      cursor={{ fill: 'rgba(70, 72, 212, 0.06)' }}
                       contentStyle={{
                         borderRadius: 12,
                         border: '1px solid #c7c4d7',
                         fontSize: 13,
                       }}
                     />
-                    <Bar dataKey="total" name="Campañas" fill="#4648d4" radius={[6, 6, 0, 0]} />
+                    <Bar
+                      dataKey="total"
+                      name="Campañas"
+                      fill="#4648d4"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={36}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -199,13 +225,16 @@ export default function AnalyticsPage() {
                       cy="50%"
                       innerRadius={55}
                       outerRadius={90}
+                      paddingAngle={2}
                       dataKey="value"
                       nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) =>
+                        percent >= 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : null
+                      }
                       labelLine={false}
                     >
                       {pieData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
+                        <Cell key={i} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -221,9 +250,44 @@ export default function AnalyticsPage() {
               )}
             </div>
           </div>
+
+          {/* Campañas por plataforma (barras horizontales — datos reales) */}
+          {data.campanas_por_plataforma?.length > 0 && (
+            <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+              <h3 className="mb-5 text-sm font-semibold text-on-surface">
+                Campañas por plataforma
+              </h3>
+              <PlatformBars rows={data.campanas_por_plataforma} />
+            </div>
+          )}
         </>
       )}
     </div>
+  )
+}
+
+/** Barras horizontales de conteo por plataforma, relativas al máximo. */
+function PlatformBars({ rows }) {
+  const max = Math.max(...rows.map((r) => r.total), 1)
+  return (
+    <ul className="space-y-4">
+      {rows.map((r) => (
+        <li key={r.plataforma}>
+          <div className="mb-1.5 flex items-center justify-between text-sm">
+            <span className="font-medium text-on-surface">
+              {PLATAFORMA_LABELS[r.plataforma] ?? r.plataforma}
+            </span>
+            <span className="tabular-nums text-on-surface-variant">{r.total}</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${Math.round((r.total / max) * 100)}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 

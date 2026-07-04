@@ -80,7 +80,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.9 }}
-            className="glass-card absolute -top-6 -right-6 hidden rounded-xl p-4 shadow-xl md:block"
+            className="glass-liquid-dark glass-float absolute -top-6 -right-6 hidden rounded-xl p-4 md:block"
           >
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-primary" />

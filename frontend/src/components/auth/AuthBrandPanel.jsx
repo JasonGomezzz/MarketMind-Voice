@@ -3,7 +3,7 @@ import testimonialImg from '@/assets/landing/testimonial.png'
 
 /**
  * Panel de marca derecho compartido por Login y Register.
- * Degradado indigo + blobs flotantes + glass-card con features + testimonial.
+ * Degradado indigo + blobs flotantes + panel glass-liquid-dark con features + testimonial.
  * `highlights` y `badgeIcon` los provee cada pantalla.
  */
 export default function AuthBrandPanel({ highlights = [], badgeIcon: BadgeIcon }) {
@@ -37,7 +37,7 @@ export default function AuthBrandPanel({ highlights = [], badgeIcon: BadgeIcon }
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-12 rounded-2xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-md"
+          className="glass-liquid-dark mb-12 rounded-2xl p-8"
         >
           <div className="mb-6 flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">

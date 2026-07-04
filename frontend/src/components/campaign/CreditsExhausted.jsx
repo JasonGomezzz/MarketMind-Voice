@@ -15,7 +15,7 @@ const PLANS = [
 
 export default function CreditsExhausted({ onClose }) {
   return (
-    <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+    <div className="glass-soft glass-float rounded-xl p-6 shadow-sm">
       <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-error-container px-3 py-1 text-xs font-bold uppercase tracking-wide text-error">
         <AlertTriangle className="h-3.5 w-3.5" />
         Créditos agotados

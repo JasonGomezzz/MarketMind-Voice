@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { Megaphone, Coins, Sparkles, CircleCheck, Clock, AlertCircle, Plus } from 'lucide-react'
 import api from '../services/api'
+import { STATES } from '@/lib/campaignStates'
 
 /**
  * Dashboard de MARKETERO / SUPERADMIN (Lumina Creative).
@@ -20,10 +21,11 @@ export default function DashboardPage() {
   const [retryCount, setRetryCount] = useState(0)
   const location = useLocation()
 
+  // Sin setState síncrono en el efecto: el estado inicial cubre el primer
+  // load; el retry resetea en su handler; la re-navegación (location.key)
+  // refresca en silencio manteniendo los datos visibles.
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(false)
 
     async function fetchData() {
       try {
@@ -131,7 +133,14 @@ export default function DashboardPage() {
         <div className="mb-6 flex items-center gap-2 rounded-xl border border-error/20 bg-error-container px-4 py-3 text-sm text-on-error-container">
           <AlertCircle className="h-4 w-4" />
           No se pudieron cargar los datos.
-          <button className="font-semibold underline" onClick={() => setRetryCount((c) => c + 1)}>
+          <button
+            className="font-semibold underline"
+            onClick={() => {
+              setLoading(true)
+              setError(false)
+              setRetryCount((c) => c + 1)
+            }}
+          >
             Reintentar
           </button>
         </div>
@@ -170,12 +179,15 @@ export default function DashboardPage() {
         <div className="mt-8 rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-xl font-semibold text-on-surface">Distribución por estado</h2>
           <div className="flex flex-wrap gap-3">
-            <StateBadge label="Borrador" value={stats.borrador} className="bg-surface-container-high text-on-surface-variant" />
-            <StateBadge label="Pendiente IA" value={stats.pendiente_ia} className="bg-primary-fixed text-primary" icon={Clock} />
-            <StateBadge label="Generado" value={stats.generado} className="bg-secondary-container text-primary" />
-            <StateBadge label="Pendiente aprobación" value={stats.pendiente_aprobacion} className="bg-warning-container text-tertiary" />
-            <StateBadge label="Aprobado" value={stats.aprobado} className="bg-success-container text-success" />
-            <StateBadge label="Rechazado" value={stats.rechazado} className="bg-error-container text-error" />
+            {Object.entries(STATES).map(([estado, s]) => (
+              <StateBadge
+                key={estado}
+                label={s.label}
+                value={stats[estado]}
+                className={s.className}
+                icon={estado === 'pendiente_ia' ? Clock : undefined}
+              />
+            ))}
           </div>
         </div>
       )}

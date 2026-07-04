@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, useAnimationFrame, useMotionValue } from 'motion/react'
 import g1 from '@/assets/landing/gallery-1.png'
 import g2 from '@/assets/landing/gallery-2.png'
@@ -18,6 +18,9 @@ const IMAGES = [g1, g2, g3, g4, g5, g6]
 const CARD = 256 // ancho (w-64) + gap gestionado por CSS
 const GAP = 32 // gap-8
 const SPEED = 40 // px por segundo
+// Ancho de UNA tanda (la mitad del track duplicado). Las tarjetas son de
+// tamaño fijo, así que es una constante — no hay nada que medir en resize.
+const HALF = (CARD + GAP) * IMAGES.length
 
 export default function ShowcaseMarquee() {
   // duplicamos las imágenes para el bucle infinito
@@ -25,37 +28,21 @@ export default function ShowcaseMarquee() {
   const x = useMotionValue(0)
   const [paused, setPaused] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const trackRef = useRef(null)
-  const halfWidth = useRef(0)
-
-  // medir el ancho de UNA tanda (la mitad del track duplicado)
-  useEffect(() => {
-    const measure = () => {
-      halfWidth.current = (CARD + GAP) * IMAGES.length
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
 
   // auto-scroll: avanza x cada frame salvo si está en pausa o arrastrando
   useAnimationFrame((_, delta) => {
     if (paused || dragging) return
-    const half = halfWidth.current
-    if (!half) return
     let next = x.get() - (SPEED * delta) / 1000
     // reciclar sin salto: al pasar una tanda, sumamos su ancho
-    if (next <= -half) next += half
+    if (next <= -HALF) next += HALF
     x.set(next)
   })
 
   // al soltar el drag, normalizamos x dentro del rango del bucle
   function handleDragEnd() {
     setDragging(false)
-    const half = halfWidth.current
-    if (!half) return
-    let v = x.get() % half
-    if (v > 0) v -= half
+    let v = x.get() % HALF
+    if (v > 0) v -= HALF
     x.set(v)
   }
 
@@ -67,11 +54,10 @@ export default function ShowcaseMarquee() {
       aria-label="Galería de anuncios generados con IA"
     >
       <motion.div
-        ref={trackRef}
         className="flex w-max cursor-grab gap-8 px-8 active:cursor-grabbing"
         style={{ x }}
         drag="x"
-        dragConstraints={{ left: -halfWidth.current * 2, right: halfWidth.current }}
+        dragConstraints={{ left: -HALF * 2, right: HALF }}
         dragElastic={0.05}
         onDragStart={() => setDragging(true)}
         onDragEnd={handleDragEnd}

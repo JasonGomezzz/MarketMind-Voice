@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
+import AppToaster from '@/components/ui/AppToaster'
 import { Users, AlertCircle, RotateCcw, Ban, CircleCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
@@ -59,9 +60,9 @@ export default function UsersAdminPage() {
   const [confirm, setConfirm] = useState(null) // { type, user }
   const [busy, setBusy] = useState(false)
 
-  const fetchUsers = (targetPage = page) => {
-    setLoading(true)
-    setError(null)
+  // loadUsers solo setea estado en callbacks async (apto para el efecto);
+  // fetchUsers agrega el reset síncrono y se usa desde handlers.
+  const loadUsers = (targetPage) => {
     api
       .get('/api/admin/users/', { params: { page: targetPage } })
       .then((res) => {
@@ -72,6 +73,18 @@ export default function UsersAdminPage() {
       .finally(() => setLoading(false))
   }
 
+  const fetchUsers = (targetPage = page) => {
+    setLoading(true)
+    setError(null)
+    loadUsers(targetPage)
+  }
+
+  const goToPage = (updater) => {
+    setLoading(true)
+    setError(null)
+    setPage(updater)
+  }
+
   useEffect(() => {
     api
       .get('/api/auth/me/')
@@ -80,8 +93,7 @@ export default function UsersAdminPage() {
   }, [])
 
   useEffect(() => {
-    fetchUsers(page)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadUsers(page)
   }, [page])
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE))
@@ -117,7 +129,7 @@ export default function UsersAdminPage() {
 
   return (
     <div className="space-y-6">
-      <Toaster position="top-right" />
+      <AppToaster />
 
       {/* Encabezado */}
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -244,11 +256,11 @@ export default function UsersAdminPage() {
               Página {page} de {totalPages}
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goToPage((p) => Math.max(1, p - 1))}>
                 <ChevronLeft className="h-4 w-4" />
                 Anterior
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => goToPage((p) => Math.min(totalPages, p + 1))}>
                 Siguiente
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -287,10 +299,23 @@ export default function UsersAdminPage() {
 }
 
 function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel, busy, destructive }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !busy) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel, busy])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
-        <h3 className="mb-2 text-lg font-semibold text-on-surface">{title}</h3>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 p-4 backdrop-blur-sm"
+    >
+      <div className="glass-liquid w-full max-w-md rounded-3xl p-8">
+        <h3 id="confirm-title" className="mb-2 text-lg font-semibold text-on-surface">{title}</h3>
         <p className="mb-6 text-sm text-on-surface-variant">{message}</p>
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={onCancel} disabled={busy}>

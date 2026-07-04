@@ -1,7 +1,8 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
 import { useState } from 'react'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
+import AppToaster from '@/components/ui/AppToaster'
 import { Rocket, Users, Sparkles } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
@@ -19,12 +20,13 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm({ defaultValues: { rol: 'marketero' } })
 
-  const rolSel = watch('rol')
+  // Estado local en vez de watch(): mismo comportamiento y el React Compiler
+  // puede optimizar el componente (watch usa mutabilidad interior).
+  const [rolSel, setRolSel] = useState('marketero')
 
   async function onSubmit({ nombre, email, password, rol }) {
     setLoading(true)
@@ -55,7 +57,7 @@ export default function RegisterPage() {
 
   return (
     <main className="flex min-h-screen flex-col md:flex-row">
-      <Toaster position="top-right" />
+      <AppToaster />
 
       {/* Izquierda: formulario */}
       <section className="z-10 flex w-full items-center justify-center bg-surface p-8 md:w-1/2 md:p-16 lg:p-20">
@@ -150,7 +152,10 @@ export default function RegisterPage() {
                     <button
                       key={r.val}
                       type="button"
-                      onClick={() => setValue('rol', r.val)}
+                      onClick={() => {
+                        setRolSel(r.val)
+                        setValue('rol', r.val)
+                      }}
                       className={`rounded-xl border p-4 text-left transition-all ${
                         rolSel === r.val
                           ? 'border-primary bg-primary/5 ring-1 ring-primary'

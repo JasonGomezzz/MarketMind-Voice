@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
+import AppToaster from '@/components/ui/AppToaster'
 import { Zap, ShieldCheck, Sparkles } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
@@ -39,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen flex-col md:flex-row">
-      <Toaster position="top-right" />
+      <AppToaster />
 
       {/* Izquierda: formulario */}
       <section className="z-10 flex w-full items-center justify-center bg-surface p-8 md:w-1/2 md:p-16 lg:p-24">

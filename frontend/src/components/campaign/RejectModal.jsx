@@ -71,7 +71,7 @@ export default function RejectModal({ open, onConfirm, onCancel, busy }) {
             onClick={onCancel}
             disabled={busy}
             aria-label="Cerrar"
-            className="rounded-lg p-1 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+            className="rounded-lg p-1 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <X className="h-5 w-5" />
           </button>

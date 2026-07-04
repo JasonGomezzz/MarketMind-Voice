@@ -22,24 +22,29 @@ export default function CampaignListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  async function fetchCampaigns(url = '/api/campaigns/') {
+  // loadCampaigns solo setea estado en callbacks async (apto para el efecto);
+  // fetchCampaigns agrega el reset síncrono y se usa desde handlers.
+  function loadCampaigns(url) {
+    return api
+      .get(url)
+      .then(({ data }) => {
+        setCampaigns(data.results)
+        setCount(data.count)
+        setNextUrl(data.next)
+        setPrevUrl(data.previous)
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }
+
+  function fetchCampaigns(url = '/api/campaigns/') {
     setLoading(true)
     setError(false)
-    try {
-      const { data } = await api.get(url)
-      setCampaigns(data.results)
-      setCount(data.count)
-      setNextUrl(data.next)
-      setPrevUrl(data.previous)
-    } catch {
-      setError(true)
-    } finally {
-      setLoading(false)
-    }
+    loadCampaigns(url)
   }
 
   useEffect(() => {
-    fetchCampaigns()
+    loadCampaigns('/api/campaigns/')
   }, [])
 
   return (
