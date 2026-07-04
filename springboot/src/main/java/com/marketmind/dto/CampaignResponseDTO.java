@@ -32,6 +32,7 @@ public class CampaignResponseDTO {
     private String estado;
     private String feedbackRechazo;
     private Long marketeroId;
+    private String marketeroNombre;
     private OffsetDateTime fechaCreacion;
     private OffsetDateTime fechaActualizacion;
     private Integer version;

@@ -36,6 +36,16 @@ public class CampaignController {
     }
 
     /**
+     * Dashboard cliente — conteos de campañas por estado (pendientes/aprobadas/rechazadas).
+     * Acceso: solo rol CLIENTE.
+     */
+    @GetMapping("/summary")
+    @PreAuthorize("hasRole('CLIENTE')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> getSummary() {
+        return ResponseEntity.ok(ApiResponse.ok("Resumen de campañas.", campaignService.getSummary()));
+    }
+
+    /**
      * HU13 — Detalle de campaña.
      * Acceso: cualquier usuario autenticado.
      */
