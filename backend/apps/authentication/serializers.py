@@ -88,6 +88,63 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
 
 
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer para que el usuario autenticado edite su propio perfil.
+    Solo permite 'nombre' — email es el identificador de login y el rol
+    lo administra el SuperAdmin (HU18); no se exponen aquí.
+    """
+
+    nombre = serializers.CharField(
+        min_length=2,
+        max_length=150,
+        error_messages={
+            "min_length": "El nombre debe tener al menos 2 caracteres.",
+            "blank": "El nombre no puede estar vacío.",
+        },
+    )
+
+    class Meta:
+        model = User
+        fields = ["nombre"]
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer para cambio de contraseña del propio usuario.
+    Exige la contraseña actual (evita que una sesión robada cambie la clave
+    sin conocerla) y valida la nueva con AUTH_PASSWORD_VALIDATORS.
+    """
+
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        error_messages={
+            "min_length": "La nueva contraseña debe tener al menos 8 caracteres.",
+        },
+    )
+
+    def validate_current_password(self, value: str) -> str:
+        """Verifica que la contraseña actual sea correcta."""
+        user: User = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("La contraseña actual es incorrecta.")
+        return value
+
+    def validate_new_password(self, value: str) -> str:
+        """Aplica los validadores de Django a la nueva contraseña."""
+        validate_password(value)
+        return value
+
+    def save(self, **kwargs: Any) -> User:
+        """Setea la nueva contraseña encriptada y la persiste."""
+        user: User = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return user
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Extiende simplejwt para incluir el campo 'role' en el payload del JWT.

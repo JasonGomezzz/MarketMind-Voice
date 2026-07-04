@@ -214,3 +214,69 @@ class TestMeView:
         response = api_client.get(ME_URL)
         assert response.status_code == 200
         assert "tokens_disponibles" in response.data["data"]["user"]
+
+
+CHANGE_PASSWORD_URL = "/api/auth/me/change-password/"
+
+
+@pytest.mark.django_db
+class TestUpdateProfile:
+    def test_patch_nombre_actualiza_perfil(self, user_marketero, api_client):
+        response = api_client.patch(ME_URL, {"nombre": "Nombre Nuevo"}, format="json")
+        assert response.status_code == 200
+        user_marketero.refresh_from_db()
+        assert user_marketero.nombre == "Nombre Nuevo"
+
+    def test_patch_nombre_vacio_400(self, api_client):
+        response = api_client.patch(ME_URL, {"nombre": ""}, format="json")
+        assert response.status_code == 400
+
+    def test_patch_no_permite_cambiar_rol(self, user_marketero, api_client):
+        api_client.patch(ME_URL, {"nombre": "Otro", "rol": "superadmin"}, format="json")
+        user_marketero.refresh_from_db()
+        assert user_marketero.rol == UserRole.MARKETERO
+
+    def test_patch_unauthenticated_401(self):
+        client = APIClient()
+        response = client.patch(ME_URL, {"nombre": "X Y"}, format="json")
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestChangePassword:
+    def test_cambio_correcto_200(self, user_marketero, api_client):
+        response = api_client.post(
+            CHANGE_PASSWORD_URL,
+            {"current_password": "Test1234!", "new_password": "NuevaClave2026!"},
+            format="json",
+        )
+        assert response.status_code == 200
+        user_marketero.refresh_from_db()
+        assert user_marketero.check_password("NuevaClave2026!")
+
+    def test_password_actual_incorrecta_400(self, user_marketero, api_client):
+        response = api_client.post(
+            CHANGE_PASSWORD_URL,
+            {"current_password": "incorrecta", "new_password": "NuevaClave2026!"},
+            format="json",
+        )
+        assert response.status_code == 400
+        user_marketero.refresh_from_db()
+        assert user_marketero.check_password("Test1234!")
+
+    def test_nueva_password_corta_400(self, api_client):
+        response = api_client.post(
+            CHANGE_PASSWORD_URL,
+            {"current_password": "Test1234!", "new_password": "corta"},
+            format="json",
+        )
+        assert response.status_code == 400
+
+    def test_unauthenticated_401(self):
+        client = APIClient()
+        response = client.post(
+            CHANGE_PASSWORD_URL,
+            {"current_password": "x", "new_password": "NuevaClave2026!"},
+            format="json",
+        )
+        assert response.status_code == 401

@@ -15,7 +15,12 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.exceptions import api_response
-from .serializers import RegisterSerializer, UserResponseSerializer
+from .serializers import (
+    ChangePasswordSerializer,
+    RegisterSerializer,
+    UpdateProfileSerializer,
+    UserResponseSerializer,
+)
 from .throttles import RegisterRateThrottle
 
 
@@ -131,7 +136,8 @@ class LogoutView(APIView):
 
 class MeView(APIView):
     """
-    GET /api/auth/me/
+    GET /api/auth/me/    — datos del usuario autenticado.
+    PATCH /api/auth/me/  — edita el propio perfil (solo 'nombre').
     tokens_disponibles cambia tras cada generación — no puede leerse del JWT.
     """
 
@@ -145,5 +151,65 @@ class MeView(APIView):
                 message="Datos del usuario autenticado.",
                 data={"user": serializer.data},
             ),
+            status=status.HTTP_200_OK,
+        )
+
+    def patch(self, request: Request) -> Response:
+        """
+        Actualiza el perfil del usuario autenticado.
+
+        Args:
+            request: Request con body {nombre}.
+
+        Returns:
+            HTTP 200 con el usuario actualizado, o HTTP 400 con errores de campo.
+        """
+        serializer = UpdateProfileSerializer(request.user, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(
+                api_response(success=False, message="Datos inválidos.", data=serializer.errors),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer.save()
+        return Response(
+            api_response(
+                success=True,
+                message="Perfil actualizado.",
+                data={"user": UserResponseSerializer(request.user).data},
+            ),
+            status=status.HTTP_200_OK,
+        )
+
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/me/change-password/
+
+    Cambia la contraseña del propio usuario. Exige la contraseña actual.
+    No invalida la sesión activa (token_version no cambia): el usuario
+    sigue logueado tras el cambio.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        """
+        Cambia la contraseña.
+
+        Args:
+            request: Request con body {current_password, new_password}.
+
+        Returns:
+            HTTP 200 si cambió, o HTTP 400 con errores de validación.
+        """
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response(
+                api_response(success=False, message="Datos inválidos.", data=serializer.errors),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer.save()
+        return Response(
+            api_response(success=True, message="Contraseña actualizada.", data={}),
             status=status.HTTP_200_OK,
         )

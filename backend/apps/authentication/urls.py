@@ -6,7 +6,7 @@ Monta los endpoints de auth bajo el prefijo /api/auth/
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .views import LogoutView, MeView, RegisterView
+from .views import ChangePasswordView, LogoutView, MeView, RegisterView
 from .token_views import CustomTokenObtainPairView
 
 urlpatterns = [
@@ -23,5 +23,9 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="auth-logout"),
 
     # HU8: datos del usuario autenticado en tiempo real (tokens_disponibles)
+    # GET = perfil · PATCH = editar nombre (Settings)
     path("me/", MeView.as_view(), name="auth-me"),
+
+    # Settings: cambio de contraseña del propio usuario
+    path("me/change-password/", ChangePasswordView.as_view(), name="auth-change-password"),
 ]
