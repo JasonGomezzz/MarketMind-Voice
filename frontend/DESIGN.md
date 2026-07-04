@@ -83,6 +83,23 @@ alta sobre fondo claro (fondo container suave + texto del mismo tono).
 - **Nav fija:** `backdrop-blur` (12px) + fondo `surface/80`.
 - Efecto **`.glass-card`**: blanco 70% + blur 12px + borde `outline-variant/60`.
 
+### Liquid glass (iOS-style) — utilidades y regla de uso
+
+- **`.glass-liquid`**: blanco 72% + blur 18px + saturate 1.4 + borde luminoso +
+  reflejo interior. Para superficies FLOTANTES sobre fondo claro: modales,
+  drawer de historial.
+- **`.glass-liquid-dark`**: blanco 12% + blur 16px. Para flotantes sobre
+  color/imagen (panel indigo del login, tarjeta del hero).
+- **`.glass-soft`**: 75% sólido + blur 12px. Para avisos sobre fondo claro
+  donde la legibilidad manda (banner cuota, créditos sidebar, pro tips).
+- **`.glass-float`**: micro-interacción hover (elevación -3px + borde más
+  luminoso). SOLO en tarjetas glass flotantes decorativas — nunca en
+  modales/drawer (no reaccionan a hover) ni superficies de lectura.
+- **Toasts**: siempre via `components/ui/AppToaster` (receta glass-liquid
+  inline). No montar `<Toaster/>` de react-hot-toast directo.
+- **REGLA DURA**: glass SÍ en modales/drawer/flotantes; NO en tablas,
+  formularios/inputs ni editor de copy (contraste AA 4.5:1).
+
 ## Espaciado
 
 - **Regla de 8px:** todo múltiplo de 8 (8, 16, 24, 32, 48, 64).

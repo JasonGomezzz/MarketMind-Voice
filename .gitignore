@@ -60,3 +60,11 @@ htmlcov/
 
 # Android APKs
 *.apk
+
+# SQLite local (nunca al repo)
+*.sqlite3
+db.sqlite3
+
+# Env locales adicionales
+.env.local
+.env.*.local
