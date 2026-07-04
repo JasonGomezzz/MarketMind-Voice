@@ -40,8 +40,6 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt.token_blacklist",  # JWT Blacklist activada (HU2)
     "corsheaders",
     "django_ratelimit",
-    "django_celery_beat",
-    "django_celery_results",
 ]
 
 LOCAL_APPS = [
@@ -204,17 +202,6 @@ CORS_ALLOWED_ORIGINS = config(
 )
 CORS_ALLOW_CREDENTIALS = True          # Necesario para enviar cookies/headers auth
 CORS_ALLOW_ALL_ORIGINS = False         # NUNCA True
-
-
-# ─────────────────────────────────────────────
-# CELERY — preparado, sin workers activos en Sprint 1
-# ─────────────────────────────────────────────
-CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = "django-db"    # Guarda resultados en PostgreSQL
-CELERY_CACHE_BACKEND = "default"
-CELERY_TIMEZONE = "America/Lima"
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60      # 30 minutos máximo por tarea
 
 
 # ─────────────────────────────────────────────

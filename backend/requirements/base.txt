@@ -26,12 +26,10 @@ python-decouple==3.8            # Reads .env variables
 requests==2.32.3
 httpx==0.27.0                   # Async HTTP, usado en gemini_service.py
 
-# --- Celery + Redis (preparado, sin workers activos en Sprint 1) ---
-celery==5.4.0
+# --- Redis (caché de stats, rate limiting, JWT blacklist) ---
+# NO Celery: la asincronía vive en n8n (decisión fija del proyecto).
 redis==5.0.6
 django-redis==5.4.0
-django-celery-beat==2.6.0       # Tareas periódicas (Sprint 2+)
-django-celery-results==2.5.1    # Resultados en BD (Sprint 2+)
 
 # --- Validation & Serialization ---
 Pillow==10.3.0                  # Imágenes (Sprint 2+)
