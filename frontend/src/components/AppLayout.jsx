@@ -54,24 +54,34 @@ export default function AppLayout() {
   const navItems = NAV_ITEMS[role] ?? NAV_ITEMS.cliente
 
   // Créditos de IA vivos (solo roles que crean campañas en Django).
-  // Re-fetch en cada navegación: el backend cachea 30s, la llamada es barata.
+  // Refresca al navegar Y cuando alguna página dispara 'credits-updated'
+  // (p. ej. al generar/regenerar — el descuento se refleja al instante).
   const [tokens, setTokens] = useState(null)
+  const [creditsTick, setCreditsTick] = useState(0)
   const showCredits = role === 'marketero' || role === 'superadmin'
+
+  useEffect(() => {
+    const onCreditsUpdated = () => setCreditsTick((t) => t + 1)
+    window.addEventListener('credits-updated', onCreditsUpdated)
+    return () => window.removeEventListener('credits-updated', onCreditsUpdated)
+  }, [])
+
   useEffect(() => {
     if (!showCredits) return
     let cancelled = false
+    // /me devuelve el valor SIN caché (stats cachea 30s y quedaría stale)
     api
-      .get('/api/campaigns/stats/')
+      .get('/api/auth/me/')
       .then(({ data }) => {
-        if (!cancelled && data?.data?.tokens_disponibles != null) {
-          setTokens(data.data.tokens_disponibles)
+        if (!cancelled && data?.data?.user?.tokens_disponibles != null) {
+          setTokens(data.data.user.tokens_disponibles)
         }
       })
       .catch(() => {})
     return () => {
       cancelled = true
     }
-  }, [showCredits, location.key])
+  }, [showCredits, location.key, creditsTick])
 
   async function handleLogout() {
     await logout()

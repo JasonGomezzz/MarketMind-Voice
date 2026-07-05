@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ClipboardCopy,
   Check,
+  RefreshCw,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
@@ -20,7 +21,9 @@ import { Button } from '@/components/ui/button'
  * a /campaigns/new (via state del router). No llama a IA ni consume créditos —
  * la generación real ocurre al crear la campaña.
  */
-const TEMPLATES = [
+// Pool de templates: cada carga muestra 3 al azar y "Ver otros ejemplos"
+// baraja sin recargar la página.
+const TEMPLATE_POOL = [
   {
     icon: Share2,
     tint: 'bg-primary/10 text-primary',
@@ -42,7 +45,54 @@ const TEMPLATES = [
     texto:
       'Escribe 3 variantes de un anuncio de búsqueda de Google para un servicio B2B: titular de máximo 30 caracteres, descripción de máximo 90 y enfoque en el dolor del cliente.',
   },
+  {
+    icon: Share2,
+    tint: 'bg-primary/10 text-primary',
+    titulo: 'LinkedIn B2B',
+    texto:
+      'Escribe un post de LinkedIn con tono profesional que nos posicione como líderes del sector: un dato duro de apertura, 3 aprendizajes accionables y una pregunta final para generar conversación.',
+  },
+  {
+    icon: Mail,
+    tint: 'bg-tertiary-container text-tertiary',
+    titulo: 'Lanzamiento',
+    texto:
+      'Anuncia el lanzamiento de una nueva línea de productos a clientes existentes: acceso anticipado de 48 horas, 2 beneficios exclusivos y un solo llamado a la acción.',
+  },
+  {
+    icon: FileText,
+    tint: 'bg-secondary-container text-primary',
+    titulo: 'Oferta flash',
+    texto:
+      'Copy urgente para una promoción de 24 horas: descuento del 30%, tono directo y enérgico, sensación de escasez real (stock limitado) y llamado a la acción imposible de ignorar.',
+  },
+  {
+    icon: Share2,
+    tint: 'bg-primary/10 text-primary',
+    titulo: 'Storytelling de marca',
+    texto:
+      'Cuenta la historia de origen de la marca en carrusel de Instagram (5 slides): problema que vimos, por qué nos importó, cómo lo resolvemos, prueba social y cierre con invitación a la comunidad.',
+  },
+  {
+    icon: Mail,
+    tint: 'bg-tertiary-container text-tertiary',
+    titulo: 'Reactivación',
+    texto:
+      'Email para clientes inactivos hace 90 días, tono cercano y sin culpas: recuérdales el valor que obtuvieron, muestra una novedad relevante y ofrece un incentivo simple para volver.',
+  },
+  {
+    icon: FileText,
+    tint: 'bg-secondary-container text-primary',
+    titulo: 'Testimonio en anuncio',
+    texto:
+      'Convierte un testimonio real de cliente en anuncio de Facebook: cita corta como gancho, el problema resuelto en 2 líneas y llamado a la acción hacia la prueba gratuita.',
+  },
 ]
+
+/** Devuelve 3 templates al azar del pool (sin repetir). */
+function sampleTemplates() {
+  return [...TEMPLATE_POOL].sort(() => Math.random() - 0.5).slice(0, 3)
+}
 
 const TIPS = [
   {
@@ -76,6 +126,7 @@ export default function PromptGuidePage() {
   const [beneficios, setBeneficios] = useState('')
   const [tono, setTono] = useState('profesional')
   const [copiedIdx, setCopiedIdx] = useState(null)
+  const [templates, setTemplates] = useState(sampleTemplates)
 
   function buildPrompt() {
     const partes = [
@@ -121,9 +172,22 @@ export default function PromptGuidePage() {
           <div className="min-w-0 flex-1 space-y-8">
             {/* Templates */}
             <section>
-              <h2 className="mb-4 text-xl font-semibold text-on-surface">Templates de ejemplo</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-on-surface">Templates de ejemplo</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTemplates(sampleTemplates())
+                    setCopiedIdx(null)
+                  }}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Ver otros ejemplos
+                </Button>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {TEMPLATES.map((t, idx) => {
+                {templates.map((t, idx) => {
                   const Icon = t.icon
                   return (
                     <article
