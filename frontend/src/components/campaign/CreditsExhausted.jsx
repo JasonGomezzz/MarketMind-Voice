@@ -1,12 +1,18 @@
+import toast from 'react-hot-toast'
 import { AlertTriangle, ShieldQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import AppToaster from '@/components/ui/AppToaster'
 
 /**
  * Estado "Créditos agotados" (portado de Stitch: ai_generation_credits_notice).
  * Se muestra cuando el backend devuelve HTTP 402 (tokens_disponibles == 0).
  * El reset lo hace el SuperAdmin (PATCH /api/admin/users/{id}/reset-quota/);
- * el marketero solo puede SOLICITARLO, no auto-resetearse.
+ * el marketero solo puede SOLICITARLO, no auto-resetearse. Los planes son la
+ * vista del modelo de negocio — sin pasarela de pago en esta versión, así que
+ * los botones informan el flujo real en vez de fingir una compra.
  */
+const MSG_RESET =
+  'Avísale a tu SuperAdmin: él restablece tu cuota a 100 desde el panel Usuarios.'
 const PLANS = [
   { nombre: 'Básico', precio: 49, tokens: '500 créditos', popular: false },
   { nombre: 'Pro', precio: 129, tokens: '1,500 créditos', popular: true },
@@ -16,6 +22,7 @@ const PLANS = [
 export default function CreditsExhausted({ onClose }) {
   return (
     <div className="glass-soft glass-float rounded-xl p-6 shadow-sm">
+      <AppToaster />
       <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-error-container px-3 py-1 text-xs font-bold uppercase tracking-wide text-error">
         <AlertTriangle className="h-3.5 w-3.5" />
         Créditos agotados
@@ -56,7 +63,16 @@ export default function CreditsExhausted({ onClose }) {
               <p className="text-lg font-bold tabular-nums text-on-surface">
                 S/ {plan.precio}
               </p>
-              <Button size="sm" variant={plan.popular ? 'default' : 'outline'} className="mt-1">
+              <Button
+                size="sm"
+                variant={plan.popular ? 'default' : 'outline'}
+                className="mt-1"
+                onClick={() =>
+                  toast(`Plan ${plan.nombre}: disponible próximamente. ${MSG_RESET}`, {
+                    icon: 'ℹ️',
+                  })
+                }
+              >
                 Elegir plan
               </Button>
             </div>
@@ -66,7 +82,10 @@ export default function CreditsExhausted({ onClose }) {
 
       <div className="flex items-center justify-center gap-2 border-t border-outline-variant pt-4">
         <ShieldQuestion className="h-4 w-4 text-primary" />
-        <button className="text-sm font-semibold text-primary hover:underline">
+        <button
+          onClick={() => toast.success(MSG_RESET)}
+          className="text-sm font-semibold text-primary hover:underline"
+        >
           Pedir reset al administrador
         </button>
       </div>

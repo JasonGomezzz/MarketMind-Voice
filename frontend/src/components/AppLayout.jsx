@@ -114,10 +114,14 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        {/* Token Balance */}
+        {/* Token Balance — clic lleva a Configuración (detalle de cuota) */}
         {showCredits && (
           <div className="px-4 py-4">
-            <div className="glass-soft glass-float rounded-xl p-4">
+            <button
+              onClick={() => navigate('/settings')}
+              aria-label="Ver detalle de créditos de IA en Configuración"
+              className="glass-soft glass-float w-full rounded-xl p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
               <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary/70">
                 Créditos de IA
               </p>
@@ -127,12 +131,10 @@ export default function AppLayout() {
                   {tokens ?? '—'}
                 </span>
               </div>
-              {tokens === 0 && (
-                <p className="mt-1 text-xs font-medium text-error">
-                  Cuota agotada — pide reset al admin
-                </p>
-              )}
-            </div>
+              <p className={`mt-1 text-xs font-medium ${tokens === 0 ? 'text-error' : 'text-on-surface-variant'}`}>
+                {tokens === 0 ? 'Cuota agotada — pide reset al admin' : 'Ver detalle →'}
+              </p>
+            </button>
           </div>
         )}
 
@@ -150,13 +152,13 @@ export default function AppLayout() {
             </div>
           </div>
           <div className="space-y-1">
-            <a
-              href="mailto:soporte@marketmind.ia?subject=Soporte%20MarketMind%20IA"
+            <NavLink
+              to="/prompt-guide"
               className="flex items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-primary"
             >
               <LifeBuoy className="h-4 w-4" />
-              Soporte
-            </a>
+              Soporte y guía
+            </NavLink>
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-error"

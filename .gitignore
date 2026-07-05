@@ -68,3 +68,6 @@ db.sqlite3
 # Env locales adicionales
 .env.local
 .env.*.local
+
+# Docs de sustentación (privados, como CLAUDE.md — no van al repo)
+docs/
