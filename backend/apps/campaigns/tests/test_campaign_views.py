@@ -8,6 +8,7 @@ from apps.campaigns.models import Campaign, CampaignPlataforma, CampaignStatus, 
 
 CAMPAIGNS_URL = "/api/campaigns/"
 STATS_URL = "/api/campaigns/stats/"
+CREDITS_DETAIL_URL = "/api/campaigns/credits-detail/"
 
 
 def campaign_url(pk: int) -> str:
@@ -239,6 +240,44 @@ class TestCampaignStats:
     def test_stats_unauthenticated_401(self):
         client = APIClient()
         response = client.get(STATS_URL)
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestCampaignCreditsDetail:
+    def test_returns_200(self, api_client):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        assert response.status_code == 200
+        assert response.data["success"] is True
+
+    def test_incluye_tokens_disponibles(self, api_client, user_marketero):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        data = response.data["data"]
+        assert data["tokens_disponibles"] == user_marketero.tokens_disponibles
+
+    def test_historial_lista_campanas_propias(self, api_client, campaign, campaign_generada):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        historial = response.data["data"]["historial"]
+        ids = {c["id"] for c in historial}
+        assert {campaign.id, campaign_generada.id} <= ids
+
+    def test_metricas_del_mes_se_calculan(self, api_client, campaign_generada):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        data = response.data["data"]
+        assert data["campanas_mes"] >= 1
+        assert data["consumidos_mes"] >= 0
+        assert data["promedio_por_campana_mes"] >= 0
+
+    def test_sin_campanas_no_falla(self, api_client):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        data = response.data["data"]
+        assert data["historial"] == []
+        assert data["campanas_mes"] == 0
+        assert data["promedio_por_campana_mes"] == 0
+
+    def test_unauthenticated_401(self):
+        client = APIClient()
+        response = client.get(CREDITS_DETAIL_URL)
         assert response.status_code == 401
 
 

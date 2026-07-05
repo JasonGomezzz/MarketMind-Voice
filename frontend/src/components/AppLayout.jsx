@@ -128,8 +128,8 @@ export default function AppLayout() {
         {showCredits && (
           <div className="px-4 py-4">
             <button
-              onClick={() => navigate('/settings')}
-              aria-label="Ver detalle de créditos de IA en Configuración"
+              onClick={() => navigate('/credits')}
+              aria-label="Ver detalle de créditos de IA"
               className="glass-soft glass-float w-full rounded-xl p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary/70">

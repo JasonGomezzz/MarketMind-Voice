@@ -11,7 +11,7 @@ from typing import Any
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -444,6 +444,59 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 success=True,
                 message="Estadísticas de campañas.",
                 data=data,
+            ),
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["get"], url_path="credits-detail")
+    def credits_detail(self, request: Request) -> Response:
+        """
+        GET /api/campaigns/credits-detail/
+
+        Detalle de consumo de créditos IA del usuario para la pantalla
+        "Créditos de IA": saldo actual, métricas derivadas del mes en curso
+        y el historial de consumo por campaña (solo datos que existen
+        realmente en el modelo — sin inventar transacciones ni facturación).
+
+        Returns:
+            HTTP 200 con tokens_disponibles, métricas del mes y el listado
+            de campañas (id, titulo, fecha_creacion, tokens_consumidos, estado).
+        """
+        qs = self.get_queryset()
+        inicio_mes = timezone.now().replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+        del_mes = qs.filter(fecha_creacion__gte=inicio_mes)
+
+        agregados_mes = del_mes.aggregate(
+            consumidos=Sum("tokens_consumidos"), total=Count("id")
+        )
+        consumidos_mes = agregados_mes["consumidos"] or 0
+        campanas_mes = agregados_mes["total"] or 0
+        promedio_mes = round(consumidos_mes / campanas_mes, 1) if campanas_mes else 0
+
+        historial = [
+            {
+                "id": c.id,
+                "titulo": c.titulo,
+                "fecha_creacion": c.fecha_creacion,
+                "tokens_consumidos": c.tokens_consumidos,
+                "estado": c.estado,
+            }
+            for c in qs.order_by("-fecha_creacion")[:50]
+        ]
+
+        return Response(
+            api_response(
+                success=True,
+                message="Detalle de créditos de IA.",
+                data={
+                    "tokens_disponibles": request.user.tokens_disponibles,
+                    "consumidos_mes": consumidos_mes,
+                    "campanas_mes": campanas_mes,
+                    "promedio_por_campana_mes": promedio_mes,
+                    "historial": historial,
+                },
             ),
             status=status.HTTP_200_OK,
         )
