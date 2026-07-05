@@ -1,26 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
+import AppToaster from '@/components/ui/AppToaster'
+import { ArrowLeft, FileText, ImageOff, RefreshCw, Send } from 'lucide-react'
+import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
-
-const ESTADO_BADGE = {
-  borrador: 'bg-gray-100 text-gray-600',
-  pendiente_ia: 'bg-yellow-100 text-yellow-700',
-  generado: 'bg-green-100 text-green-700',
-  pendiente_aprobacion: 'bg-blue-100 text-blue-700',
-  aprobado: 'bg-emerald-100 text-emerald-700',
-  rechazado: 'bg-red-100 text-red-700',
-}
-
-const ESTADO_LABEL = {
-  borrador: 'Borrador',
-  pendiente_ia: 'Pendiente IA',
-  generado: 'Generado',
-  pendiente_aprobacion: 'Pendiente Aprobación',
-  aprobado: 'Aprobado',
-  rechazado: 'Rechazado',
-}
+import { Button } from '@/components/ui/button'
+import StatusBadge from '@/components/StatusBadge'
+import CampaignStepper from '@/components/CampaignStepper'
 
 const READONLY_STATES = ['aprobado', 'rechazado']
 
@@ -28,10 +16,12 @@ function wordCount(text) {
   return text.trim() ? text.trim().split(/\s+/).length : 0
 }
 
-function first100Words(text) {
-  return text.trim().split(/\s+/).slice(0, 100).join(' ')
-}
-
+/**
+ * Detalle de campaña (Lumina Creative). Marketero edita copy, envía a aprobación,
+ * exporta PDF. LÓGICA INTACTA: fetch, autosave debounce 30s, guardar, submit+modal,
+ * export PDF (blob + 402), imagen b64 + descarga, estados readonly, historial.
+ * Agrega: stepper FSM del estado.
+ */
 export default function CampaignDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -42,6 +32,7 @@ export default function CampaignDetailPage() {
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const [autoSavedAt, setAutoSavedAt] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
@@ -55,7 +46,7 @@ export default function CampaignDetailPage() {
         const c = data.data.campaign
         setCampaign(c)
         const draft = localStorage.getItem(draftKey)
-        setText(draft !== null ? draft : (c.texto_generado || ''))
+        setText(draft !== null ? draft : c.texto_generado || '')
       } catch {
         setError(true)
       } finally {
@@ -63,8 +54,10 @@ export default function CampaignDetailPage() {
       }
     }
     fetchCampaign()
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [id])
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [id, draftKey])
 
   // Autosave con debounce de 30s
   useEffect(() => {
@@ -74,8 +67,10 @@ export default function CampaignDetailPage() {
       localStorage.setItem(draftKey, text)
       setAutoSavedAt(new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }))
     }, 30000)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [text])
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [text, campaign, draftKey])
 
   async function handleSave() {
     setSaving(true)
@@ -98,15 +93,36 @@ export default function CampaignDetailPage() {
     try {
       await api.post(`/api/campaigns/${id}/submit/`)
       localStorage.removeItem(draftKey)
-      toast.success('Campaña enviada al cliente')
+      toast.success('Enviada a aprobación del cliente')
       setTimeout(() => navigate('/dashboard'), 1200)
     } catch (err) {
       if (err.response?.status === 402) {
-        toast.error('Sin tokens disponibles. Contacta al administrador para renovar tu plan.')
+        toast.error('Cuota agotada. Pide un reset al administrador.')
       } else {
         toast.error(err.response?.data?.message || 'Error al enviar')
       }
       setSubmitting(false)
+    }
+  }
+
+  async function handleRegenerate() {
+    setRegenerating(true)
+    try {
+      const { data } = await api.post(`/api/campaigns/${id}/regenerate/`)
+      const c = data.data.campaign
+      setCampaign(c)
+      setText(c.texto_generado || '')
+      localStorage.removeItem(draftKey)
+      window.dispatchEvent(new Event('credits-updated'))
+      toast.success(data.message || 'Regeneración iniciada')
+    } catch (err) {
+      if (err.response?.status === 402) {
+        toast.error('Cuota agotada. Pide un reset al administrador.')
+      } else {
+        toast.error(err.response?.data?.message || 'No se pudo regenerar')
+      }
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -116,7 +132,7 @@ export default function CampaignDetailPage() {
         responseType: 'blob',
       })
       const blobUrl = window.URL.createObjectURL(
-        new Blob([response.data], { type: 'application/pdf' })
+        new Blob([response.data], { type: 'application/pdf' }),
       )
       const anchor = document.createElement('a')
       anchor.href = blobUrl
@@ -125,50 +141,63 @@ export default function CampaignDetailPage() {
       anchor.click()
       anchor.remove()
       window.URL.revokeObjectURL(blobUrl)
-    } catch (error) {
+    } catch (err) {
       let msg = 'Error al generar el PDF.'
-      if (error.response?.data instanceof Blob) {
+      if (err.response?.data instanceof Blob) {
         try {
-          const parsed = JSON.parse(await error.response.data.text())
+          const parsed = JSON.parse(await err.response.data.text())
           msg = parsed.message || msg
-        } catch { /* usar mensaje genérico */ }
+        } catch {
+          /* usar mensaje genérico */
+        }
       }
       toast.error(msg)
     }
   }
 
   if (loading) return <LoadingSkeleton />
-  if (error) return <p className="text-sm text-red-500 p-4">Error al cargar la campaña.</p>
+  if (error)
+    return (
+      <p className="rounded-xl border border-error/20 bg-error-container p-4 text-sm text-on-error-container">
+        Error al cargar la campaña.
+      </p>
+    )
 
   const isReadonly = READONLY_STATES.includes(campaign.estado)
   const canSubmit = campaign.estado === 'generado'
+  // HU regenerar: borrador (fallo previo) o rechazado (vuelve a borrador en backend)
+  const canRegenerate = ['borrador', 'rechazado'].includes(campaign.estado)
 
   return (
     <>
-      <Toaster position="top-right" />
+      <AppToaster />
 
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xl font-semibold text-gray-900 truncate max-w-[60%]">
-          {campaign.titulo}
-        </h2>
-        <button
-          onClick={() => navigate('/campaigns')}
-          className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          ← Volver
-        </button>
+      {/* Encabezado */}
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <button
+            onClick={() => navigate('/campaigns')}
+            className="mb-2 inline-flex items-center gap-1.5 text-sm text-on-surface-variant transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver a campañas
+          </button>
+          <h1 className="truncate text-3xl font-bold tracking-tight text-on-surface">
+            {campaign.titulo}
+          </h1>
+        </div>
+        <StatusBadge estado={campaign.estado} className="px-4 py-1.5 text-sm" />
       </div>
 
-      <div className="flex gap-6 items-start">
+      {/* Stepper FSM del estado */}
+      <div className="mb-6 rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+        <CampaignStepper estado={campaign.estado} />
+      </div>
 
-        {/* ── Columna izquierda: Metadatos ─────────────────── */}
-        <div className="w-72 shrink-0 space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            <MetaRow label="Estado">
-              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_BADGE[campaign.estado] ?? 'bg-gray-100 text-gray-600'}`}>
-                {ESTADO_LABEL[campaign.estado] ?? campaign.estado}
-              </span>
-            </MetaRow>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* ── Columna izquierda: Metadatos ── */}
+        <div className="w-full shrink-0 space-y-4 lg:w-72">
+          <div className="space-y-3 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
             <MetaRow label="Cliente">{campaign.cliente_nombre}</MetaRow>
             <MetaRow label="Industria" capitalize>{campaign.industria}</MetaRow>
             <MetaRow label="Tono" capitalize>{campaign.tono}</MetaRow>
@@ -176,41 +205,62 @@ export default function CampaignDetailPage() {
             <MetaRow label="Creada">
               {new Date(campaign.fecha_creacion).toLocaleDateString('es-PE')}
             </MetaRow>
-            <MetaRow label="Marketero">{campaign.marketero}</MetaRow>
+            <MetaRow label="Marketero">
+              {campaign?.marketero ? String(campaign.marketero).split(' <')[0] : '—'}
+            </MetaRow>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+          <div className="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
               Prompt original
             </p>
-            <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">
+            <p className="whitespace-pre-wrap text-xs leading-relaxed text-on-surface-variant">
               {campaign.prompt}
             </p>
           </div>
 
-          <VersionHistoryPanel campaignId={id} />
+          <VersionHistoryPanel
+            campaignId={id}
+            canRestore={['borrador', 'generado'].includes(campaign.estado)}
+            onRestored={(c) => {
+              setCampaign(c)
+              setText(c.texto_generado || '')
+              localStorage.removeItem(draftKey)
+            }}
+          />
         </div>
 
-        {/* ── Columna derecha: Editor + Imagen ────────────── */}
-        <div className="flex-1 min-w-0">
-
+        {/* ── Columna derecha: Editor + Imagen ── */}
+        <div className="min-w-0 flex-1">
           {isReadonly && (
-            <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium border ${
-              campaign.estado === 'aprobado'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                : 'bg-red-50 border-red-200 text-red-700'
-            }`}>
+            <div
+              className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${
+                campaign.estado === 'aprobado'
+                  ? 'border-success/20 bg-success-container text-success'
+                  : 'border-error/20 bg-error-container text-on-error-container'
+              }`}
+            >
               {campaign.estado === 'aprobado'
                 ? 'Esta campaña fue aprobada. El texto está bloqueado.'
-                : 'Esta campaña fue rechazada. El texto está bloqueado.'}
+                : 'Esta campaña fue rechazada. Revisa el feedback del cliente y regenérala con IA.'}
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-gray-700">Copy publicitario</p>
+          {/* Feedback de rechazo, si existe (HU15) */}
+          {campaign.estado === 'rechazado' && campaign.feedback_rechazo && (
+            <div className="mb-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-error">
+                Feedback del cliente
+              </p>
+              <p className="text-sm leading-relaxed text-on-surface">{campaign.feedback_rechazo}</p>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-on-surface">Copy publicitario</p>
               {autoSavedAt && (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-on-surface-variant">
                   Guardado automáticamente a las {autoSavedAt}
                 </p>
               )}
@@ -218,69 +268,69 @@ export default function CampaignDetailPage() {
 
             <textarea
               value={text}
-              onChange={e => setText(e.target.value)}
+              onChange={(e) => setText(e.target.value)}
               disabled={isReadonly}
-              rows={18}
-              className={`w-full border rounded-lg px-4 py-3 text-sm leading-relaxed resize-y outline-none focus:ring-2 focus:ring-indigo-500 transition ${
+              rows={16}
+              className={`w-full resize-y rounded-lg border px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-transparent focus:ring-2 focus:ring-primary ${
                 isReadonly
-                  ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-200'
-                  : 'border-gray-300'
+                  ? 'cursor-not-allowed border-outline-variant bg-surface-container-low text-on-surface-variant'
+                  : 'border-outline-variant'
               }`}
             />
 
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-xs text-gray-400">{wordCount(text)} palabras</p>
-              {!isReadonly && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 transition-colors"
-                  >
-                    {saving ? 'Guardando…' : 'Guardar cambios'}
-                  </button>
-                  {canSubmit && (
-                    <button
-                      onClick={() => setShowModal(true)}
-                      disabled={submitting}
-                      className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-colors"
-                    >
-                      {submitting ? 'Enviando…' : 'Enviar al cliente'}
-                    </button>
-                  )}
-                </div>
-              )}
-              {campaign.estado === 'aprobado' && (
-                <button
-                  onClick={handleExportPDF}
-                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Exportar PDF
-                </button>
-              )}
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-xs text-on-surface-variant">{wordCount(text)} palabras</p>
+              <div className="flex gap-2">
+                {!isReadonly && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+                      {saving ? 'Guardando…' : 'Guardar cambios'}
+                    </Button>
+                    {canSubmit && (
+                      <Button size="sm" onClick={() => setShowModal(true)} disabled={submitting}>
+                        <Send className="h-4 w-4" />
+                        {submitting ? 'Enviando…' : 'Enviar al cliente'}
+                      </Button>
+                    )}
+                  </>
+                )}
+                {canRegenerate && (
+                  <Button size="sm" onClick={handleRegenerate} disabled={regenerating}>
+                    <RefreshCw className={`h-4 w-4 ${regenerating ? 'animate-spin' : ''}`} />
+                    {regenerating ? 'Regenerando…' : 'Regenerar con IA'}
+                  </Button>
+                )}
+                {campaign.estado === 'aprobado' && (
+                  <Button size="sm" onClick={handleExportPDF}>
+                    <FileText className="h-4 w-4" />
+                    Exportar PDF
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Imagen generada — HU22 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 mt-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Imagen generada</p>
+          <div className="mt-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <p className="mb-3 text-sm font-semibold text-on-surface">Imagen generada</p>
             {campaign.imagen_b64 ? (
-              <div className="space-y-3">
-                <img
-                  src={`data:image/png;base64,${campaign.imagen_b64}`}
-                  alt="Imagen generada por IA"
-                  className="w-full rounded-lg"
-                />
-                <a
-                  href={`data:image/png;base64,${campaign.imagen_b64}`}
-                  download={`campaign_${id}_imagen.png`}
-                  className="inline-block px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Descargar PNG
-                </a>
-              </div>
+              <ImageLightbox
+                src={`data:image/png;base64,${campaign.imagen_b64}`}
+                alt="Imagen generada por IA"
+                downloadName={`campaign_${id}_imagen.png`}
+              />
             ) : (
-              <p className="text-sm text-gray-400 text-center py-6">Imagen no generada aún</p>
+              <div className="flex flex-col items-center gap-2 py-8 text-center text-on-surface-variant">
+                <ImageOff className="h-8 w-8 text-outline" />
+                <p className="text-sm">Imagen no generada aún</p>
+                {campaign.estado === 'generado' && (
+                  <p className="glass-soft mt-2 max-w-sm rounded-lg px-3 py-2 text-xs">
+                    <span className="font-semibold text-primary">Activo provisional: </span>
+                    el copy está listo, pero falta el activo visual. Regenerar (1 crédito)
+                    vuelve a intentar copy e imagen.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -288,8 +338,7 @@ export default function CampaignDetailPage() {
 
       {showModal && (
         <SubmitModal
-          preview={first100Words(text)}
-          wordTotal={wordCount(text)}
+          preview={text}
           onConfirm={handleSubmitConfirm}
           onCancel={() => setShowModal(false)}
         />
@@ -301,8 +350,8 @@ export default function CampaignDetailPage() {
 function MetaRow({ label, children, capitalize }) {
   return (
     <div className="flex items-start justify-between gap-2 text-sm">
-      <span className="text-gray-400 shrink-0">{label}</span>
-      <span className={`text-gray-800 text-right ${capitalize ? 'capitalize' : ''}`}>
+      <span className="shrink-0 text-on-surface-variant">{label}</span>
+      <span className={`text-right text-on-surface ${capitalize ? 'capitalize' : ''}`}>
         {children}
       </span>
     </div>
@@ -311,42 +360,48 @@ function MetaRow({ label, children, capitalize }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="flex gap-6 animate-pulse">
+    <div className="flex animate-pulse gap-6">
       <div className="w-72 space-y-3">
         {[...Array(7)].map((_, i) => (
-          <div key={i} className="h-6 bg-gray-100 rounded" />
+          <div key={i} className="h-6 rounded bg-surface-container-high" />
         ))}
       </div>
-      <div className="flex-1 h-72 bg-gray-100 rounded" />
+      <div className="h-72 flex-1 rounded bg-surface-container-high" />
     </div>
   )
 }
 
-function SubmitModal({ preview, wordTotal, onConfirm, onCancel }) {
+function SubmitModal({ preview, onConfirm, onCancel }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Enviar al cliente</h3>
-        <p className="text-sm text-gray-500 mb-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="submit-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 p-4 backdrop-blur-sm"
+    >
+      <div className="glass-liquid w-full max-w-lg rounded-3xl p-8">
+        <h3 id="submit-title" className="mb-1 text-lg font-semibold text-on-surface">Enviar al cliente</h3>
+        <p className="mb-4 text-sm text-on-surface-variant">
           El cliente verá el siguiente copy para aprobación:
         </p>
-        <div className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 leading-relaxed mb-5 max-h-48 overflow-y-auto whitespace-pre-wrap">
+        <div className="mb-5 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm leading-relaxed text-on-surface">
           {preview}
-          {wordTotal > 100 && <span className="text-gray-400"> …</span>}
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <Button variant="outline" className="flex-1" onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 py-2.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-          >
+          </Button>
+          <Button className="flex-1" onClick={onConfirm}>
             Confirmar envío
-          </button>
+          </Button>
         </div>
       </div>
     </div>

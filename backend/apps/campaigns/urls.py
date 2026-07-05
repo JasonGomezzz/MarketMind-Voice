@@ -4,6 +4,7 @@ from rest_framework.routers import SimpleRouter
 from .views import (
     CampaignExportPDFView,
     CampaignVersionListView,
+    CampaignVersionRestoreView,
     CampaignViewSet,
     EmailSentCallbackView,
     IaResultCallbackView,
@@ -18,6 +19,11 @@ urlpatterns = [
     path("webhook/email-sent/", EmailSentCallbackView.as_view(), name="email-sent-callback"),
     # Historial de versiones (HU23)
     path("<int:campaign_id>/versions/", CampaignVersionListView.as_view(), name="campaign-versions"),
+    path(
+        "<int:campaign_id>/versions/<int:version_id>/restore/",
+        CampaignVersionRestoreView.as_view(),
+        name="campaign-version-restore",
+    ),
     # Exportar PDF (HU25)
     path("<int:campaign_id>/export-pdf/", CampaignExportPDFView.as_view(), name="campaign-export-pdf"),
 ] + router.urls

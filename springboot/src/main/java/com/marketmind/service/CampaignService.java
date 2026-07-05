@@ -2,17 +2,22 @@ package com.marketmind.service;
 
 import com.marketmind.dto.CampaignResponseDTO;
 import com.marketmind.entity.CampaignEntity;
+import com.marketmind.entity.UserEntity;
 import com.marketmind.exception.CampaignNotFoundException;
 import com.marketmind.exception.InvalidStatusTransitionException;
 import com.marketmind.repository.CampaignRepository;
+import com.marketmind.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Lógica de negocio del bloque usuario (Spring Boot).
@@ -29,19 +34,39 @@ public class CampaignService {
     );
 
     private final CampaignRepository campaignRepository;
+    private final UserRepository userRepository;
     private final N8nEmailClient n8nEmailClient;
 
     /** HU12 — lista todas las campañas pendientes de aprobación. */
     public Page<CampaignResponseDTO> findPending(Pageable pageable) {
-        return campaignRepository
-                .findByEstado("pendiente_aprobacion", pageable)
-                .map(this::toDTO);
+        Page<CampaignEntity> page = campaignRepository
+                .findByEstado("pendiente_aprobacion", pageable);
+        // Nombres de marketero resueltos en UN solo query (sin N+1 por fila)
+        Map<Long, String> nombres = nombresPorId(
+                page.getContent().stream()
+                        .map(CampaignEntity::getMarketeroId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet()));
+        return page.map(e -> toDTO(e, nombres.get(e.getMarketeroId())));
+    }
+
+    /**
+     * Dashboard cliente — conteos por estado para las stat cards.
+     * Solo lectura (COUNT), respeta la regla políglota: Spring nunca escribe
+     * más allá del campo estado.
+     */
+    public Map<String, Long> getSummary() {
+        return Map.of(
+                "pendientes", campaignRepository.countByEstado("pendiente_aprobacion"),
+                "aprobadas", campaignRepository.countByEstado("aprobado"),
+                "rechazadas", campaignRepository.countByEstado("rechazado")
+        );
     }
 
     /** HU13 — detalle de campaña por id. */
     public CampaignResponseDTO findById(Long id) {
         return campaignRepository.findById(id)
-                .map(this::toDTO)
+                .map(this::toDTOConNombre)
                 .orElseThrow(() -> new CampaignNotFoundException(id));
     }
 
@@ -78,10 +103,33 @@ public class CampaignService {
         // si el HTTP demora, agregamos hasta N8N_WEBHOOK_TIMEOUT a la respuesta.
         n8nEmailClient.notify(saved, newStatus);
 
-        return toDTO(saved);
+        return toDTOConNombre(saved);
     }
 
-    private CampaignResponseDTO toDTO(CampaignEntity e) {
+    /**
+     * Resuelve los nombres de marketero para un conjunto de ids en un solo
+     * query (findAllById). Lectura pura sobre la tabla users de Django.
+     */
+    private Map<Long, String> nombresPorId(Set<Long> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        List<UserEntity> users = userRepository.findAllById(ids);
+        return users.stream()
+                .collect(Collectors.toMap(UserEntity::getId, UserEntity::getNombre));
+    }
+
+    /** Variante para flujos de UNA campaña (detalle, updateStatus). */
+    private CampaignResponseDTO toDTOConNombre(CampaignEntity e) {
+        String nombre = e.getMarketeroId() == null
+                ? null
+                : userRepository.findById(e.getMarketeroId())
+                        .map(UserEntity::getNombre)
+                        .orElse(null);
+        return toDTO(e, nombre);
+    }
+
+    private CampaignResponseDTO toDTO(CampaignEntity e, String marketeroNombre) {
         return CampaignResponseDTO.builder()
                 .id(e.getId())
                 .titulo(e.getTitulo())
@@ -98,6 +146,7 @@ public class CampaignService {
                 .estado(e.getEstado())
                 .feedbackRechazo(e.getFeedbackRechazo())
                 .marketeroId(e.getMarketeroId())
+                .marketeroNombre(marketeroNombre)
                 .fechaCreacion(e.getFechaCreacion())
                 .fechaActualizacion(e.getFechaActualizacion())
                 .version(e.getVersion())

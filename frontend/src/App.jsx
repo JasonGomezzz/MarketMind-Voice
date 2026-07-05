@@ -1,32 +1,55 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
+import ClientDashboardPage from './pages/ClientDashboardPage'
+import ClientReviewPage from './pages/ClientReviewPage'
 import CampaignListPage from './pages/CampaignListPage'
 import NewCampaignPage from './pages/NewCampaignPage'
 import CampaignDetailPage from './pages/CampaignDetailPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import UsersAdminPage from './pages/UsersAdminPage'
+import AccountSettingsPage from './pages/AccountSettingsPage'
+import PromptGuidePage from './pages/PromptGuidePage'
+import CreditsDetailPage from './pages/CreditsDetailPage'
 import PrivateRoute from './components/PrivateRoute'
 import AppLayout from './components/AppLayout'
+
+/**
+ * Ruta /dashboard según rol: el cliente ve su dashboard (Spring Boot :8080),
+ * marketero/superadmin ven el suyo (Django). Cada uno es un componente propio,
+ * así sus hooks viven aislados (sin violar las reglas de hooks de React).
+ */
+function DashboardRouter() {
+  const role = localStorage.getItem('user_role') || ''
+  return role === 'cliente' ? <ClientDashboardPage /> : <DashboardPage />
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         <Route element={<PrivateRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<DashboardRouter />} />
             <Route path="/campaigns" element={<CampaignListPage />} />
             <Route path="/campaigns/new" element={<NewCampaignPage />} />
             <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+            <Route path="/review/:id" element={<ClientReviewPage />} />
             <Route path="/admin" element={<UsersAdminPage />} />
             <Route path="/admin/analytics" element={<AnalyticsPage />} />
+            <Route path="/settings" element={<AccountSettingsPage />} />
+            <Route path="/prompt-guide" element={<PromptGuidePage />} />
+            <Route path="/credits" element={<CreditsDetailPage />} />
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,0 +1,259 @@
+# MarketMind IA — Sistema de diseño "Lumina Creative"
+
+> Fuente de verdad visual para TODO el frontend React.
+> Look **claro, moderno, premium, minimalista**. Acento indigo. Tipografía Inter.
+> Adaptado a **Tailwind v4 (config CSS-first `@theme`)** — NO existe `tailwind.config.js`.
+> Todos los tokens viven en `src/index.css` dentro de `@theme` y se usan como
+> utilidades Tailwind normales (`bg-primary`, `text-on-surface`, `rounded-xl`, …).
+
+## Marca y estética
+
+Estética **minimalista moderna** para un entorno de marketing de alto rendimiento.
+Prioriza claridad, velocidad y acabado premium. La interfaz se siente como un
+espacio de trabajo de gama alta: ordenado, intencional, con "aire". Los elementos
+de UI ceden protagonismo para que el contenido generado por IA (copy + imagen)
+sea el foco. Profundidad por **sombras ambientales suaves**, no por bordes duros.
+
+## Color (tokens semánticos)
+
+Base blanca (#fcf8ff) para máximo brillo. El **indigo** es el acento de marca y
+de acciones primarias. Los colores de estado están calibrados para legibilidad
+alta sobre fondo claro (fondo container suave + texto del mismo tono).
+
+| Token Tailwind        | Hex       | Uso |
+|-----------------------|-----------|-----|
+| `background`          | `#fcf8ff` | Fondo global |
+| `surface`             | `#fcf8ff` | Superficie base |
+| `surface-container-low` | `#f5f2fe` | Sidebar, secciones anidadas, hover |
+| `surface-container`   | `#efecf8` | Tarjetas alternas |
+| `surface-container-high` | `#e9e6f3` | Chips, fondos sutiles |
+| `surface-container-highest` | `#e4e1ed` | Marquee, zonas grises |
+| `on-surface`          | `#1b1b23` | Texto primario |
+| `on-surface-variant`  | `#464554` | Texto secundario |
+| `outline`             | `#767586` | Íconos apagados |
+| `outline-variant`     | `#c7c4d7` | Bordes de tarjeta |
+| **`primary`**         | `#4648d4` | **Acento indigo — CTAs, marca** |
+| `primary-container`   | `#6063ee` | Hover del primary |
+| `on-primary`          | `#ffffff` | Texto sobre primary |
+| `primary-fixed`       | `#e1e0ff` | Banners suaves, badges indigo |
+| `on-primary-fixed`    | `#07006c` | Texto sobre primary-fixed |
+| `secondary-container` | `#dae2fd` | Badges/eyebrows |
+| `tertiary`            | `#904900` | Ámbar — acento secundario, "más popular" |
+| `tertiary-container`  | `#ffe3c2` | Fondo ámbar suave |
+| **`success`**         | `#2e7d32` | Estado aprobado |
+| `success-container`   | `#dcf3dd` | Fondo verde suave |
+| **`error`**           | `#ba1a1a` | Estado rechazado, destructivo |
+| `error-container`     | `#ffdad6` | Fondo rojo suave |
+| **`warning`**         | `#b55d00` | Estado pendiente |
+| `warning-container`   | `#ffe3c2` | Fondo ámbar de aviso |
+
+## Tipografía
+
+**Inter** en todos los roles (legibilidad + carácter profesional neutral).
+
+| Rol         | Tamaño | Peso | Line-height | Tracking | Utilidad Tailwind |
+|-------------|--------|------|-------------|----------|-------------------|
+| display-xl  | 60px   | 800  | 72px        | -0.02em  | `text-6xl font-extrabold tracking-tight` |
+| display-lg  | 48px   | 700  | 56px        | -0.02em  | `text-5xl font-bold tracking-tight` |
+| h1          | 36px   | 700  | 44px        | -0.02em  | `text-4xl font-bold tracking-tight` |
+| h2          | 30px   | 600  | 38px        | -0.01em  | `text-3xl font-semibold` |
+| h3          | 24px   | 600  | 32px        | —        | `text-2xl font-semibold` |
+| body-lg     | 18px   | 400  | 28px        | —        | `text-lg` |
+| body        | 16px   | 400  | 24px        | —        | `text-base` |
+| label-md    | 14px   | 500  | 20px        | —        | `text-sm font-medium` |
+| label-sm    | 12px   | 600  | 16px        | 0.05em   | `text-xs font-semibold tracking-wider uppercase` |
+
+- Titulares con `text-wrap: balance`.
+- Números en columnas: `tabular-nums`.
+
+## Radios (formas)
+
+| Elemento | Radio | Utilidad |
+|----------|-------|----------|
+| Botones, inputs | 8px | `rounded-lg` |
+| Tarjetas estándar | 16px | `rounded-xl` |
+| Feature cards, modales | 24px | `rounded-3xl` |
+| Badges de estado / chips | full (pill) | `rounded-full` |
+
+## Elevación (sombras ambientales)
+
+- **Nivel 1 (tarjeta):** `shadow-sm` — `0 1px 3px rgb(15 23 42 / .06)`
+- **Nivel 2 (hover/dropdown):** `shadow-lg`
+- **Nivel 3 (modal):** `shadow-xl`
+- **Nav fija:** `backdrop-blur` (12px) + fondo `surface/80`.
+- Efecto **`.glass-card`**: blanco 70% + blur 12px + borde `outline-variant/60`.
+
+### Liquid glass (iOS-style) — utilidades y regla de uso
+
+- **`.glass-liquid`**: blanco 72% + blur 18px + saturate 1.4 + borde luminoso +
+  reflejo interior. Para superficies FLOTANTES sobre fondo claro: modales,
+  drawer de historial.
+- **`.glass-liquid-dark`**: blanco 12% + blur 16px. Para flotantes sobre
+  color/imagen (panel indigo del login, tarjeta del hero).
+- **`.glass-soft`**: 75% sólido + blur 12px. Para avisos sobre fondo claro
+  donde la legibilidad manda (banner cuota, créditos sidebar, pro tips).
+- **`.glass-float`**: micro-interacción hover (elevación -3px + borde más
+  luminoso). SOLO en tarjetas glass flotantes decorativas — nunca en
+  modales/drawer (no reaccionan a hover) ni superficies de lectura.
+- **Toasts**: siempre via `components/ui/AppToaster` (receta glass-liquid
+  inline). No montar `<Toaster/>` de react-hot-toast directo.
+- **REGLA DURA**: glass SÍ en modales/drawer/flotantes; NO en tablas,
+  formularios/inputs ni editor de copy (contraste AA 4.5:1).
+
+## Espaciado
+
+- **Regla de 8px:** todo múltiplo de 8 (8, 16, 24, 32, 48, 64).
+- Contenedor centrado máx **1440px** (`max-w-[1440px] mx-auto`).
+- Padding lateral desktop 40px, tablet 24px, mobile 16px.
+- Padding interno de tarjetas ≥ 24px (sensación "airy").
+
+## Componentes
+
+- **Botón primario:** `bg-primary text-on-primary rounded-lg`, hover `bg-primary-container`, `active:scale-95`.
+- **Botón secundario:** `border border-outline-variant bg-white`, hover `bg-surface-container-low`.
+- **Tarjeta:** blanca, `border-outline-variant`, `rounded-xl`, `shadow-sm`.
+- **Input:** borde `outline-variant`, foco → ring indigo 1px. Font 16px (evita zoom iOS).
+- **Bloques de contenido IA:** distinguir del input manual con tinte indigo suave o borde degradado.
+
+## Badges de estado FSM (crítico — usar SIEMPRE estos)
+
+Los seis estados reales del backend (`CampaignStatus`). Pill (`rounded-full`),
+fondo = tinte ~10% del color, texto = color pleno.
+
+| Estado (valor real)     | Etiqueta ES          | Fondo               | Texto     |
+|-------------------------|----------------------|---------------------|-----------|
+| `borrador`              | Borrador             | `surface-container-high` | `on-surface-variant` |
+| `pendiente_ia`          | Pendiente IA         | `primary-fixed`     | `primary` |
+| `generado`              | Generado             | `secondary-container`| `primary` |
+| `pendiente_aprobacion`  | Pendiente aprobación | `warning-container` | `tertiary`|
+| `aprobado`              | Aprobado             | `success-container` | `success` |
+| `rechazado`             | Rechazado            | `error-container`   | `error`   |
+
+## Animación (motion/react)
+
+Movimiento con propósito, sutil (evitar sensación "AI-generated" por exceso):
+- **Zoom-in de entrada** en el mockup del hero (scale 0.92→1, opacity 0→1).
+- **Scroll-reveal** en secciones (fade + translateY al entrar en viewport).
+- **Marquee** infinito en la galería (pausa en hover).
+- Micro-interacciones hover en tarjetas (`shadow` + leve `scale`).
+- Respetar `prefers-reduced-motion` siempre.
+
+## Idioma
+
+**Todo en español.** "Iniciar sesión" (no Login), "Empezar gratis", "Crear campaña".
+Voz activa, sentence case, sin relleno.
+
+## Reglas de coherencia con el backend (no inventar)
+
+- **No** login social (solo JWT). **No** presupuesto en campañas. **No** video AI.
+- Planes = **cuota de tokens de IA** (1 crédito = 1 generación).
+- Imagen de anuncio = **base64** (`imagen_b64`) con botón "Descargar PNG".
+- Roles: SuperAdmin (usuarios/analytics/cuota) · Marketero (crea campañas) ·
+  Cliente (revisa/aprueba, no crea).
+
+---
+
+# Especificaciones de componentes
+
+> Componentes recurrentes de la app. **Cada valor deriva de los tokens `@theme`
+> ya definidos** — nunca se inventa un color ni un tamaño nuevo. Al construir una
+> pantalla, se reutiliza esta spec para que todas se vean de la misma familia.
+
+## Stat card (tarjeta de métrica)
+
+Usada en Dashboard, Analytics y Admin. Estructura fija:
+- Contenedor: `rounded-xl border border-outline-variant bg-white p-6 shadow-sm hover:shadow-lg transition-all`
+- Ícono en cuadro tintado 48px: `h-12 w-12 rounded-lg` + tinte del contexto
+  (primary → `bg-primary/10 text-primary`; éxito → `bg-success-container text-success`;
+  ámbar → `bg-tertiary-container text-tertiary`).
+- Label: `text-sm text-on-surface-variant`.
+- Número: `text-3xl font-bold tabular-nums text-on-surface` (o `text-error` si es alerta, p.ej. créditos = 0).
+- Micro-tendencia opcional: pill `text-xs font-bold` verde (`text-success`) o rojo (`text-error`).
+
+```jsx
+<div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm hover:shadow-lg transition-all">
+  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+    <Megaphone className="h-6 w-6" />
+  </div>
+  <p className="text-sm text-on-surface-variant">Campañas activas</p>
+  <h3 className="mt-1 text-3xl font-bold tabular-nums text-on-surface">42</h3>
+</div>
+```
+
+## Badge de estado FSM
+
+Pill (`rounded-full px-3 py-1.5 text-sm font-semibold`). Fondo = tinte del estado,
+texto = color pleno (ver tabla FSM arriba). Siempre estos seis, nunca inventar nombres.
+
+```jsx
+// Ejemplo: aprobado
+<span className="inline-flex items-center gap-1.5 rounded-full bg-success-container px-3 py-1.5 text-sm font-semibold text-success">
+  <CircleCheck className="h-3.5 w-3.5" /> Aprobado
+</span>
+```
+
+## Stepper FSM (línea de tiempo del estado)
+
+En el detalle de campaña. Muestra el recorrido `borrador → pendiente_ia → generado
+→ pendiente_aprobacion → aprobado/rechazado`.
+- Nodo **completado**: círculo `bg-success text-white` con check.
+- Nodo **actual**: círculo `bg-primary text-white` (con `ring-4 ring-primary/20`).
+- Nodo **futuro**: círculo `bg-surface-container-high text-outline`.
+- Conector: línea `h-0.5` — `bg-success` si el tramo ya pasó, `bg-outline-variant` si no.
+- Etiqueta bajo cada nodo: `text-xs font-medium` (activo `text-on-surface`, resto `text-on-surface-variant`).
+
+## Tabla de datos
+
+Lista de campañas y directorio de usuarios. Misma anatomía:
+- Contenedor: `rounded-xl border border-outline-variant bg-white shadow-sm overflow-hidden`.
+  Envolver en `overflow-x-auto` para que no rompa en móvil.
+- Header: `bg-surface-container-low`, celdas `text-xs uppercase tracking-wide font-semibold text-on-surface-variant px-4 py-3`.
+- Filas: `border-b border-outline-variant/40 hover:bg-surface-container-low transition-colors`.
+- Columna de estado: usa el **badge FSM**. Números alineados con `tabular-nums`.
+- Acciones al final: botones `ghost` con íconos lucide.
+
+## Estado vacío (empty state)
+
+Cuando una lista no tiene datos. Centrado, invita a actuar (nunca pantalla en blanco):
+- Ícono grande en círculo `h-16 w-16 rounded-full bg-surface-container-high text-outline`.
+- Título `text-lg font-semibold text-on-surface`.
+- Descripción `text-sm text-on-surface-variant max-w-sm`.
+- Un CTA primario (si aplica). Voz activa: "Crea tu primera campaña".
+
+```jsx
+<div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant bg-white/50 p-12 text-center">
+  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-high text-outline">
+    <Megaphone className="h-7 w-7" />
+  </div>
+  <h3 className="text-lg font-semibold text-on-surface">Aún no tienes campañas</h3>
+  <p className="max-w-sm text-sm text-on-surface-variant">Crea tu primera campaña y deja que la IA genere el copy y la imagen.</p>
+  <Button className="mt-2">Crear campaña</Button>
+</div>
+```
+
+## Skeleton loader
+
+Mientras Axios trae datos (uniforme en toda la app):
+- Bloques `animate-pulse rounded bg-surface-container-high` con la forma del contenido real
+  (una barra por línea de texto, un cuadro por imagen).
+- Nunca spinner a pantalla completa: skeleton con la silueta del layout.
+
+```jsx
+<div className="h-8 w-16 animate-pulse rounded bg-surface-container-high" />
+```
+
+## Toasts (react-hot-toast)
+
+Vocabulario fijo y coherente con la acción (la acción "Aprobar" → toast "Aprobada"):
+- Éxito: "Campaña generada", "Enviada a aprobación", "Campaña aprobada", "Cuenta creada".
+- Error: "Cuota agotada", "Credenciales inválidas", "No se pudo generar".
+- Posición `top-right`. Éxito en verde semántico, error en rojo. Sin disculpas, específico.
+
+## Modal / Drawer
+
+- **Overlay**: `fixed inset-0 bg-on-surface/40 backdrop-blur-sm` (on-surface = #1b1b23 al 40%).
+- **Modal** (centrado): tarjeta `rounded-3xl bg-white p-8 shadow-xl max-w-lg` con animación
+  de entrada (scale 0.96→1, opacity). Acción destructiva usa botón `error`, no indigo.
+- **Drawer** (lateral, p.ej. historial): entra desde la derecha, `w-full max-w-md h-full
+  bg-white shadow-xl`, animación `x: 100% → 0`.
+- Cerrar con botón X (`ghost`), clic en overlay, y tecla Esc.

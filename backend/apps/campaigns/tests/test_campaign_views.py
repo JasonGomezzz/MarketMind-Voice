@@ -8,6 +8,7 @@ from apps.campaigns.models import Campaign, CampaignPlataforma, CampaignStatus, 
 
 CAMPAIGNS_URL = "/api/campaigns/"
 STATS_URL = "/api/campaigns/stats/"
+CREDITS_DETAIL_URL = "/api/campaigns/credits-detail/"
 
 
 def campaign_url(pk: int) -> str:
@@ -20,6 +21,10 @@ def generate_url(pk: int) -> str:
 
 def submit_url(pk: int) -> str:
     return f"/api/campaigns/{pk}/submit/"
+
+
+def regenerate_url(pk: int) -> str:
+    return f"/api/campaigns/{pk}/regenerate/"
 
 
 VALID_PAYLOAD = {
@@ -151,6 +156,45 @@ class TestCampaignGenerate:
 
 
 @pytest.mark.django_db
+class TestCampaignRegenerate:
+    def test_regenerate_borrador_returns_202(self, api_client, campaign):
+        response = api_client.post(regenerate_url(campaign.pk))
+        assert response.status_code == 202
+
+    def test_regenerate_rechazado_returns_202(self, api_client, campaign):
+        campaign.estado = CampaignStatus.RECHAZADO
+        campaign.save(update_fields=["estado"])
+        response = api_client.post(regenerate_url(campaign.pk))
+        assert response.status_code == 202
+        campaign.refresh_from_db()
+        # Con mock IA la campaña termina en 'generado'; sin mock quedaría
+        # en 'pendiente_ia'. Lo importante: salió de 'rechazado'.
+        assert campaign.estado != CampaignStatus.RECHAZADO
+
+    def test_regenerate_rechazado_sin_tokens_402_no_muta_estado(
+        self, api_client, user_marketero, campaign
+    ):
+        campaign.estado = CampaignStatus.RECHAZADO
+        campaign.save(update_fields=["estado"])
+        user_marketero.tokens_disponibles = 0
+        user_marketero.save()
+        response = api_client.post(regenerate_url(campaign.pk))
+        assert response.status_code == 402
+        campaign.refresh_from_db()
+        assert campaign.estado == CampaignStatus.RECHAZADO
+
+    def test_regenerate_wrong_state_returns_409(self, api_client, campaign_generada):
+        response = api_client.post(regenerate_url(campaign_generada.pk))
+        assert response.status_code == 409
+
+    def test_regenerate_non_marketero_403(self, cliente, campaign):
+        client = APIClient()
+        client.force_authenticate(user=cliente)
+        response = client.post(regenerate_url(campaign.pk))
+        assert response.status_code == 403
+
+
+@pytest.mark.django_db
 class TestCampaignSubmit:
     def test_submit_generado_returns_200(self, api_client, campaign_generada):
         response = api_client.post(submit_url(campaign_generada.pk))
@@ -188,10 +232,109 @@ class TestCampaignStats:
         assert data[CampaignStatus.BORRADOR] == 1
         assert data[CampaignStatus.GENERADO] == 1
 
+    def test_stats_incluye_tokens_disponibles(self, api_client, user_marketero):
+        response = api_client.get(STATS_URL)
+        data = response.data["data"]
+        assert data["tokens_disponibles"] == user_marketero.tokens_disponibles
+
     def test_stats_unauthenticated_401(self):
         client = APIClient()
         response = client.get(STATS_URL)
         assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestCampaignCreditsDetail:
+    def test_returns_200(self, api_client):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        assert response.status_code == 200
+        assert response.data["success"] is True
+
+    def test_incluye_tokens_disponibles(self, api_client, user_marketero):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        data = response.data["data"]
+        assert data["tokens_disponibles"] == user_marketero.tokens_disponibles
+
+    def test_historial_lista_campanas_propias(self, api_client, campaign, campaign_generada):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        historial = response.data["data"]["historial"]
+        ids = {c["id"] for c in historial}
+        assert {campaign.id, campaign_generada.id} <= ids
+
+    def test_metricas_del_mes_se_calculan(self, api_client, campaign_generada):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        data = response.data["data"]
+        assert data["campanas_mes"] >= 1
+        assert data["consumidos_mes"] >= 0
+        assert data["promedio_por_campana_mes"] >= 0
+
+    def test_sin_campanas_no_falla(self, api_client):
+        response = api_client.get(CREDITS_DETAIL_URL)
+        data = response.data["data"]
+        assert data["historial"] == []
+        assert data["campanas_mes"] == 0
+        assert data["promedio_por_campana_mes"] == 0
+
+    def test_unauthenticated_401(self):
+        client = APIClient()
+        response = client.get(CREDITS_DETAIL_URL)
+        assert response.status_code == 401
+
+
+def restore_url(campaign_pk: int, version_pk: int) -> str:
+    return f"/api/campaigns/{campaign_pk}/versions/{version_pk}/restore/"
+
+
+@pytest.mark.django_db
+class TestCampaignVersionRestore:
+    @pytest.fixture
+    def version_vieja(self, campaign_generada):
+        from apps.campaigns.models import CampaignVersion
+
+        return CampaignVersion.objects.create(
+            campaign=campaign_generada,
+            version_number=1,
+            texto_generado="Copy antiguo v1.",
+            imagen_b64=None,
+        )
+
+    def test_restore_devuelve_200_y_restaura_texto(
+        self, api_client, campaign_generada, version_vieja
+    ):
+        response = api_client.post(restore_url(campaign_generada.pk, version_vieja.pk))
+        assert response.status_code == 200
+        campaign_generada.refresh_from_db()
+        assert campaign_generada.texto_generado == "Copy antiguo v1."
+
+    def test_restore_guarda_snapshot_del_contenido_actual(
+        self, api_client, campaign_generada, version_vieja
+    ):
+        from apps.campaigns.models import CampaignVersion
+
+        api_client.post(restore_url(campaign_generada.pk, version_vieja.pk))
+        snapshots = CampaignVersion.objects.filter(campaign=campaign_generada)
+        assert snapshots.count() == 2
+        assert snapshots.order_by("-version_number").first().texto_generado == (
+            "Copy generado de prueba."
+        )
+
+    def test_restore_estado_no_editable_409(self, api_client, campaign_generada, version_vieja):
+        campaign_generada.estado = CampaignStatus.PENDIENTE_APROBACION
+        campaign_generada.save(update_fields=["estado"])
+        response = api_client.post(restore_url(campaign_generada.pk, version_vieja.pk))
+        assert response.status_code == 409
+
+    def test_restore_otro_usuario_403(self, cliente, campaign_generada, version_vieja):
+        client = APIClient()
+        client.force_authenticate(user=cliente)
+        response = client.post(restore_url(campaign_generada.pk, version_vieja.pk))
+        assert response.status_code == 403
+
+    def test_restore_version_de_otra_campana_404(
+        self, api_client, campaign, campaign_generada, version_vieja
+    ):
+        response = api_client.post(restore_url(campaign.pk, version_vieja.pk))
+        assert response.status_code == 404
 
 
 ANALYTICS_URL = "/api/admin/analytics/"
