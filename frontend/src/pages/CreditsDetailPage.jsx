@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Coins, Megaphone, TrendingUp, ShieldQuestion, AlertCircle } from 'lucide-react'
+import {
+  Coins,
+  Megaphone,
+  TrendingUp,
+  ShieldQuestion,
+  AlertCircle,
+  ShoppingCart,
+  FileEdit,
+  Image as ImageIcon,
+  CircleAlert,
+  Sparkles,
+} from 'lucide-react'
 import api from '../services/api'
 import StatusBadge from '@/components/StatusBadge'
 import PlanesModal from '@/components/campaign/PlanesModal'
@@ -10,11 +21,21 @@ import PlanesModal from '@/components/campaign/PlanesModal'
  * Consume GET /api/campaigns/credits-detail/: saldo real, métricas del mes
  * en curso y el historial de consumo POR CAMPAÑA (no hay tabla de
  * "transacciones" ni facturación en el backend — no se inventan datos que
- * el producto no tiene, ver CLAUDE.md).
- * Estética: tarjetas/tabla sólidas de alto contraste (glass solo en el
- * modal de planes, que ya trae su propia receta liquid-glass).
+ * el producto no tiene: SIN fecha de renovación automática, SIN nombre de
+ * "plan" comercial — eso no existe en el modelo User, ver CLAUDE.md).
+ * Diseño: réplica fiel de Downloads/creditosia (donut de uso + bento de
+ * KPIs + tabla), sistema Lumina Creative. Glass SOLO en el modal de planes.
  */
 const QUOTA_DEFAULT = 100 // tokens_disponibles default del modelo User
+
+const ESTADO_ICON = {
+  borrador: FileEdit,
+  pendiente_ia: Sparkles,
+  generado: ImageIcon,
+  pendiente_aprobacion: Megaphone,
+  aprobado: Megaphone,
+  rechazado: CircleAlert,
+}
 
 export default function CreditsDetailPage() {
   const location = useLocation()
@@ -71,7 +92,12 @@ export default function CreditsDetailPage() {
     )
   }
 
-  const pct = Math.min(100, Math.round((data.tokens_disponibles / QUOTA_DEFAULT) * 100))
+  const pctUsado = Math.max(
+    0,
+    Math.min(100, Math.round(((QUOTA_DEFAULT - data.tokens_disponibles) / QUOTA_DEFAULT) * 100)),
+  )
+  // Longitud del arco del donut (stroke-dasharray: usado, resto de 100)
+  const dashArray = `${pctUsado}, 100`
 
   return (
     <div className="space-y-6">
@@ -80,71 +106,87 @@ export default function CreditsDetailPage() {
       <header>
         <h1 className="text-4xl font-bold tracking-tight text-on-surface">Créditos de IA</h1>
         <p className="mt-2 text-base text-on-surface-variant">
-          Consulta tu saldo y el historial de consumo de tu cuenta.
+          Gestión y detalle de consumo de tu cuenta.
         </p>
       </header>
 
-      {/* Tarjeta hero de saldo — sólida, alto contraste */}
-      <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-              <Coins className="h-4 w-4" />
-              Saldo disponible
-            </p>
-            <p className="text-5xl font-extrabold tabular-nums text-on-surface">
-              {data.tokens_disponibles}{' '}
-              <span className="text-lg font-medium text-on-surface-variant">créditos</span>
-            </p>
+      {/* Bento hero: saldo + donut de uso, y KPIs apilados a la derecha */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="relative overflow-hidden rounded-2xl border border-outline-variant bg-white p-8 shadow-sm lg:col-span-2">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+          <div className="relative z-10 flex flex-col items-center gap-8 md:flex-row md:justify-between">
+            <div className="flex-1 space-y-4 text-center md:text-left">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-outline">
+                  Saldo disponible
+                </p>
+                <h2 className="mt-2 text-5xl font-extrabold tracking-tight text-primary">
+                  {data.tokens_disponibles}{' '}
+                  <span className="text-xl font-normal text-outline">créditos</span>
+                </h2>
+              </div>
+              <p className="max-w-md text-sm text-on-surface-variant">
+                Cada crédito equivale a 1 generación o regeneración de IA exitosa. Al llegar a 0,
+                la creación se bloquea hasta que un SuperAdmin restablezca tu cuota.
+              </p>
+              <button
+                onClick={() => setShowPlanes(true)}
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-6 py-3 text-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container active:scale-95"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Solicitar más créditos
+              </button>
+            </div>
+
+            {/* Donut de uso (SVG puro, sin dependencias) */}
+            <div className="w-32 shrink-0 text-center">
+              <svg viewBox="0 0 36 36" className="h-32 w-32 text-primary">
+                <path
+                  className="fill-none stroke-surface-container-high"
+                  strokeWidth="3.8"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path
+                  className="fill-none stroke-current"
+                  strokeWidth="3.8"
+                  strokeLinecap="round"
+                  strokeDasharray={dashArray}
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <text
+                  x="18"
+                  y="20.35"
+                  textAnchor="middle"
+                  fill="currentColor"
+                  className="text-[9px] font-semibold"
+                >
+                  {pctUsado}%
+                </text>
+              </svg>
+              <p className="mt-1 text-xs font-medium text-outline">Usado</p>
+            </div>
           </div>
-          <button
-            onClick={() => setShowPlanes(true)}
-            className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-6 text-base font-semibold text-on-primary shadow-lg transition-all hover:bg-primary-container active:scale-95"
-          >
-            Solicitar más créditos
-          </button>
         </div>
 
-        <div className="mt-6">
-          <div
-            role="progressbar"
-            aria-valuenow={data.tokens_disponibles}
-            aria-valuemin={0}
-            aria-valuemax={QUOTA_DEFAULT}
-            aria-label="Créditos disponibles sobre el total del plan"
-            className="h-2.5 w-full overflow-hidden rounded-full bg-surface-container-high"
-          >
-            <div
-              className={`h-full rounded-full transition-all ${data.tokens_disponibles === 0 ? 'bg-error' : 'bg-primary'}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <p className="mt-2 text-xs text-on-surface-variant">
-            Cada crédito equivale a 1 generación o regeneración de IA exitosa.
-          </p>
+        {/* KPIs del mes — todos calculados del historial real */}
+        <div className="flex flex-col gap-4">
+          <MetricCard
+            icon={Coins}
+            label="Consumidos este mes"
+            value={data.consumidos_mes}
+          />
+          <MetricCard
+            icon={Megaphone}
+            label="Campañas generadas"
+            value={data.campanas_mes}
+          />
+          <MetricCard
+            icon={TrendingUp}
+            label="Promedio / campaña"
+            value={data.promedio_por_campana_mes}
+            suffix="cr"
+          />
         </div>
-      </section>
-
-      {/* Métricas derivadas del mes en curso — todas calculadas del historial real */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MetricCard
-          icon={Coins}
-          tint="bg-primary/10 text-primary"
-          label="Créditos consumidos este mes"
-          value={data.consumidos_mes}
-        />
-        <MetricCard
-          icon={Megaphone}
-          tint="bg-secondary-container text-primary"
-          label="Campañas generadas este mes"
-          value={data.campanas_mes}
-        />
-        <MetricCard
-          icon={TrendingUp}
-          tint="bg-tertiary-container text-tertiary"
-          label="Promedio de créditos por campaña"
-          value={data.promedio_por_campana_mes}
-        />
       </section>
 
       {/* Historial de consumo — por campaña, el evento de consumo real del producto */}
@@ -162,33 +204,44 @@ export default function CreditsDetailPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-outline-variant text-xs uppercase tracking-wide text-on-surface-variant">
-                  <th className="px-6 py-3 font-semibold">Campaña</th>
+                  <th className="px-6 py-3 font-semibold">Nombre de campaña</th>
                   <th className="px-6 py-3 font-semibold">Fecha</th>
                   <th className="px-6 py-3 font-semibold">Créditos</th>
                   <th className="px-6 py-3 font-semibold">Estado</th>
                 </tr>
               </thead>
               <tbody>
-                {data.historial.map((c) => (
-                  <tr key={c.id} className="border-b border-outline-variant/60 last:border-0">
-                    <td className="max-w-xs truncate px-6 py-3 font-medium text-on-surface">
-                      {c.titulo}
-                    </td>
-                    <td className="px-6 py-3 text-on-surface-variant">
-                      {new Date(c.fecha_creacion).toLocaleDateString('es-PE', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </td>
-                    <td className="px-6 py-3 tabular-nums text-on-surface">
-                      {c.tokens_consumidos}
-                    </td>
-                    <td className="px-6 py-3">
-                      <StatusBadge estado={c.estado} />
-                    </td>
-                  </tr>
-                ))}
+                {data.historial.map((c) => {
+                  const Icon = ESTADO_ICON[c.estado] ?? Megaphone
+                  const sinCosto = c.tokens_consumidos === 0
+                  return (
+                    <tr key={c.id} className="border-b border-outline-variant/60 last:border-0">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="max-w-xs truncate font-medium text-on-surface">
+                            {c.titulo}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-on-surface-variant">
+                        {new Date(c.fecha_creacion).toLocaleDateString('es-PE', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </td>
+                      <td className="px-6 py-3 text-right tabular-nums text-on-surface">
+                        {sinCosto ? '0' : `-${c.tokens_consumidos}`}
+                      </td>
+                      <td className="px-6 py-3">
+                        <StatusBadge estado={c.estado} />
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -198,20 +251,23 @@ export default function CreditsDetailPage() {
       <p className="flex items-center gap-2 text-sm text-on-surface-variant">
         <ShieldQuestion className="h-4 w-4 text-primary" />
         ¿Necesitas más créditos? Un SuperAdmin puede resetear tu cuota o cambiar tu plan desde el
-        panel de Usuarios.
+        panel de Usuarios — no hay renovación automática por ciclo de facturación.
       </p>
     </div>
   )
 }
 
-function MetricCard({ icon: Icon, tint, label, value }) {
+function MetricCard({ icon: Icon, label, value, suffix }) {
   return (
-    <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
-      <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${tint}`}>
-        <Icon className="h-6 w-6" />
+    <div className="flex flex-1 items-center justify-between rounded-2xl border border-outline-variant bg-white p-6 shadow-sm">
+      <div>
+        <p className="text-xs font-medium text-outline">{label}</p>
+        <p className="mt-1 text-3xl font-bold tabular-nums text-on-surface">
+          {value ?? '—'}
+          {suffix && <span className="ml-1 text-base font-normal text-outline">{suffix}</span>}
+        </p>
       </div>
-      <p className="text-sm text-on-surface-variant">{label}</p>
-      <h3 className="mt-1 text-3xl font-bold tabular-nums text-on-surface">{value ?? '—'}</h3>
+      <Icon className="h-5 w-5 text-secondary" />
     </div>
   )
 }
