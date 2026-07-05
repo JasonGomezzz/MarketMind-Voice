@@ -42,8 +42,10 @@ public class JwtTokenValidator {
             Long userId = userIdClaim.longValue();
             String role = claims.get("role", String.class);
             String nombre = claims.get("nombre", String.class);
+            Number tokenVersionClaim = claims.get("token_version", Number.class);
+            Integer tokenVersion = tokenVersionClaim == null ? null : tokenVersionClaim.intValue();
 
-            return Optional.of(new AuthenticatedUser(userId, role, nombre));
+            return Optional.of(new AuthenticatedUser(userId, role, nombre, tokenVersion));
 
         } catch (JwtException | IllegalArgumentException e) {
             return Optional.empty();
