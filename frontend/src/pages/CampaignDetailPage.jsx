@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, Download, FileText, ImageOff, RefreshCw, Send } from 'lucide-react'
+import { ArrowLeft, FileText, ImageOff, RefreshCw, Send } from 'lucide-react'
+import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import { Button } from '@/components/ui/button'
@@ -116,6 +117,7 @@ export default function CampaignDetailPage() {
       setCampaign(c)
       setText(c.texto_generado || '')
       localStorage.removeItem(draftKey)
+      window.dispatchEvent(new Event('credits-updated'))
       toast.success(data.message || 'Regeneración iniciada')
     } catch (err) {
       if (err.response?.status === 402) {
@@ -207,7 +209,9 @@ export default function CampaignDetailPage() {
             <MetaRow label="Creada">
               {new Date(campaign.fecha_creacion).toLocaleDateString('es-PE')}
             </MetaRow>
-            <MetaRow label="Marketero">{campaign.marketero}</MetaRow>
+            <MetaRow label="Marketero">
+              {campaign?.marketero ? String(campaign.marketero).split(' <')[0] : '—'}
+            </MetaRow>
           </div>
 
           <div className="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
@@ -314,21 +318,11 @@ export default function CampaignDetailPage() {
           <div className="mt-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
             <p className="mb-3 text-sm font-semibold text-on-surface">Imagen generada</p>
             {campaign.imagen_b64 ? (
-              <div className="space-y-3">
-                <img
-                  src={`data:image/png;base64,${campaign.imagen_b64}`}
-                  alt="Imagen generada por IA"
-                  className="w-full rounded-lg"
-                />
-                <a
-                  href={`data:image/png;base64,${campaign.imagen_b64}`}
-                  download={`campaign_${id}_imagen.png`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-container"
-                >
-                  <Download className="h-4 w-4" />
-                  Descargar PNG
-                </a>
-              </div>
+              <ImageLightbox
+                src={`data:image/png;base64,${campaign.imagen_b64}`}
+                alt="Imagen generada por IA"
+                downloadName={`campaign_${id}_imagen.png`}
+              />
             ) : (
               <div className="flex flex-col items-center gap-2 py-8 text-center text-on-surface-variant">
                 <ImageOff className="h-8 w-8 text-outline" />

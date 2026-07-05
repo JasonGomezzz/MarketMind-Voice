@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, CircleCheck, CircleX, Download, ImageOff, AlertCircle } from 'lucide-react'
+import { ArrowLeft, CircleCheck, CircleX, ImageOff, AlertCircle } from 'lucide-react'
+import ImageLightbox from '@/components/ui/ImageLightbox'
 import { getCampaignById, approveCampaign, rejectCampaign } from '../services/clientCampaigns'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
@@ -144,21 +145,11 @@ export default function ClientReviewPage() {
               Imagen del anuncio
             </p>
             {campaign.imagenB64 ? (
-              <div className="space-y-3">
-                <img
-                  src={`data:image/png;base64,${campaign.imagenB64}`}
-                  alt={`Imagen propuesta para ${campaign.titulo}`}
-                  className="w-full rounded-lg"
-                />
-                <a
-                  href={`data:image/png;base64,${campaign.imagenB64}`}
-                  download={`campaign_${id}_imagen.png`}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-                >
-                  <Download className="h-4 w-4" />
-                  Descargar PNG
-                </a>
-              </div>
+              <ImageLightbox
+                src={`data:image/png;base64,${campaign.imagenB64}`}
+                alt={`Imagen propuesta para ${campaign.titulo}`}
+                downloadName={`campaign_${id}_imagen.png`}
+              />
             ) : (
               <div className="flex flex-col items-center gap-2 py-8 text-center text-on-surface-variant">
                 <ImageOff className="h-8 w-8 text-outline" />

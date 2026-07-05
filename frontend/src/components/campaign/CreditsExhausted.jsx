@@ -1,28 +1,26 @@
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { AlertTriangle, ShieldQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import AppToaster from '@/components/ui/AppToaster'
+import PlanesModal from '@/components/campaign/PlanesModal'
+import { MSG_RESET, PLANS } from '@/lib/credits'
 
 /**
  * Estado "Créditos agotados" (portado de Stitch: ai_generation_credits_notice).
  * Se muestra cuando el backend devuelve HTTP 402 (tokens_disponibles == 0).
  * El reset lo hace el SuperAdmin (PATCH /api/admin/users/{id}/reset-quota/);
- * el marketero solo puede SOLICITARLO, no auto-resetearse. Los planes son la
- * vista del modelo de negocio — sin pasarela de pago en esta versión, así que
- * los botones informan el flujo real en vez de fingir una compra.
+ * el marketero solo puede SOLICITARLO, no auto-resetearse. "Elegir plan" abre
+ * PlanesModal (réplica fiel del PNG de Stitch); MSG_RESET/PLANS viven en
+ * lib/credits.js (fuente única compartida con el modal).
  */
-const MSG_RESET =
-  'Avísale a tu SuperAdmin: él restablece tu cuota a 100 desde el panel Usuarios.'
-const PLANS = [
-  { nombre: 'Básico', precio: 49, tokens: '500 créditos', popular: false },
-  { nombre: 'Pro', precio: 129, tokens: '1,500 créditos', popular: true },
-  { nombre: 'Elite', precio: 299, tokens: '5,000 créditos', popular: false },
-]
-
 export default function CreditsExhausted({ onClose }) {
+  const [showPlanes, setShowPlanes] = useState(false)
+
   return (
     <div className="glass-soft glass-float rounded-xl p-6 shadow-sm">
       <AppToaster />
+      <PlanesModal open={showPlanes} onClose={() => setShowPlanes(false)} />
       <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-error-container px-3 py-1 text-xs font-bold uppercase tracking-wide text-error">
         <AlertTriangle className="h-3.5 w-3.5" />
         Créditos agotados
@@ -57,7 +55,7 @@ export default function CreditsExhausted({ onClose }) {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-on-surface-variant">{plan.tokens}</p>
+              <p className="text-xs text-on-surface-variant">{plan.creditos} créditos</p>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold tabular-nums text-on-surface">
@@ -67,11 +65,7 @@ export default function CreditsExhausted({ onClose }) {
                 size="sm"
                 variant={plan.popular ? 'default' : 'outline'}
                 className="mt-1"
-                onClick={() =>
-                  toast(`Plan ${plan.nombre}: disponible próximamente. ${MSG_RESET}`, {
-                    icon: 'ℹ️',
-                  })
-                }
+                onClick={() => setShowPlanes(true)}
               >
                 Elegir plan
               </Button>

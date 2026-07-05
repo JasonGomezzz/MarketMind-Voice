@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Sparkles, Download } from 'lucide-react'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { ArrowLeft, Sparkles, Lightbulb } from 'lucide-react'
+import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
@@ -71,6 +72,41 @@ export default function NewCampaignPage() {
     },
   })
 
+  // Polling del modo REAL: la generación es asíncrona (Django responde 202 con
+  // estado pendiente_ia y n8n tarda 8-30 s). Consultamos la campaña cada 4 s
+  // hasta que salga de pendiente_ia (máx ~2 min). En mock no aplica (llega
+  // 'generado' de inmediato).
+  const pollAttempts = useRef(0)
+  useEffect(() => {
+    const c = result?.campaign
+    if (!c || c.estado !== 'pendiente_ia') return
+    pollAttempts.current = 0
+    const timer = setInterval(() => {
+      pollAttempts.current += 1
+      if (pollAttempts.current > 30) {
+        clearInterval(timer)
+        setResult((r) => ({
+          ...r,
+          warning: 'La IA está tardando más de lo normal. Revisa la campaña en la lista en unos minutos.',
+        }))
+        return
+      }
+      api
+        .get(`/api/campaigns/${c.id}/`)
+        .then(({ data }) => {
+          const fresh = data.data.campaign
+          if (fresh.estado !== 'pendiente_ia') {
+            clearInterval(timer)
+            setResult({ campaign: fresh, warning: null })
+            window.dispatchEvent(new Event('credits-updated'))
+          }
+        })
+        .catch(() => {})
+    }, 4000)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result?.campaign?.id, result?.campaign?.estado])
+
   async function onSubmit(formData) {
     setSubmitting(true)
     setServerError('')
@@ -80,6 +116,8 @@ export default function NewCampaignPage() {
     try {
       const { data } = await api.post('/api/campaigns/', formData)
       setResult({ campaign: data.data.campaign, warning: null })
+      // El crédito ya se descontó — que el sidebar lo refleje al instante
+      window.dispatchEvent(new Event('credits-updated'))
     } catch (err) {
       const httpStatus = err.response?.status
       const body = err.response?.data
@@ -291,14 +329,49 @@ export default function NewCampaignPage() {
               {submitting ? 'Generando con IA…' : 'Generar campaña con IA'}
             </Button>
           </form>
+
+          {/* Consejo estratégico — de la screen Stitch ai_generation_loading_state */}
+          <aside className="glass-soft mt-5 rounded-xl p-6">
+            <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+              <Sparkles className="h-4 w-4" />
+              Consejo estratégico
+            </p>
+            <h3 className="mb-3 text-base font-bold text-on-surface">
+              De brief de cliente a prompt maestro
+            </h3>
+            <p className="mb-4 text-sm text-on-surface-variant">
+              Para que la campaña de tu cliente destaque, recuerda:
+            </p>
+            <ol className="space-y-3 text-sm leading-relaxed text-on-surface-variant">
+              <li>
+                <strong className="text-on-surface">1. Identidad de marca:</strong> incluye el
+                tipo de negocio (ej. «boutique de lujo» o «startup tecnológica»).
+              </li>
+              <li>
+                <strong className="text-on-surface">2. Objetivo del cliente:</strong> ¿buscan
+                ventas directas o posicionar su marca?
+              </li>
+              <li>
+                <strong className="text-on-surface">3. Estilo visual:</strong> define si
+                prefieren algo minimalista o cargado de energía.
+              </li>
+            </ol>
+            <Link
+              to="/prompt-guide"
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+            >
+              <Lightbulb className="h-4 w-4" />
+              Ver guía completa de prompts
+            </Link>
+          </aside>
         </div>
 
         {/* ── Panel de resultado / estado ── */}
         <div className="w-full shrink-0 lg:sticky lg:top-6 lg:w-[440px]">
           {noCredits ? (
             <CreditsExhausted onClose={handleReset} />
-          ) : submitting ? (
-            <GeneratingState onCancel={() => setSubmitting(false)} />
+          ) : submitting || result?.campaign?.estado === 'pendiente_ia' ? (
+            <GeneratingState onCancel={handleReset} />
           ) : result?.warning ? (
             <ErrorState
               message={result.warning}
@@ -359,19 +432,11 @@ function ResultPanel({ result, onReset, onNavigate }) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
               Imagen generada
             </p>
-            <img
+            <ImageLightbox
               src={`data:image/png;base64,${campaign.imagen_b64}`}
               alt="Imagen generada por IA"
-              className="w-full rounded-lg border border-outline-variant object-cover"
+              downloadName={`campaign_${campaign.id}_imagen.png`}
             />
-            <a
-              href={`data:image/png;base64,${campaign.imagen_b64}`}
-              download={`campaign_${campaign.id}_imagen.png`}
-              className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-            >
-              <Download className="h-4 w-4" />
-              Descargar PNG
-            </a>
           </div>
         )}
 
