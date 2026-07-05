@@ -16,10 +16,6 @@ function wordCount(text) {
   return text.trim() ? text.trim().split(/\s+/).length : 0
 }
 
-function first100Words(text) {
-  return text.trim().split(/\s+/).slice(0, 100).join(' ')
-}
-
 /**
  * Detalle de campaña (Lumina Creative). Marketero edita copy, envía a aprobación,
  * exporta PDF. LÓGICA INTACTA: fetch, autosave debounce 30s, guardar, submit+modal,
@@ -342,8 +338,7 @@ export default function CampaignDetailPage() {
 
       {showModal && (
         <SubmitModal
-          preview={first100Words(text)}
-          wordTotal={wordCount(text)}
+          preview={text}
           onConfirm={handleSubmitConfirm}
           onCancel={() => setShowModal(false)}
         />
@@ -376,7 +371,7 @@ function LoadingSkeleton() {
   )
 }
 
-function SubmitModal({ preview, wordTotal, onConfirm, onCancel }) {
+function SubmitModal({ preview, onConfirm, onCancel }) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onCancel()
@@ -397,9 +392,8 @@ function SubmitModal({ preview, wordTotal, onConfirm, onCancel }) {
         <p className="mb-4 text-sm text-on-surface-variant">
           El cliente verá el siguiente copy para aprobación:
         </p>
-        <div className="mb-5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm leading-relaxed text-on-surface">
+        <div className="mb-5 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm leading-relaxed text-on-surface">
           {preview}
-          {wordTotal > 100 && <span className="text-on-surface-variant"> …</span>}
         </div>
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onCancel}>
