@@ -97,7 +97,15 @@ class CampaignSerializer(serializers.ModelSerializer):
         return value.strip().lower()
 
     def validate(self, attrs: dict) -> dict:
-        """Valida que el cliente exista y que nombre/email correspondan."""
+        """
+        Valida que exista un cliente registrado con ese email.
+
+        El 'cliente_nombre' es libre (el marketero puede usar el nombre del
+        negocio/marca, ej. 'Gimnasio Mega Force'); NO tiene que coincidir con
+        el nombre de la cuenta. La identidad se ancla en el email, que sí debe
+        pertenecer a un usuario con rol cliente (evita enviar campañas a
+        destinatarios inexistentes).
+        """
         attrs = super().validate(attrs)
         email = attrs.get("cliente_email")
         nombre = attrs.get("cliente_nombre")
@@ -117,13 +125,9 @@ class CampaignSerializer(serializers.ModelSerializer):
                 {"cliente_email": "Debe existir un usuario cliente registrado con este email."}
             ) from exc
 
-        if cliente.nombre.strip().casefold() != nombre.strip().casefold():
-            raise serializers.ValidationError(
-                {"cliente_nombre": "El nombre del cliente no coincide con el usuario registrado."}
-            )
-
+        # Email normalizado al del cliente registrado; nombre se respeta tal cual.
         attrs["cliente_email"] = cliente.email
-        attrs["cliente_nombre"] = cliente.nombre
+        attrs["cliente_nombre"] = nombre.strip()
         return attrs
 
     def validate_prompt(self, value: str) -> str:

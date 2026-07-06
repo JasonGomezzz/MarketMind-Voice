@@ -63,11 +63,21 @@ class TestCampaignCreate:
         assert response.status_code == 400
         assert "cliente_email" in response.data["data"]["errors"]
 
-    def test_create_requires_matching_cliente_name(self, api_client):
-        payload = {**VALID_PAYLOAD, "cliente_nombre": "Otro Nombre"}
+    def test_create_allows_free_cliente_name(self, api_client):
+        """El nombre del cliente es libre (nombre de negocio/marca); la
+        identidad se valida solo por email. Un nombre distinto al de la cuenta
+        registrada es válido mientras el email pertenezca a un cliente."""
+        payload = {**VALID_PAYLOAD, "cliente_nombre": "Gimnasio Mega Force"}
+        response = api_client.post(CAMPAIGNS_URL, payload, format="json")
+        assert response.status_code == 202
+        assert response.data["data"]["campaign"]["cliente_nombre"] == "Gimnasio Mega Force"
+
+    def test_create_rejects_unregistered_cliente_email(self, api_client):
+        """El email SÍ debe pertenecer a un cliente registrado."""
+        payload = {**VALID_PAYLOAD, "cliente_email": "noexiste@ejemplo.com"}
         response = api_client.post(CAMPAIGNS_URL, payload, format="json")
         assert response.status_code == 400
-        assert "cliente_nombre" in response.data["data"]["errors"]
+        assert "cliente_email" in response.data["data"]["errors"]
 
     def test_create_with_mock_ai_saves_copy(self, api_client):
         response = api_client.post(CAMPAIGNS_URL, VALID_PAYLOAD, format="json")

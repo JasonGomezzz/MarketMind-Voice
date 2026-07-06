@@ -51,6 +51,7 @@ def disparar_email_cliente(campaign: "Campaign") -> None:
         "cliente_email": campaign.cliente_email,
         "cliente_nombre": campaign.cliente_nombre,
         "copy_preview": _truncate_words(campaign.texto_generado, 80),
+        "imagen_b64": campaign.imagen_b64 or "",
         "marketero_email": campaign.marketero.email,
         "marketero_nombre": campaign.marketero.nombre,
         "n8n_callback_token": str(campaign.n8n_callback_token),
