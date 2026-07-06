@@ -21,10 +21,8 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()
                     ?: return Result.failure(IllegalStateException("Respuesta vacía del servidor."))
-                if (body.role != ROLE_MARKETERO) {
-                    tokenManager.clear()
-                    return Result.failure(UnauthorizedMobileRoleException())
-                }
+                // El mobile es para marketero (crea campañas) Y cliente (aprueba/rechaza).
+                // Se guarda la sesión sin filtrar por rol; cada rol ve sus pantallas.
                 tokenManager.saveSession(
                     access = body.access,
                     refresh = body.refresh,

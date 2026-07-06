@@ -88,7 +88,7 @@ private val PageBottom = Color(0xFFFFFBFF)
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (String) -> Unit,
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
@@ -104,9 +104,10 @@ fun LoginScreen(
     val isLoading = state is LoginUiState.Loading
 
     LaunchedEffect(state) {
-        if (state is LoginUiState.Success) {
+        val success = state as? LoginUiState.Success
+        if (success != null) {
             delay(1450)
-            onLoginSuccess()
+            onLoginSuccess(success.role)
         }
     }
 

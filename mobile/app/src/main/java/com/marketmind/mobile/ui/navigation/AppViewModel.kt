@@ -14,11 +14,17 @@ class AppViewModel @Inject constructor(
     sessionManager: SessionManager,
 ) : ViewModel() {
 
-    val startDestination: String = if (tokenManager.isLoggedIn() && tokenManager.getRole() == "marketero") {
-        Routes.HOME
+    // Marketero y cliente usan el mobile, pero ven pantallas distintas:
+    // el marketero crea campañas (Django); el cliente revisa/aprueba (Spring).
+    val startDestination: String = if (tokenManager.isLoggedIn()) {
+        if (tokenManager.getRole() == ROLE_CLIENTE) Routes.CLIENT_HOME else Routes.HOME
     } else {
         tokenManager.clear()
         Routes.LOGIN
+    }
+
+    private companion object {
+        const val ROLE_CLIENTE = "cliente"
     }
 
     val sessionEvents: SharedFlow<SessionEvent> = sessionManager.events

@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.marketmind.mobile.data.repository.AuthRepository
 import com.marketmind.mobile.data.repository.HttpFailureException
 import com.marketmind.mobile.data.repository.InvalidCredentialsException
-import com.marketmind.mobile.data.repository.UnauthorizedMobileRoleException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +36,6 @@ class LoginViewModel @Inject constructor(
                 onFailure = { e ->
                     _state.value = when (e) {
                         is InvalidCredentialsException -> LoginUiState.Error("Credenciales inválidas.")
-                        is UnauthorizedMobileRoleException -> LoginUiState.Error("Mobile solo está disponible para usuarios marketero.")
                         is IOException -> LoginUiState.Error("Sin conexión. Verifica tu red.")
                         is HttpFailureException -> LoginUiState.Error("Error del servidor (${e.code}). Intenta de nuevo.")
                         else -> LoginUiState.Error("Error inesperado. Intenta de nuevo.")
@@ -71,7 +69,6 @@ class LoginViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     _state.value = when (e) {
-                        is UnauthorizedMobileRoleException -> LoginUiState.Error("Cuenta creada, pero mobile solo permite ingresar como marketero.")
                         is IOException -> LoginUiState.Error("Sin conexión. Verifica tu red.")
                         is HttpFailureException -> when (e.code) {
                             400 -> LoginUiState.Error("No se pudo crear la cuenta. Revisa los datos o usa otro email.")

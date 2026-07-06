@@ -4,6 +4,7 @@ import com.marketmind.mobile.data.remote.CampaignApiService
 import com.marketmind.mobile.data.remote.dto.CampaignCreateRequest
 import com.marketmind.mobile.data.remote.dto.CampaignDto
 import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
+import com.marketmind.mobile.data.remote.dto.EditTextRequest
 import com.google.gson.JsonSyntaxException
 import retrofit2.HttpException
 import java.io.IOException
@@ -113,7 +114,53 @@ class CampaignRepository @Inject constructor(
             Result.failure(
                 when (http.code()) {
                     403 -> CampaignFetchException("Solo el marketero puede enviar campañas al cliente.")
-                    409 -> CampaignFetchException("Solo campañas generadas pueden enviarse al cliente.")
+                    409 -> CampaignFetchException("Esta campaña ya no se puede enviar (fue rechazada o ya está en revisión). Regénerala para volver a enviarla.")
+                    else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
+                }
+            )
+        } catch (io: IOException) {
+            Result.failure(CampaignFetchException("No se pudo conectar con el servidor. Revisa tu conexión."))
+        }
+    }
+
+    /** Edición manual del copy por el marketero (letra por letra). */
+    suspend fun editText(id: Long, texto: String): Result<CampaignDto> {
+        return try {
+            val envelope = api.editText(id, EditTextRequest(textoGenerado = texto))
+            val data = envelope.data?.campaign
+            if (envelope.success && data != null) {
+                Result.success(data)
+            } else {
+                Result.failure(CampaignFetchException(envelope.message ?: "No se pudo guardar el texto."))
+            }
+        } catch (http: HttpException) {
+            Result.failure(
+                when (http.code()) {
+                    403 -> CampaignFetchException("Solo el marketero puede editar el copy.")
+                    400 -> CampaignFetchException("El texto no es válido. Revisa la longitud.")
+                    else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
+                }
+            )
+        } catch (io: IOException) {
+            Result.failure(CampaignFetchException("No se pudo conectar con el servidor. Revisa tu conexión."))
+        }
+    }
+
+    /** Mejora el copy con IA (Gemini), sin tocar la imagen. */
+    suspend fun improveText(id: Long): Result<CampaignDto> {
+        return try {
+            val envelope = api.improveText(id)
+            val data = envelope.data?.campaign
+            if (envelope.success && data != null) {
+                Result.success(data)
+            } else {
+                Result.failure(CampaignFetchException(envelope.message ?: "No se pudo mejorar el copy."))
+            }
+        } catch (http: HttpException) {
+            Result.failure(
+                when (http.code()) {
+                    403 -> CampaignFetchException("Solo el marketero puede mejorar el copy.")
+                    409 -> CampaignFetchException("No hay texto generado para mejorar.")
                     else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
                 }
             )
