@@ -27,6 +27,7 @@ from weasyprint import HTML as WeasyHTML
 
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
+from services.gemini_text_service import improve_copy
 from services.internal_event_service import notify_campaign_submitted
 from services.n8n_service import trigger_ia_generation
 from services.version_service import restore_campaign_version, save_campaign_version
@@ -384,6 +385,60 @@ class CampaignViewSet(viewsets.ModelViewSet):
             api_response(
                 success=True,
                 message="Cambios guardados.",
+                data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="improve-text")
+    def improve_text(self, request: Request, pk: int = None) -> Response:
+        """
+        POST /api/campaigns/{id}/improve-text/
+
+        Mejora SOLO el copy (texto_generado) con Gemini, sin tocar la imagen.
+        Guarda una versión previa (historial LRU-5) antes de reemplazar. No
+        consume tokens de cuota: es una edición asistida, no una generación
+        nueva. Solo el marketero, y solo si ya hay texto generado.
+
+        Returns:
+            HTTP 200 — {campaign} con el texto mejorado.
+            HTTP 403 — rol no autorizado.
+            HTTP 409 — no hay texto para mejorar.
+        """
+        if request.user.rol != "marketero":
+            return Response(
+                api_response(success=False, message="Solo el marketero puede mejorar el copy.", data={}),
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        campaign = self.get_object()
+
+        if not (campaign.texto_generado or "").strip():
+            return Response(
+                api_response(
+                    success=False,
+                    message="No hay texto generado para mejorar.",
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Preservar el copy actual en el historial antes de reemplazarlo.
+        save_campaign_version(campaign)
+
+        mejorado = improve_copy(
+            texto_actual=campaign.texto_generado,
+            industria=campaign.industria,
+            tono=campaign.tono,
+            plataforma=campaign.plataforma,
+        )
+        campaign.texto_generado = mejorado
+        campaign.save(update_fields=["texto_generado", "fecha_actualizacion"])
+
+        return Response(
+            api_response(
+                success=True,
+                message="Copy mejorado con IA.",
                 data={"campaign": CampaignSerializer(campaign).data},
             ),
             status=status.HTTP_200_OK,
