@@ -37,22 +37,37 @@ class CampaignDetailViewModel @Inject constructor(
 
     fun retry() = load()
 
-    fun approve() = submit(estado = "aprobado", successMessage = "Campaña aprobada ✓")
+    fun sendToClient() = submit(successMessage = "Campaña enviada al cliente")
 
-    fun reject(feedback: String) = submit(estado = "rechazado", successMessage = "Campaña rechazada", feedback = feedback)
-
-    private fun submit(estado: String, successMessage: String, feedback: String? = null) {
+    fun deleteCampaign() {
         val current = _uiState.value as? CampaignDetailUiState.Success ?: return
-        if (current.submitting) return
+        if (current.submitting || current.deleting) return
+
+        viewModelScope.launch {
+            _uiState.value = current.copy(deleting = true)
+            repository.deleteCampaign(id = current.campaign.id)
+                .onSuccess {
+                    _events.send(CampaignDetailEvent.ShowSnackbar("Campaña eliminada"))
+                    _events.send(CampaignDetailEvent.NavigateBack)
+                }
+                .onFailure { err ->
+                    _uiState.value = current.copy(deleting = false)
+                    _events.send(
+                        CampaignDetailEvent.ShowSnackbar(
+                            err.message ?: "No se pudo eliminar la campaña."
+                        )
+                    )
+                }
+        }
+    }
+
+    private fun submit(successMessage: String) {
+        val current = _uiState.value as? CampaignDetailUiState.Success ?: return
+        if (current.submitting || current.deleting) return
 
         viewModelScope.launch {
             _uiState.value = current.copy(submitting = true)
-            repository.updateStatus(
-                id = current.campaign.id,
-                estado = estado,
-                version = current.campaign.version,
-                feedback = feedback,
-            )
+            repository.submitToClient(id = current.campaign.id)
                 .onSuccess {
                     _events.send(CampaignDetailEvent.ShowSnackbar(successMessage))
                     _events.send(CampaignDetailEvent.NavigateBack)

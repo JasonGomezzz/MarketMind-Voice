@@ -1,31 +1,42 @@
 package com.marketmind.mobile.data.remote
 
 import com.marketmind.mobile.data.remote.dto.ApiEnvelope
+import com.marketmind.mobile.data.remote.dto.CampaignCreateRequest
 import com.marketmind.mobile.data.remote.dto.CampaignDto
-import com.marketmind.mobile.data.remote.dto.PageDto
-import com.marketmind.mobile.data.remote.dto.StatusUpdateRequestDto
+import com.marketmind.mobile.data.remote.dto.CampaignEnvelopeDto
+import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
+import com.marketmind.mobile.data.remote.dto.DjangoPageDto
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
-import retrofit2.http.PATCH
+import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 
 interface CampaignApiService {
 
-    @GET("api/v1/campaigns/pending")
-    suspend fun getPending(
-        @Query("page") page: Int = 0,
-        @Query("size") size: Int = 20,
-    ): ApiEnvelope<PageDto<CampaignDto>>
+    @GET("api/campaigns/")
+    suspend fun getMine(): DjangoPageDto<CampaignDto>
 
-    @GET("api/v1/campaigns/{id}")
-    suspend fun getCampaignById(
-        @Path("id") id: Long,
-    ): ApiEnvelope<CampaignDto>
+    @GET("api/campaigns/stats/")
+    suspend fun getStats(): ApiEnvelope<CampaignStatsDto>
 
-    @PATCH("api/v1/campaigns/{id}/status")
-    suspend fun updateStatus(
+    @POST("api/campaigns/")
+    suspend fun createCampaign(
+        @Body body: CampaignCreateRequest,
+    ): ApiEnvelope<CampaignEnvelopeDto>
+
+    @GET("api/campaigns/{id}/")
+    suspend fun getDjangoCampaignById(
         @Path("id") id: Long,
-        @Body body: StatusUpdateRequestDto,
-    ): ApiEnvelope<CampaignDto>
+    ): ApiEnvelope<CampaignEnvelopeDto>
+
+    @POST("api/campaigns/{id}/submit/")
+    suspend fun submitCampaign(
+        @Path("id") id: Long,
+    ): ApiEnvelope<CampaignEnvelopeDto>
+
+    @DELETE("api/campaigns/{id}/")
+    suspend fun deleteCampaign(
+        @Path("id") id: Long,
+    )
 }

@@ -9,7 +9,10 @@ function getWsUrl() {
   return url.toString()
 }
 
-export function useClientCampaignSocket(onCampaignSubmitted) {
+/**
+ * @param {{ onCampaignSubmitted?: (campaign: object) => void, onCampaignStatusChanged?: (campaign: object) => void }} handlers
+ */
+export function useClientCampaignSocket({ onCampaignSubmitted, onCampaignStatusChanged } = {}) {
   useEffect(() => {
     if (typeof WebSocket === 'undefined') return undefined
 
@@ -23,8 +26,11 @@ export function useClientCampaignSocket(onCampaignSubmitted) {
       socket.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data)
-          if (payload.type === 'campaign_submitted' && payload.campaign) {
-            onCampaignSubmitted(payload.campaign)
+          if (!payload.campaign) return
+          if (payload.type === 'campaign_submitted') {
+            onCampaignSubmitted?.(payload.campaign)
+          } else if (payload.type === 'campaign_status_changed') {
+            onCampaignStatusChanged?.(payload.campaign)
           }
         } catch {
           // Evento inválido: se ignora sin romper el dashboard.
@@ -45,5 +51,5 @@ export function useClientCampaignSocket(onCampaignSubmitted) {
       window.clearTimeout(reconnectTimer)
       if (socket && socket.readyState <= WebSocket.OPEN) socket.close()
     }
-  }, [onCampaignSubmitted])
+  }, [onCampaignSubmitted, onCampaignStatusChanged])
 }

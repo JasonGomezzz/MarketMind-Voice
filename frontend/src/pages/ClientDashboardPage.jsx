@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   ClipboardCheck,
   CircleCheck,
@@ -34,6 +35,8 @@ export default function ClientDashboardPage() {
 
   const handleRealtimeCampaign = useCallback((campaign) => {
     if (campaign.estado !== 'pendiente_aprobacion') return
+    const userEmail = localStorage.getItem('user_email')
+    if (!userEmail || campaign.clienteEmail?.toLowerCase() !== userEmail.toLowerCase()) return
     setPending((current) => {
       const withoutDuplicate = current.filter((item) => item.id !== campaign.id)
       return [campaign, ...withoutDuplicate].slice(0, 7)
@@ -45,7 +48,25 @@ export default function ClientDashboardPage() {
     ))
   }, [])
 
-  useClientCampaignSocket(handleRealtimeCampaign)
+  const handleStatusChanged = useCallback((campaign) => {
+    const userEmail = localStorage.getItem('user_email')
+    if (!userEmail || campaign.clienteEmail?.toLowerCase() !== userEmail.toLowerCase()) return
+    setPending((current) => current.filter((item) => item.id !== campaign.id))
+    setSummary((current) => {
+      if (!current) return current
+      const next = { ...current, pendientes: Math.max(0, (current.pendientes ?? 0) - 1) }
+      if (campaign.estado === 'aprobado') next.aprobadas = (current.aprobadas ?? 0) + 1
+      else if (campaign.estado === 'rechazado' || campaign.estado === 'fracaso') {
+        next.rechazadas = (current.rechazadas ?? 0) + 1
+      }
+      return next
+    })
+  }, [])
+
+  useClientCampaignSocket({
+    onCampaignSubmitted: handleRealtimeCampaign,
+    onCampaignStatusChanged: handleStatusChanged,
+  })
 
   // Sin setState síncrono en el efecto: el estado inicial cubre el primer
   // load; el retry resetea en su handler; location.key refresca en silencio.
@@ -107,10 +128,13 @@ export default function ClientDashboardPage() {
 
       {/* Stat cards */}
       <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {stats.map(({ key, label, value, icon: Icon, highlight, tint }) =>
+        {stats.map(({ key, label, value, icon: Icon, highlight, tint }, index) =>
           highlight ? (
-            <div
+            <motion.div
               key={key}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: index * 0.06 }}
               className="flex h-40 flex-col justify-between rounded-xl border border-primary/20 bg-primary-container p-6 text-on-primary-container shadow-lg transition-transform hover:-translate-y-1"
             >
               <div className="flex items-start justify-between">
@@ -126,10 +150,13 @@ export default function ClientDashboardPage() {
                   String(value).padStart(2, '0')
                 )}
               </div>
-            </div>
+            </motion.div>
           ) : (
-            <div
+            <motion.div
               key={key}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: index * 0.06 }}
               className="flex h-40 flex-col justify-between rounded-xl border border-outline-variant bg-white p-6 shadow-sm transition-shadow hover:shadow-lg"
             >
               <div className="flex items-start justify-between">
@@ -143,7 +170,7 @@ export default function ClientDashboardPage() {
               <div className="text-5xl font-extrabold tabular-nums text-on-surface">
                 {value ?? '—'}
               </div>
-            </div>
+            </motion.div>
           ),
         )}
       </section>
@@ -198,40 +225,47 @@ export default function ClientDashboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {pending.map((c) => (
-              <article
-                key={c.id}
-                className="flex items-center gap-4 rounded-xl border border-outline-variant bg-white p-4 shadow-sm transition-shadow hover:shadow-lg"
-              >
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
-                  {c.imagenB64 ? (
-                    <img
-                      src={`data:image/png;base64,${c.imagenB64}`}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-semibold text-on-surface">{c.titulo}</h3>
-                  <p className="truncate text-sm text-on-surface-variant">
-                    {c.clienteNombre || 'Cliente'} · {c.plataforma || '—'}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-primary">
-                    Enviada {relativeTimeFrom(campaignSentAt(c))}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setDetailCampaign(c)}>
-                    Detalles
-                  </Button>
-                  <Button size="sm" onClick={() => navigate(`/review/${c.id}`)}>
-                    Revisar ahora
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </article>
-            ))}
+            <AnimatePresence initial={false}>
+              {pending.map((c) => (
+                <motion.article
+                  key={c.id}
+                  layout
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex items-center gap-4 rounded-xl border border-outline-variant bg-white p-4 shadow-sm transition-shadow hover:shadow-lg"
+                >
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
+                    {c.imagenB64 ? (
+                      <img
+                        src={`data:image/png;base64,${c.imagenB64}`}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-semibold text-on-surface">{c.titulo}</h3>
+                    <p className="truncate text-sm text-on-surface-variant">
+                      {c.clienteNombre || 'Cliente'} · {c.plataforma || '—'}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-primary">
+                      Enviada {relativeTimeFrom(campaignSentAt(c))}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setDetailCampaign(c)}>
+                      Detalles
+                    </Button>
+                    <Button size="sm" onClick={() => navigate(`/review/${c.id}`)}>
+                      Revisar ahora
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.article>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </section>

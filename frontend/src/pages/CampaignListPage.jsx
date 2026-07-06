@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Megaphone, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Megaphone, AlertCircle, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
@@ -41,6 +41,20 @@ export default function CampaignListPage() {
     setLoading(true)
     setError(false)
     loadCampaigns(url)
+  }
+
+  async function handleDelete(event, campaign) {
+    event.stopPropagation()
+    if (!window.confirm(`¿Eliminar la campaña "${campaign.titulo}"? Esta acción no se puede deshacer.`)) {
+      return
+    }
+
+    try {
+      await api.delete(`/api/campaigns/${campaign.id}/`)
+      fetchCampaigns()
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'No se pudo eliminar la campaña.')
+    }
   }
 
   useEffect(() => {
@@ -120,7 +134,7 @@ export default function CampaignListPage() {
               <table className="w-full text-sm">
                 <thead className="bg-surface-container-low">
                   <tr>
-                    {['Título', 'Cliente', 'Industria', 'Plataforma', 'Estado', 'Fecha'].map((h) => (
+                    {['Título', 'Cliente', 'Industria', 'Plataforma', 'Estado', 'Fecha', ''].map((h) => (
                       <th
                         key={h}
                         className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
@@ -148,6 +162,17 @@ export default function CampaignListPage() {
                       </td>
                       <td className="px-4 py-4 tabular-nums text-on-surface-variant">
                         {new Date(c.fecha_creacion).toLocaleDateString('es-PE')}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        {role === 'marketero' && ['borrador', 'generado'].includes(c.estado) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(event) => handleDelete(event, c)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -20,6 +20,11 @@ export async function getPendingCampaigns(params = {}) {
   return data.data
 }
 
+export async function getMyCampaigns(params = {}) {
+  const { data } = await userApi.get('/api/v1/campaigns/mine', { params })
+  return data.data
+}
+
 /**
  * Conteos de campañas por estado para las stat cards del dashboard cliente.
  * @returns {Promise<{pendientes: number, aprobadas: number, rechazadas: number}>}
@@ -46,10 +51,11 @@ export async function getCampaignById(id) {
  *   de JPA; Spring la exige @NotNull para prevenir conflictos concurrentes)
  * @returns {Promise<object>} campaña actualizada
  */
-export async function approveCampaign(id, version) {
+export async function approveCampaign(id, version, valoracion) {
   const { data } = await userApi.patch(`/api/v1/campaigns/${id}/status`, {
     estado: 'aprobado',
     version,
+    valoracion,
   })
   return data.data
 }
@@ -63,11 +69,12 @@ export async function approveCampaign(id, version) {
  * @param {number} version - versión actual de la campaña (optimistic locking)
  * @returns {Promise<object>} campaña actualizada
  */
-export async function rejectCampaign(id, feedback, version) {
+export async function rejectCampaign(id, feedback, version, valoracion) {
   const { data } = await userApi.patch(`/api/v1/campaigns/${id}/status`, {
     estado: 'rechazado',
     feedback,
     version,
+    valoracion,
   })
   return data.data
 }

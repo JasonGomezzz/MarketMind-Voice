@@ -20,7 +20,7 @@ const buttonVariants = cva(
         secondary:
           'bg-secondary-container text-on-secondary-container hover:bg-surface-container-high',
         ghost: 'text-on-surface-variant hover:text-primary hover:bg-primary/5',
-        light: 'bg-white text-primary hover:bg-surface-container-low',
+        light: 'bg-surface-container-lowest text-primary hover:bg-surface-container-low',
       },
       size: {
         default: 'h-11 px-6 text-base rounded-lg',

@@ -93,6 +93,7 @@ function clearSession() {
   localStorage.removeItem('refresh_token')
   localStorage.removeItem('user_role')
   localStorage.removeItem('user_nombre')
+  localStorage.removeItem('user_email')
   window.location.href = '/login'
 }
 

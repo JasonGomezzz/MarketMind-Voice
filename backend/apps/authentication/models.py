@@ -211,3 +211,35 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_cliente(self) -> bool:
         """Verifica si el usuario tiene rol cliente."""
         return self.rol == UserRole.CLIENTE
+
+
+class AuthBrandContent(models.Model):
+    """Contenido editable/sembrado para el panel visual de Login y Register."""
+
+    class Screen(models.TextChoices):
+        LOGIN = "login", "Login"
+        REGISTER = "register", "Register"
+
+    screen = models.CharField(
+        max_length=20,
+        choices=Screen.choices,
+        unique=True,
+        verbose_name="Pantalla",
+    )
+    quote = models.TextField(verbose_name="Frase testimonial")
+    person_name = models.CharField(max_length=120, verbose_name="Persona")
+    person_role = models.CharField(max_length=180, verbose_name="Cargo")
+    person_image = models.CharField(
+        max_length=255,
+        default="/src/assets/landing/testimonial.png",
+        verbose_name="Ruta de imagen",
+    )
+
+    class Meta:
+        verbose_name = "Contenido de panel auth"
+        verbose_name_plural = "Contenidos de panel auth"
+        db_table = "auth_brand_content"
+        ordering = ["screen"]
+
+    def __str__(self) -> str:
+        return f"{self.screen}: {self.person_name}"

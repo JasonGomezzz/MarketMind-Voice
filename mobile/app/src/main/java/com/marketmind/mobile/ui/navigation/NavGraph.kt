@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.collectLatest
 fun NavGraph(
     navController: NavHostController,
     innerPadding: PaddingValues,
+    modifier: Modifier = Modifier,
     appViewModel: AppViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(Unit) {
@@ -36,7 +37,7 @@ fun NavGraph(
     NavHost(
         navController = navController,
         startDestination = appViewModel.startDestination,
-        modifier = Modifier.padding(innerPadding),
+        modifier = modifier.padding(innerPadding),
     ) {
         composable(Routes.LOGIN) {
             LoginScreen(

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, AlertCircle, Inbox } from 'lucide-react'
-import { getPendingCampaigns } from '../services/clientCampaigns'
+import { ArrowLeft, ArrowRight, AlertCircle, Inbox, Search, Star } from 'lucide-react'
+import { getMyCampaigns } from '../services/clientCampaigns'
 import { Button } from '@/components/ui/button'
+import { useClientCampaignSocket } from '../hooks/useClientCampaignSocket'
 import { campaignSentAt, relativeTimeFrom } from '../utils/date'
 
 export default function ClientCampaignsPage() {
@@ -11,12 +12,64 @@ export default function ClientCampaignsPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [filters, setFilters] = useState({
+    q: '',
+    estado: '',
+    industria: '',
+    plataforma: '',
+    valoracion: '',
+  })
+
+  function updateFilter(key, value) {
+    setLoading(true)
+    setError(false)
+    setPage(0)
+    setFilters((current) => ({ ...current, [key]: value }))
+  }
+
+  function changePage(nextPage) {
+    setLoading(true)
+    setError(false)
+    setPage(nextPage)
+  }
+
+  // Cambios en vivo (otro usuario aprueba/rechaza/envía): actualiza in-place
+  // sin recargar. Si la campaña no está en la página/filtro visible, se
+  // ignora — recargarla podría reordenar/confundir la paginación en curso.
+  const handleStatusChanged = useCallback((campaign) => {
+    setData((current) => {
+      if (!current?.content?.some((c) => c.id === campaign.id)) return current
+      return {
+        ...current,
+        content: current.content.map((c) => (c.id === campaign.id ? { ...c, ...campaign } : c)),
+      }
+    })
+  }, [])
+
+  const handleCampaignSubmitted = useCallback(
+    (campaign) => {
+      if (page !== 0 || (filters.estado && filters.estado !== 'pendiente_aprobacion')) return
+      const userEmail = localStorage.getItem('user_email')
+      if (!userEmail || campaign.clienteEmail?.toLowerCase() !== userEmail.toLowerCase()) return
+      setData((current) => {
+        if (!current || current.content.some((c) => c.id === campaign.id)) return current
+        return { ...current, content: [campaign, ...current.content].slice(0, 10) }
+      })
+    },
+    [page, filters.estado]
+  )
+
+  useClientCampaignSocket({
+    onCampaignSubmitted: handleCampaignSubmitted,
+    onCampaignStatusChanged: handleStatusChanged,
+  })
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(false)
-    getPendingCampaigns({ page, size: 10 })
+    const params = Object.fromEntries(
+      Object.entries({ page, size: 10, ...filters }).filter(([, value]) => value !== '')
+    )
+    getMyCampaigns(params)
       .then((response) => {
         if (!cancelled) setData(response)
       })
@@ -30,7 +83,7 @@ export default function ClientCampaignsPage() {
     return () => {
       cancelled = true
     }
-  }, [page])
+  }, [page, filters])
 
   const campaigns = data?.content ?? []
   const totalPages = data?.totalPages ?? 1
@@ -41,7 +94,7 @@ export default function ClientCampaignsPage() {
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-on-surface">Campañas pendientes</h1>
           <p className="mt-2 text-base text-on-surface-variant">
-            Todas las solicitudes que esperan tu revisión.
+            Busca, filtra y revisa las campañas enviadas a tu cuenta.
           </p>
         </div>
         <Button variant="outline" onClick={() => navigate('/dashboard')}>
@@ -57,6 +110,58 @@ export default function ClientCampaignsPage() {
         </div>
       )}
 
+      <section className="glass-soft grid gap-3 rounded-xl p-4 md:grid-cols-[1.4fr_repeat(4,minmax(0,1fr))]">
+        <label className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+          <input
+            value={filters.q}
+            onChange={(e) => updateFilter('q', e.target.value)}
+            placeholder="Buscar campaña, copy o marketero"
+            className="h-10 w-full rounded-lg border border-outline-variant bg-white pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+          />
+        </label>
+        <select
+          value={filters.estado}
+          onChange={(e) => updateFilter('estado', e.target.value)}
+          className="h-10 rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">Todos los estados</option>
+          <option value="pendiente_aprobacion">Pendientes</option>
+          <option value="aprobado">Aprobadas</option>
+          <option value="rechazado">Rechazadas</option>
+        </select>
+        <select
+          value={filters.industria}
+          onChange={(e) => updateFilter('industria', e.target.value)}
+          className="h-10 rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">Industria</option>
+          {['tecnologia', 'salud', 'educacion', 'retail', 'gastronomia', 'moda', 'finanzas', 'entretenimiento', 'otro'].map((item) => (
+            <option key={item} value={item}>{item}</option>
+          ))}
+        </select>
+        <select
+          value={filters.plataforma}
+          onChange={(e) => updateFilter('plataforma', e.target.value)}
+          className="h-10 rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">Plataforma</option>
+          {['instagram', 'facebook', 'twitter', 'linkedin', 'google_ads', 'tiktok'].map((item) => (
+            <option key={item} value={item}>{item}</option>
+          ))}
+        </select>
+        <select
+          value={filters.valoracion}
+          onChange={(e) => updateFilter('valoracion', e.target.value)}
+          className="h-10 rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">Valoración</option>
+          {[5, 4, 3, 2, 1].map((item) => (
+            <option key={item} value={item}>{item} estrellas</option>
+          ))}
+        </select>
+      </section>
+
       {loading ? (
         <div className="space-y-3">
           {[0, 1, 2, 3].map((item) => (
@@ -66,9 +171,9 @@ export default function ClientCampaignsPage() {
       ) : campaigns.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant bg-white/50 p-12 text-center">
           <Inbox className="h-10 w-10 text-outline" />
-          <h2 className="text-lg font-semibold text-on-surface">Todo al día</h2>
+          <h2 className="text-lg font-semibold text-on-surface">No hay campañas para mostrar</h2>
           <p className="max-w-sm text-sm text-on-surface-variant">
-            No hay campañas pendientes por revisar.
+            Ajusta la búsqueda o espera nuevas solicitudes del marketero.
           </p>
         </div>
       ) : (
@@ -95,9 +200,15 @@ export default function ClientCampaignsPage() {
                 <p className="mt-1 text-xs font-medium text-primary">
                   Enviada {relativeTimeFrom(campaignSentAt(campaign))}
                 </p>
+                {campaign.clienteValoracion && (
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-600">
+                    <Star className="h-3.5 w-3.5 fill-current" />
+                    {campaign.clienteValoracion}/5
+                  </p>
+                )}
               </div>
               <Button onClick={() => navigate(`/review/${campaign.id}`)}>
-                Revisar
+                {campaign.estado === 'pendiente_aprobacion' ? 'Revisar' : 'Ver detalle'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </article>
@@ -107,7 +218,7 @@ export default function ClientCampaignsPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => changePage(page - 1)}>
             Anterior
           </Button>
           <span className="text-sm text-on-surface-variant">
@@ -117,7 +228,7 @@ export default function ClientCampaignsPage() {
             variant="outline"
             size="sm"
             disabled={page + 1 >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => changePage(page + 1)}
           >
             Siguiente
           </Button>

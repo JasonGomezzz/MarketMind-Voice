@@ -3,10 +3,12 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { Rocket, Users, Sparkles } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Rocket, Users, Sparkles } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
+import { useAuth } from '../hooks/useAuth'
+import { useAuthBrandContent } from '../hooks/useAuthBrandContent'
 
 /**
  * Registro rediseñado (sistema Lumina Creative). Mismo split que Login.
@@ -15,7 +17,10 @@ import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
  */
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const brandContent = useAuthBrandContent('register')
 
   const {
     register,
@@ -32,8 +37,14 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await api.post('/api/auth/register/', { nombre, email, password, rol })
-      toast.success('Cuenta creada. Ya puedes iniciar sesión.')
-      navigate('/login', { replace: true })
+      const loginResult = await login(email, password)
+      if (!loginResult.ok) {
+        toast.success('Cuenta creada. Inicia sesión para continuar.')
+        navigate('/login', { replace: true })
+        return
+      }
+      toast.success('Cuenta creada. Bienvenido a MarketMind.')
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       // El backend envuelve los errores por campo en {success, message, data: {campo: [...]}}
       const fieldErrors = err.response?.data?.data
@@ -56,12 +67,19 @@ export default function RegisterPage() {
   ]
 
   return (
-    <main className="flex min-h-screen flex-col md:flex-row">
+    <main className="auth-shell flex min-h-screen flex-col overflow-hidden md:flex-row">
       <AppToaster />
+      <Link
+        to="/"
+        className="glass-soft fixed left-5 top-5 z-30 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-on-surface shadow-sm transition hover:-translate-y-0.5 hover:bg-surface-container-low"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Home
+      </Link>
 
       {/* Izquierda: formulario */}
-      <section className="z-10 flex w-full items-center justify-center bg-surface p-8 md:w-1/2 md:p-16 lg:p-20">
-        <div className="w-full max-w-md">
+      <section className="auth-form-panel z-10 flex w-full items-center justify-center p-8 md:w-[54%] md:p-16 lg:p-20">
+        <div className="glass-liquid w-full max-w-md rounded-[2rem] p-7 md:p-9">
           <div className="mb-10">
             <Link to="/" className="text-3xl font-bold tracking-tight text-primary">
               MarketMind IA
@@ -124,19 +142,29 @@ export default function RegisterPage() {
                 <label htmlFor="password" className="px-1 text-sm font-medium text-on-surface-variant">
                   Contraseña
                 </label>
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Mínimo 8 caracteres"
-                  className={`w-full rounded-xl border px-4 py-3 text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary ${
-                    errors.password ? 'border-error' : 'border-outline-variant'
-                  }`}
-                  {...register('password', {
-                    required: 'La contraseña es requerida',
-                    minLength: { value: 8, message: 'Mínimo 8 caracteres' },
-                  })}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Mínimo 8 caracteres"
+                    className={`w-full rounded-xl border px-4 py-3 pr-12 text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary ${
+                      errors.password ? 'border-error' : 'border-outline-variant'
+                    }`}
+                    {...register('password', {
+                      required: 'La contraseña es requerida',
+                      minLength: { value: 8, message: 'Mínimo 8 caracteres' },
+                    })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-on-surface-variant transition hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="px-1 text-xs text-error">{errors.password.message}</p>
                 )}
@@ -192,6 +220,10 @@ export default function RegisterPage() {
           { icon: Users, titulo: 'Colabora con tus clientes', desc: 'Aprobaciones desde web y móvil.' },
         ]}
         badgeIcon={Sparkles}
+        quote={brandContent.quote}
+        personName={brandContent.person_name}
+        personRole={brandContent.person_role}
+        personImage={brandContent.person_image}
       />
     </main>
   )

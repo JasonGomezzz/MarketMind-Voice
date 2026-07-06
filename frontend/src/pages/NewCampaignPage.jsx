@@ -97,7 +97,13 @@ export default function NewCampaignPage() {
           const fresh = data.data.campaign
           if (fresh.estado !== 'pendiente_ia') {
             clearInterval(timer)
-            setResult({ campaign: fresh, warning: null })
+            setResult({
+              campaign: fresh,
+              warning:
+                fresh.estado === 'borrador' && fresh.ia_error_message
+                  ? `La generación IA falló: ${fresh.ia_error_message}`
+                  : null,
+            })
             window.dispatchEvent(new Event('credits-updated'))
           }
         })
@@ -115,7 +121,14 @@ export default function NewCampaignPage() {
 
     try {
       const { data } = await api.post('/api/campaigns/', formData)
-      setResult({ campaign: data.data.campaign, warning: null })
+      const campaign = data.data.campaign
+      setResult({
+        campaign,
+        warning:
+          campaign?.estado === 'borrador' && campaign?.ia_error_message
+            ? `La generación IA falló: ${campaign.ia_error_message}`
+            : null,
+      })
       // El crédito ya se descontó — que el sidebar lo refleje al instante
       window.dispatchEvent(new Event('credits-updated'))
     } catch (err) {

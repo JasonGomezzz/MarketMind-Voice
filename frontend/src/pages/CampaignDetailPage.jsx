@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, FileText, ImageOff, RefreshCw, Send } from 'lucide-react'
+import { ArrowLeft, FileText, ImageOff, RefreshCw, Send, Star, Trash2 } from 'lucide-react'
 import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import CampaignStepper from '@/components/CampaignStepper'
 
-const READONLY_STATES = ['aprobado', 'rechazado']
+const READONLY_STATES = ['aprobado', 'fracaso']
 
 function wordCount(text) {
   return text.trim() ? text.trim().split(/\s+/).length : 0
@@ -28,6 +28,7 @@ export default function CampaignDetailPage() {
 
   const [campaign, setCampaign] = useState(null)
   const [text, setText] = useState('')
+  const [promptText, setPromptText] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -35,29 +36,78 @@ export default function CampaignDetailPage() {
   const [regenerating, setRegenerating] = useState(false)
   const [autoSavedAt, setAutoSavedAt] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [versionsRefreshKey, setVersionsRefreshKey] = useState(0)
 
   const debounceRef = useRef(null)
+  const pollAttemptsRef = useRef(0)
   const draftKey = `campaign_${id}_draft`
 
+  const fetchCampaign = useCallback(
+    async ({ useDraft = true } = {}) => {
+      const { data } = await api.get(`/api/campaigns/${id}/`)
+      const c = data.data.campaign
+      setCampaign(c)
+      const draft = useDraft ? localStorage.getItem(draftKey) : null
+      setText(draft !== null ? draft : c.texto_generado || '')
+      setPromptText(c.prompt || '')
+      return c
+    },
+    [id, draftKey],
+  )
+
   useEffect(() => {
-    async function fetchCampaign() {
+    async function loadCampaign() {
       try {
-        const { data } = await api.get(`/api/campaigns/${id}/`)
-        const c = data.data.campaign
-        setCampaign(c)
-        const draft = localStorage.getItem(draftKey)
-        setText(draft !== null ? draft : c.texto_generado || '')
+        await fetchCampaign()
       } catch {
         setError(true)
       } finally {
         setLoading(false)
       }
     }
-    fetchCampaign()
+    loadCampaign()
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [id, draftKey])
+  }, [fetchCampaign])
+
+  useEffect(() => {
+    if (campaign?.estado !== 'pendiente_ia') return undefined
+
+    pollAttemptsRef.current = 0
+    const timer = window.setInterval(async () => {
+      pollAttemptsRef.current += 1
+
+      if (pollAttemptsRef.current > 30) {
+        window.clearInterval(timer)
+        setRegenerating(false)
+        toast.error('La IA está tardando más de lo normal. Vuelve a abrir la campaña en unos minutos.')
+        return
+      }
+
+      try {
+        const fresh = await fetchCampaign({ useDraft: false })
+        if (fresh.estado !== 'pendiente_ia') {
+          window.clearInterval(timer)
+          setRegenerating(false)
+          window.dispatchEvent(new Event('credits-updated'))
+
+          if (fresh.estado === 'generado') {
+            localStorage.removeItem(draftKey)
+            setVersionsRefreshKey((value) => value + 1)
+            toast.success('Contenido IA listo')
+          } else if (fresh.ia_error_message) {
+            toast.error(`La generación IA falló: ${fresh.ia_error_message}`)
+          }
+        }
+      } catch {
+        // Mantener el polling: la siguiente iteración puede recuperarse.
+      }
+    }, 2000)
+
+    return () => window.clearInterval(timer)
+  }, [campaign?.estado, draftKey, fetchCampaign])
 
   // Autosave con debounce de 30s
   useEffect(() => {
@@ -75,8 +125,12 @@ export default function CampaignDetailPage() {
   async function handleSave() {
     setSaving(true)
     try {
-      const { data } = await api.patch(`/api/campaigns/${id}/`, { texto_generado: text })
+      const { data } = await api.patch(`/api/campaigns/${id}/`, {
+        prompt: promptText,
+        texto_generado: text,
+      })
       setCampaign(data.data.campaign)
+      setPromptText(data.data.campaign.prompt || '')
       localStorage.removeItem(draftKey)
       setAutoSavedAt(null)
       toast.success('Cambios guardados')
@@ -115,13 +169,13 @@ export default function CampaignDetailPage() {
       localStorage.removeItem(draftKey)
       window.dispatchEvent(new Event('credits-updated'))
       toast.success(data.message || 'Regeneración iniciada')
+      if (c.estado !== 'pendiente_ia') setRegenerating(false)
     } catch (err) {
       if (err.response?.status === 402) {
         toast.error('Cuota agotada. Pide un reset al administrador.')
       } else {
         toast.error(err.response?.data?.message || 'No se pudo regenerar')
       }
-    } finally {
       setRegenerating(false)
     }
   }
@@ -155,6 +209,21 @@ export default function CampaignDetailPage() {
     }
   }
 
+  async function handleDeleteCampaign() {
+    if (!window.confirm(`¿Eliminar la campaña "${campaign.titulo}"? Esta acción no se puede deshacer.`)) {
+      return
+    }
+    setDeleting(true)
+    try {
+      await api.delete(`/api/campaigns/${id}/`)
+      toast.success('Campaña eliminada')
+      setTimeout(() => navigate('/campaigns'), 700)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo eliminar la campaña')
+      setDeleting(false)
+    }
+  }
+
   if (loading) return <LoadingSkeleton />
   if (error)
     return (
@@ -166,7 +235,13 @@ export default function CampaignDetailPage() {
   const isReadonly = READONLY_STATES.includes(campaign.estado)
   const canSubmit = campaign.estado === 'generado'
   // HU regenerar: borrador (fallo previo) o rechazado (vuelve a borrador en backend)
-  const canRegenerate = ['borrador', 'rechazado'].includes(campaign.estado)
+  const canRegenerate =
+    ['borrador', 'rechazado'].includes(campaign.estado) &&
+    (campaign.estado !== 'rechazado' || (campaign.rechazos_cliente_count ?? 0) < 2)
+  const isGenerating = campaign.estado === 'pendiente_ia'
+  const canDelete = ['borrador', 'generado'].includes(campaign.estado)
+  const isFailure = campaign.estado === 'fracaso'
+  const isFirstRejection = campaign.estado === 'rechazado' && (campaign.rechazos_cliente_count ?? 0) < 2
 
   return (
     <>
@@ -221,11 +296,14 @@ export default function CampaignDetailPage() {
 
           <VersionHistoryPanel
             campaignId={id}
+            refreshKey={versionsRefreshKey}
             canRestore={['borrador', 'generado'].includes(campaign.estado)}
             onRestored={(c) => {
               setCampaign(c)
               setText(c.texto_generado || '')
+              setPromptText(c.prompt || '')
               localStorage.removeItem(draftKey)
+              setVersionsRefreshKey((value) => value + 1)
             }}
           />
         </div>
@@ -242,7 +320,13 @@ export default function CampaignDetailPage() {
             >
               {campaign.estado === 'aprobado'
                 ? 'Esta campaña fue aprobada. El texto está bloqueado.'
-                : 'Esta campaña fue rechazada. Revisa el feedback del cliente y regenérala con IA.'}
+                : 'Esta campaña fue rechazada dos veces y quedó en fracaso. Ya no puede modificarse ni regenerarse.'}
+            </div>
+          )}
+
+          {isFirstRejection && (
+            <div className="mb-4 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-sm font-medium text-tertiary">
+              Primer rechazo del cliente. Puedes ajustar el prompt o el copy y regenerar una última versión.
             </div>
           )}
 
@@ -256,6 +340,40 @@ export default function CampaignDetailPage() {
             </div>
           )}
 
+          {campaign.cliente_valoracion && (
+            <div className="mb-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Valoración del cliente
+              </p>
+              <div className="flex items-center gap-1 text-amber-500">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`h-5 w-5 ${star <= campaign.cliente_valoracion ? 'fill-current' : 'text-outline'}`}
+                  />
+                ))}
+                <span className="ml-2 text-sm font-semibold text-on-surface">
+                  {campaign.cliente_valoracion}/5
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="mb-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <p className="mb-3 text-sm font-semibold text-on-surface">Prompt de generación</p>
+            <textarea
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
+              disabled={isReadonly || isGenerating}
+              rows={5}
+              className={`w-full resize-y rounded-lg border px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-transparent focus:ring-2 focus:ring-primary ${
+                isReadonly || isGenerating
+                  ? 'cursor-not-allowed border-outline-variant bg-surface-container-low text-on-surface-variant'
+                  : 'border-outline-variant'
+              }`}
+            />
+          </div>
+
           <div className="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold text-on-surface">Copy publicitario</p>
@@ -266,10 +384,22 @@ export default function CampaignDetailPage() {
               )}
             </div>
 
+            {isGenerating && (
+              <div className="mb-3 rounded-lg border border-primary/20 bg-primary-container px-4 py-3 text-sm text-on-primary-container">
+                La IA está generando el nuevo contenido. Esta pantalla se actualizará sola.
+              </div>
+            )}
+
+            {campaign.estado === 'borrador' && campaign.ia_error_message && (
+              <div className="mb-3 rounded-lg border border-error/20 bg-error-container px-4 py-3 text-sm text-on-error-container">
+                La última generación IA falló: {campaign.ia_error_message}
+              </div>
+            )}
+
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              disabled={isReadonly}
+              disabled={isReadonly || isGenerating}
               rows={16}
               className={`w-full resize-y rounded-lg border px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-transparent focus:ring-2 focus:ring-primary ${
                 isReadonly
@@ -287,7 +417,11 @@ export default function CampaignDetailPage() {
                       {saving ? 'Guardando…' : 'Guardar cambios'}
                     </Button>
                     {canSubmit && (
-                      <Button size="sm" onClick={() => setShowModal(true)} disabled={submitting}>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowModal(true)}
+                        disabled={submitting || isGenerating}
+                      >
                         <Send className="h-4 w-4" />
                         {submitting ? 'Enviando…' : 'Enviar al cliente'}
                       </Button>
@@ -300,10 +434,27 @@ export default function CampaignDetailPage() {
                     {regenerating ? 'Regenerando…' : 'Regenerar con IA'}
                   </Button>
                 )}
+                {isGenerating && (
+                  <Button size="sm" disabled>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Generando…
+                  </Button>
+                )}
                 {campaign.estado === 'aprobado' && (
                   <Button size="sm" onClick={handleExportPDF}>
                     <FileText className="h-4 w-4" />
                     Exportar PDF
+                  </Button>
+                )}
+                {canDelete && !isFailure && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDeleteCampaign}
+                    disabled={deleting}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {deleting ? 'Eliminando…' : 'Eliminar'}
                   </Button>
                 )}
               </div>

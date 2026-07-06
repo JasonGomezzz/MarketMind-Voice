@@ -16,6 +16,9 @@ public class StatusUpdateRequest {
     @NotNull(message = "La versión es obligatoria para prevenir conflictos concurrentes.")
     private Integer version;
 
+    @NotNull(message = "La valoración es obligatoria.")
+    private Integer valoracion;
+
     // Sin @NotBlank — validación cross-field en el service (solo requerido cuando estado="rechazado")
     private String feedback;
 }

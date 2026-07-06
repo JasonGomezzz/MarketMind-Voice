@@ -20,6 +20,7 @@ public class CampaignResponseDTO {
     private Long id;
     private String titulo;
     private String clienteNombre;
+    private String clienteEmail;
     private String industria;
     private String tono;
     private String plataforma;
@@ -31,6 +32,9 @@ public class CampaignResponseDTO {
     private Integer intentosGeneracion;
     private String estado;
     private String feedbackRechazo;
+    private Integer clienteValoracion;
+    private OffsetDateTime clienteValoracionAt;
+    private Integer rechazosClienteCount;
     private Long marketeroId;
     private String marketeroNombre;
     private OffsetDateTime fechaCreacion;

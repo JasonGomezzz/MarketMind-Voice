@@ -6,12 +6,23 @@ import testimonialImg from '@/assets/landing/testimonial.png'
  * Degradado indigo + blobs flotantes + panel glass-liquid-dark con features + testimonial.
  * `highlights` y `badgeIcon` los provee cada pantalla.
  */
-export default function AuthBrandPanel({ highlights = [], badgeIcon: BadgeIcon }) {
+export default function AuthBrandPanel({
+  highlights = [],
+  badgeIcon: BadgeIcon,
+  quote = 'MarketMind transformó nuestra estrategia digital. Lo que antes nos tomaba una semana, ahora lo resolvemos en una mañana.',
+  personName = 'Elena Rodríguez',
+  personRole = 'Directora de Marketing, Global Creative Co.',
+  personImage = testimonialImg,
+}) {
+  const resolvedPersonImage = personImage?.includes?.('/src/assets/landing/testimonial.png')
+    ? testimonialImg
+    : personImage
+
   return (
-    <section className="relative hidden w-1/2 items-center justify-center overflow-hidden bg-primary-container p-12 md:flex">
+    <section className="auth-brand-diagonal relative hidden w-1/2 items-center justify-center overflow-hidden bg-primary-container p-12 md:flex">
       {/* Fondo animado */}
       <div className="absolute inset-0 z-0">
-        <div className="step-gradient absolute inset-0 opacity-90" />
+        <div className="auth-brand-mesh absolute inset-0 opacity-95" />
         <div
           className="absolute inset-0 opacity-20"
           style={{
@@ -37,7 +48,7 @@ export default function AuthBrandPanel({ highlights = [], badgeIcon: BadgeIcon }
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="glass-liquid-dark mb-12 rounded-2xl p-8"
+          className="glass-liquid-dark glass-float mb-12 rounded-3xl p-8"
         >
           <div className="mb-6 flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
@@ -61,7 +72,7 @@ export default function AuthBrandPanel({ highlights = [], badgeIcon: BadgeIcon }
               return (
                 <div
                   key={h.titulo}
-                  className="flex items-start gap-4 rounded-xl bg-white/5 p-4 transition-colors hover:bg-white/10"
+                  className="flex items-start gap-4 rounded-2xl bg-white/10 p-4 transition-all hover:-translate-y-0.5 hover:bg-white/20"
                 >
                   {Icon && <Icon className="h-5 w-5 shrink-0 text-tertiary-container" />}
                   <div>
@@ -77,20 +88,19 @@ export default function AuthBrandPanel({ highlights = [], badgeIcon: BadgeIcon }
         {/* Testimonial */}
         <div className="px-4">
           <p className="mb-6 text-xl font-medium italic leading-relaxed">
-            «MarketMind transformó nuestra estrategia digital. Lo que antes nos tomaba
-            una semana, ahora lo resolvemos en una mañana.»
+            «{quote}»
           </p>
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 overflow-hidden rounded-full border-2 border-white/20">
               <img
-                src={testimonialImg}
-                alt="Elena Rodríguez"
+                src={resolvedPersonImage}
+                alt={personName}
                 className="h-full w-full object-cover"
               />
             </div>
             <div>
-              <p className="text-sm font-bold">Elena Rodríguez</p>
-              <p className="text-xs opacity-70">Directora de Marketing, Global Creative Co.</p>
+              <p className="text-sm font-bold">{personName}</p>
+              <p className="text-xs opacity-70">{personRole}</p>
             </div>
           </div>
         </div>

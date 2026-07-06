@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.marketmind.mobile.data.repository.AuthRepository
 import com.marketmind.mobile.data.repository.HttpFailureException
 import com.marketmind.mobile.data.repository.InvalidCredentialsException
+import com.marketmind.mobile.data.repository.UnauthorizedMobileRoleException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,13 +32,51 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             repository.login(trimmedEmail, password).fold(
                 onSuccess = { result ->
-                    _state.value = LoginUiState.Success(role = result.role)
+                    _state.value = LoginUiState.Success(role = result.role, nombre = result.nombre)
                 },
                 onFailure = { e ->
                     _state.value = when (e) {
                         is InvalidCredentialsException -> LoginUiState.Error("Credenciales inválidas.")
+                        is UnauthorizedMobileRoleException -> LoginUiState.Error("Mobile solo está disponible para usuarios marketero.")
                         is IOException -> LoginUiState.Error("Sin conexión. Verifica tu red.")
                         is HttpFailureException -> LoginUiState.Error("Error del servidor (${e.code}). Intenta de nuevo.")
+                        else -> LoginUiState.Error("Error inesperado. Intenta de nuevo.")
+                    }
+                }
+            )
+        }
+    }
+
+    fun register(nombre: String, email: String, password: String, confirmPassword: String, role: String) {
+        val trimmedName = nombre.trim()
+        val trimmedEmail = email.trim()
+        if (trimmedName.isBlank() || trimmedEmail.isBlank() || password.isBlank()) {
+            _state.value = LoginUiState.Error("Completa nombre, email y contraseña.")
+            return
+        }
+        if (password.length < 8) {
+            _state.value = LoginUiState.Error("La contraseña debe tener al menos 8 caracteres.")
+            return
+        }
+        if (password != confirmPassword) {
+            _state.value = LoginUiState.Error("Las contraseñas no coinciden.")
+            return
+        }
+
+        _state.value = LoginUiState.Loading
+        viewModelScope.launch {
+            repository.register(trimmedName, trimmedEmail, password, role).fold(
+                onSuccess = { result ->
+                    _state.value = LoginUiState.Success(role = result.role, nombre = result.nombre)
+                },
+                onFailure = { e ->
+                    _state.value = when (e) {
+                        is UnauthorizedMobileRoleException -> LoginUiState.Error("Cuenta creada, pero mobile solo permite ingresar como marketero.")
+                        is IOException -> LoginUiState.Error("Sin conexión. Verifica tu red.")
+                        is HttpFailureException -> when (e.code) {
+                            400 -> LoginUiState.Error("No se pudo crear la cuenta. Revisa los datos o usa otro email.")
+                            else -> LoginUiState.Error("Error del servidor (${e.code}). Intenta de nuevo.")
+                        }
                         else -> LoginUiState.Error("Error inesperado. Intenta de nuevo.")
                     }
                 }

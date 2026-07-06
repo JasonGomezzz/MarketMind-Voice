@@ -22,6 +22,7 @@ import requests
 from django.conf import settings
 from django.db import transaction
 
+from services.mock_assets import MOCK_IMAGE_B64
 from services.version_service import save_campaign_version
 
 if TYPE_CHECKING:
@@ -66,6 +67,11 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
         )
         return {"dispatched": False, "error": "Máximo de intentos de generación alcanzado (3)."}
 
+    # Si esta campaña ya tenía una versión generada, preservarla antes de
+    # reemplazarla. En primera generación es no-op; el resultado inicial se
+    # guarda después de recibir el contenido.
+    save_campaign_version(campaign)
+
     # ── Descontar token + incrementar intentos + transicionar ──────────
     with transaction.atomic():
         user.tokens_disponibles -= 1
@@ -93,10 +99,13 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             f"Plataforma: {campaign.plataforma}. "
             "Transforma tu marca hoy con MarketMind IA."
         )
-        save_campaign_version(campaign)
         campaign.texto_generado = mock_copy
-        campaign.imagen_b64 = None  # mock no llama Gemini Imagen 3
+        # El mock no llama a Gemini Imagen 3, pero devuelve un PNG placeholder
+        # honesto para que la web y el mobile siempre muestren un anuncio
+        # completo (texto + imagen) sin depender del contenedor n8n.
+        campaign.imagen_b64 = MOCK_IMAGE_B64
         campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])
+        save_campaign_version(campaign)
         campaign.transition_to(CampaignStatus.GENERADO)
         return {"dispatched": True, "mock": True}
 

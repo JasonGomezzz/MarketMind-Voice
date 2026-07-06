@@ -26,7 +26,10 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config
 
-    if (error.response?.status === 401 && !original._retry) {
+    const isAuthEntryPoint =
+      original?.url?.includes('/api/auth/token/') || original?.url?.includes('/api/auth/register/')
+
+    if (error.response?.status === 401 && !original._retry && !isAuthEntryPoint) {
       original._retry = true
 
       if (isRefreshing) {
@@ -76,6 +79,7 @@ function clearSession() {
   localStorage.removeItem('refresh_token')
   localStorage.removeItem('user_role')
   localStorage.removeItem('user_nombre')
+  localStorage.removeItem('user_email')
   window.location.href = '/login'
 }
 

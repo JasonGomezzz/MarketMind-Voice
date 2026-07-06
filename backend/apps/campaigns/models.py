@@ -9,6 +9,7 @@ from typing import ClassVar
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -50,6 +51,7 @@ class CampaignStatus(models.TextChoices):
     PENDIENTE_APROBACION = "pendiente_aprobacion", "Pendiente Aprobación"
     APROBADO = "aprobado", "Aprobado"
     RECHAZADO = "rechazado", "Rechazado"
+    FRACASO = "fracaso", "Fracaso"
 
 
 class Campaign(models.Model):
@@ -78,7 +80,8 @@ class Campaign(models.Model):
             CampaignStatus.RECHAZADO,
         ],
         CampaignStatus.APROBADO: [],
-        CampaignStatus.RECHAZADO: [CampaignStatus.BORRADOR],
+        CampaignStatus.RECHAZADO: [CampaignStatus.BORRADOR, CampaignStatus.FRACASO],
+        CampaignStatus.FRACASO: [],
     }
 
     # ── Identificación ──────────────────────────────────────
@@ -186,6 +189,24 @@ class Campaign(models.Model):
         blank=True,
         verbose_name="Fecha de envío al cliente",
         help_text="Momento en que el marketero envió la campaña para aprobación.",
+    )
+    cliente_valoracion = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="Valoración del cliente",
+        help_text="Valoración de 1 a 5 estrellas enviada por el cliente al aprobar o rechazar.",
+    )
+    cliente_valoracion_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de valoración del cliente",
+        help_text="Momento en que el cliente registró su valoración.",
+    )
+    rechazos_cliente_count = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name="Rechazos del cliente",
+        help_text="Cantidad acumulada de rechazos del cliente. Al segundo rechazo la campaña queda en fracaso.",
     )
 
     # ── Optimistic locking — Spring Boot JPA usa @Version sobre este campo ──
@@ -296,3 +317,30 @@ class CampaignVersion(models.Model):
 
     def __str__(self) -> str:
         return f"Campaign {self.campaign_id} v{self.version_number}"
+
+
+class CreditPurchase(models.Model):
+    """
+    Registro append-only de compras de créditos de IA. Pasarela de pago
+    simulada: siempre aprueba, no hay integración real con un procesador.
+    El monto/créditos vienen del mapeo fijo en views.py (PLAN_MAP), nunca
+    del cliente, para evitar auto-otorgamiento de créditos.
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='compras_creditos',
+    )
+    plan_nombre = models.CharField(max_length=50)
+    monto = models.DecimalField(max_digits=8, decimal_places=2)
+    creditos = models.PositiveIntegerField()
+    estado = models.CharField(max_length=20, default='aprobado')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'campaigns_creditpurchase'
+        ordering = ['-fecha_creacion']
+
+    def __str__(self) -> str:
+        return f"Compra {self.plan_nombre} — {self.usuario_id} ({self.creditos} créditos)"

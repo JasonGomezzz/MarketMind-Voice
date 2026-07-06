@@ -11,4 +11,5 @@ export const STATES = {
   pendiente_aprobacion: { label: 'Pendiente aprobación', className: 'bg-warning-container text-tertiary' },
   aprobado: { label: 'Aprobado', className: 'bg-success-container text-success' },
   rechazado: { label: 'Rechazado', className: 'bg-error-container text-error' },
+  fracaso: { label: 'Fracaso', className: 'bg-error-container text-on-error-container' },
 }

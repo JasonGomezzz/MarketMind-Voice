@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { MotionConfig } from 'motion/react'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -35,31 +36,33 @@ function PromptGuideRouter() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+    <MotionConfig reducedMotion="user">
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-        <Route element={<PrivateRoute />}>
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<DashboardRouter />} />
-            <Route path="/campaigns" element={<CampaignListPage />} />
-            <Route path="/campaigns/new" element={<NewCampaignPage />} />
-            <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
-            <Route path="/review/:id" element={<ClientReviewPage />} />
-            <Route path="/client-campaigns" element={<ClientCampaignsPage />} />
-            <Route path="/client-help" element={<ClientHelpPage />} />
-            <Route path="/admin" element={<UsersAdminPage />} />
-            <Route path="/admin/analytics" element={<AnalyticsPage />} />
-            <Route path="/settings" element={<AccountSettingsPage />} />
-            <Route path="/prompt-guide" element={<PromptGuideRouter />} />
-            <Route path="/credits" element={<CreditsDetailPage />} />
+          <Route element={<PrivateRoute />}>
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<DashboardRouter />} />
+              <Route path="/campaigns" element={<CampaignListPage />} />
+              <Route path="/campaigns/new" element={<NewCampaignPage />} />
+              <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+              <Route path="/review/:id" element={<ClientReviewPage />} />
+              <Route path="/client-campaigns" element={<ClientCampaignsPage />} />
+              <Route path="/client-help" element={<ClientHelpPage />} />
+              <Route path="/admin" element={<UsersAdminPage />} />
+              <Route path="/admin/analytics" element={<AnalyticsPage />} />
+              <Route path="/settings" element={<AccountSettingsPage />} />
+              <Route path="/prompt-guide" element={<PromptGuideRouter />} />
+              <Route path="/credits" element={<CreditsDetailPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </MotionConfig>
   )
 }

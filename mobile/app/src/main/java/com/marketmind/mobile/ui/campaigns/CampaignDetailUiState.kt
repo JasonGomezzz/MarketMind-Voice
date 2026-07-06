@@ -7,6 +7,7 @@ sealed interface CampaignDetailUiState {
     data class Success(
         val campaign: CampaignDto,
         val submitting: Boolean = false,
+        val deleting: Boolean = false,
     ) : CampaignDetailUiState
     data class Error(val message: String) : CampaignDetailUiState
 }

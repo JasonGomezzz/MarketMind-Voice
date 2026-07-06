@@ -9,6 +9,7 @@ REGISTER_URL = "/api/auth/register/"
 LOGIN_URL = "/api/auth/token/"
 LOGOUT_URL = "/api/auth/logout/"
 ME_URL = "/api/auth/me/"
+BRAND_CONTENT_URL = "/api/auth/brand-content/"
 
 
 @pytest.mark.django_db
@@ -214,6 +215,22 @@ class TestMeView:
         response = api_client.get(ME_URL)
         assert response.status_code == 200
         assert "tokens_disponibles" in response.data["data"]["user"]
+
+
+@pytest.mark.django_db
+class TestAuthBrandContentView:
+    def test_login_brand_content_public(self):
+        client = APIClient()
+        response = client.get(f"{BRAND_CONTENT_URL}?screen=login")
+        assert response.status_code == 200
+        content = response.data["data"]["content"]
+        assert content["person_name"] == "Elena Rodríguez"
+        assert "Revisamos propuestas con contexto" in content["quote"]
+
+    def test_invalid_screen_400(self):
+        client = APIClient()
+        response = client.get(f"{BRAND_CONTENT_URL}?screen=otro")
+        assert response.status_code == 400
 
 
 CHANGE_PASSWORD_URL = "/api/auth/me/change-password/"

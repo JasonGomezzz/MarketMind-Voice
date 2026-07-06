@@ -32,6 +32,9 @@ public class CampaignEntity {
     @Column(name = "cliente_nombre", updatable = false, nullable = false)
     private String clienteNombre;
 
+    @Column(name = "cliente_email", updatable = false)
+    private String clienteEmail;
+
     @Column(name = "industria", updatable = false, nullable = false)
     private String industria;
 
@@ -68,6 +71,17 @@ public class CampaignEntity {
     @Column(name = "feedback_rechazo")
     private String feedbackRechazo;
 
+    @Column(name = "cliente_valoracion")
+    private Short clienteValoracion;
+
+    @Column(name = "cliente_valoracion_at")
+    private OffsetDateTime clienteValoracionAt;
+
+    // Short porque Django creó la columna como PositiveSmallIntegerField
+    // (smallint) — con Integer, Hibernate falla validando el esquema.
+    @Column(name = "rechazos_cliente_count")
+    private Short rechazosClienteCount;
+
     // Campos que Spring Boot puede escribir (estado + feedbackRechazo al rechazar)
     @Column(name = "estado", nullable = false)
     private String estado;
@@ -96,5 +110,17 @@ public class CampaignEntity {
 
     public void setFeedbackRechazo(String feedbackRechazo) {
         this.feedbackRechazo = feedbackRechazo;
+    }
+
+    public void setClienteValoracion(Short clienteValoracion) {
+        this.clienteValoracion = clienteValoracion;
+    }
+
+    public void setClienteValoracionAt(OffsetDateTime clienteValoracionAt) {
+        this.clienteValoracionAt = clienteValoracionAt;
+    }
+
+    public void setRechazosClienteCount(Short rechazosClienteCount) {
+        this.rechazosClienteCount = rechazosClienteCount;
     }
 }

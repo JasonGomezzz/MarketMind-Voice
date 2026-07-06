@@ -3,7 +3,13 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.campaigns.models import Campaign, CampaignPlataforma, CampaignStatus, CampaignTono
+from apps.campaigns.models import (
+    Campaign,
+    CampaignPlataforma,
+    CampaignStatus,
+    CampaignTono,
+    CampaignVersion,
+)
 
 CALLBACK_URL = "/api/campaigns/webhook/ia-result/"
 EMAIL_CALLBACK_URL = "/api/campaigns/webhook/email-sent/"
@@ -41,6 +47,18 @@ class TestIaResultCallbackSuccess:
         }, format="json")
         campaign_pendiente_ia.refresh_from_db()
         assert campaign_pendiente_ia.estado == CampaignStatus.GENERADO
+
+    def test_success_saves_initial_version(self, campaign_pendiente_ia):
+        client = APIClient()
+        copy_text = "Primera versión generada por IA."
+        client.post(CALLBACK_URL, {
+            "n8n_callback_token": str(campaign_pendiente_ia.n8n_callback_token),
+            "success": True,
+            "copy": copy_text,
+        }, format="json")
+        versions = CampaignVersion.objects.filter(campaign=campaign_pendiente_ia)
+        assert versions.count() == 1
+        assert versions.first().texto_generado == copy_text
 
 
 @pytest.mark.django_db

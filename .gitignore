@@ -35,6 +35,9 @@ frontend/dist/
 CLAUDE.md
 .claude/
 
+# Contexto local para asistentes IA (no commitear)
+.ai-context/
+
 # Mobile
 mobile/.gradle/
 mobile/build/

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 /**
  * Stepper del FSM de campaña — hace visible la máquina de estados.
  * Flujo principal: borrador → pendiente_ia → generado → pendiente_aprobacion → aprobado.
- * El estado "rechazado" se muestra como bifurcación desde pendiente_aprobacion.
+ * Los estados "rechazado" y "fracaso" se muestran como bifurcación desde revisión.
  * Deriva de los tokens de DESIGN.md (sin colores nuevos).
  */
 const FLOW = [
@@ -17,8 +17,9 @@ const FLOW = [
 
 export default function CampaignStepper({ estado }) {
   const rejected = estado === 'rechazado'
+  const failed = estado === 'fracaso'
   // índice del estado actual dentro del flujo principal
-  const currentIndex = rejected
+  const currentIndex = rejected || failed
     ? FLOW.findIndex((s) => s.key === 'pendiente_aprobacion')
     : FLOW.findIndex((s) => s.key === estado)
 
@@ -37,8 +38,8 @@ export default function CampaignStepper({ estado }) {
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-colors',
                   done && 'bg-success text-white',
-                  active && !rejected && 'bg-primary text-white ring-4 ring-primary/20',
-                  active && rejected && 'bg-error text-white ring-4 ring-error/20',
+                  active && !rejected && !failed && 'bg-primary text-white ring-4 ring-primary/20',
+                  active && (rejected || failed) && 'bg-error text-white ring-4 ring-error/20',
                   !done && !active && 'bg-surface-container-high text-outline',
                 )}
               >
@@ -50,7 +51,7 @@ export default function CampaignStepper({ estado }) {
                   active ? 'text-on-surface' : 'text-on-surface-variant',
                 )}
               >
-                {active && rejected ? 'Rechazado' : step.label}
+                {active && rejected ? 'Rechazado' : active && failed ? 'Fracaso' : step.label}
               </span>
             </div>
 

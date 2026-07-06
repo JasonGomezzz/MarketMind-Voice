@@ -16,11 +16,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.exceptions import api_response
 from .serializers import (
+    AuthBrandContentSerializer,
     ChangePasswordSerializer,
     RegisterSerializer,
     UpdateProfileSerializer,
     UserResponseSerializer,
 )
+from .models import AuthBrandContent
 from .throttles import RegisterRateThrottle
 
 
@@ -211,5 +213,43 @@ class ChangePasswordView(APIView):
         serializer.save()
         return Response(
             api_response(success=True, message="Contraseña actualizada.", data={}),
+            status=status.HTTP_200_OK,
+        )
+
+
+class AuthBrandContentView(APIView):
+    """
+    GET /api/auth/brand-content/?screen=login|register
+
+    Devuelve contenido público para el panel visual de auth. No requiere JWT.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        screen = request.query_params.get("screen", AuthBrandContent.Screen.LOGIN)
+        if screen not in AuthBrandContent.Screen.values:
+            return Response(
+                api_response(
+                    success=False,
+                    message="Pantalla inválida.",
+                    data={"screen": f"Valores permitidos: {', '.join(AuthBrandContent.Screen.values)}"},
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        content = AuthBrandContent.objects.filter(screen=screen).first()
+        if content is None:
+            return Response(
+                api_response(success=False, message="Contenido no configurado.", data={}),
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(
+            api_response(
+                success=True,
+                message="Contenido de marca obtenido.",
+                data={"content": AuthBrandContentSerializer(content).data},
+            ),
             status=status.HTTP_200_OK,
         )

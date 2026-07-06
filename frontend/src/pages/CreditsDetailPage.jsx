@@ -63,6 +63,16 @@ export default function CreditsDetailPage() {
     }
   }, [retryCount, location.key])
 
+  // Refresca el saldo si el usuario compra créditos (PlanesModal) mientras
+  // está en esta página — mismo evento que ya usa AppLayout.jsx.
+  useEffect(() => {
+    function onCreditsUpdated() {
+      setRetryCount((c) => c + 1)
+    }
+    window.addEventListener('credits-updated', onCreditsUpdated)
+    return () => window.removeEventListener('credits-updated', onCreditsUpdated)
+  }, [])
+
   if (loading) {
     return (
       <div className="space-y-6">

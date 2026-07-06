@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, CircleCheck, CircleX, ImageOff, AlertCircle } from 'lucide-react'
+import { ArrowLeft, CircleCheck, CircleX, ImageOff, AlertCircle, Loader2, Star } from 'lucide-react'
 import ImageLightbox from '@/components/ui/ImageLightbox'
 import { getCampaignById, approveCampaign, rejectCampaign } from '../services/clientCampaigns'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import RejectModal from '@/components/campaign/RejectModal'
+import { useClientCampaignSocket } from '../hooks/useClientCampaignSocket'
 
 /**
  * Review de campaña del rol CLIENTE (HU14/HU15). Consume Spring Boot :8080
@@ -24,6 +25,31 @@ export default function ClientReviewPage() {
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState(false)
   const [showReject, setShowReject] = useState(false)
+  const [rating, setRating] = useState(0)
+  const [externallyUpdated, setExternallyUpdated] = useState(false)
+
+  // Ref (no state) para que handleStatusChanged no cambie de identidad en
+  // cada toggle de `busy` y así no fuerce una reconexión del WebSocket.
+  const busyRef = useRef(false)
+  useEffect(() => {
+    busyRef.current = busy
+  }, [busy])
+
+  // Si otro usuario/pestaña resuelve esta misma campaña mientras la tenemos
+  // abierta, reflejamos el nuevo estado (deshabilita Aprobar/Rechazar al
+  // salir de pendiente_aprobacion) y avisamos — evita un PATCH con `version`
+  // desactualizada. Si el cambio lo disparamos nosotros mismos (busyRef),
+  // no mostramos el aviso: ya estamos navegando fuera con nuestro propio toast.
+  const handleStatusChanged = useCallback(
+    (updated) => {
+      if (String(updated.id) !== String(id)) return
+      setCampaign((current) => (current ? { ...current, ...updated } : current))
+      if (!busyRef.current) setExternallyUpdated(true)
+    },
+    [id]
+  )
+
+  useClientCampaignSocket({ onCampaignStatusChanged: handleStatusChanged })
 
   // Sin setState síncrono en el efecto: el estado inicial cubre el primer load.
   useEffect(() => {
@@ -44,9 +70,13 @@ export default function ClientReviewPage() {
   }, [id])
 
   async function handleApprove() {
+    if (!rating) {
+      toast.error('Selecciona una valoración de 1 a 5 estrellas.')
+      return
+    }
     setBusy(true)
     try {
-      await approveCampaign(id, campaign.version)
+      await approveCampaign(id, campaign.version, rating)
       toast.success('Campaña aprobada')
       setTimeout(() => navigate('/dashboard'), 1000)
     } catch (err) {
@@ -56,9 +86,13 @@ export default function ClientReviewPage() {
   }
 
   async function handleReject(feedback) {
+    if (!rating) {
+      toast.error('Selecciona una valoración de 1 a 5 estrellas.')
+      return
+    }
     setBusy(true)
     try {
-      await rejectCampaign(id, feedback, campaign.version)
+      await rejectCampaign(id, feedback, campaign.version, rating)
       setShowReject(false)
       toast.success('Campaña rechazada. El marketero recibirá tu feedback.')
       setTimeout(() => navigate('/dashboard'), 1200)
@@ -109,13 +143,21 @@ export default function ClientReviewPage() {
         <StatusBadge estado={campaign.estado} className="px-4 py-1.5 text-sm" />
       </div>
 
+      {/* Aviso si otro usuario/pestaña actualizó esta campaña en vivo */}
+      {externallyUpdated && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning-container px-4 py-3 text-sm font-medium text-warning">
+          <AlertCircle className="h-4 w-4" />
+          Esta campaña fue actualizada por otro usuario mientras la tenías abierta.
+        </div>
+      )}
+
       {/* Aviso si ya fue revisada */}
       {!puedeRevisar && (
         <div
           className={`mb-6 rounded-xl border px-4 py-3 text-sm font-medium ${
             campaign.estado === 'aprobado'
               ? 'border-success/20 bg-success-container text-success'
-              : campaign.estado === 'rechazado'
+              : campaign.estado === 'rechazado' || campaign.estado === 'fracaso'
                 ? 'border-error/20 bg-error-container text-on-error-container'
                 : 'border-outline-variant bg-surface-container-low text-on-surface-variant'
           }`}
@@ -124,6 +166,8 @@ export default function ClientReviewPage() {
             ? 'Ya aprobaste esta campaña.'
             : campaign.estado === 'rechazado'
               ? 'Ya rechazaste esta campaña. El marketero está trabajando en una nueva versión.'
+              : campaign.estado === 'fracaso'
+                ? 'Esta campaña fue rechazada dos veces y quedó cerrada como fracaso.'
               : 'Esta campaña aún no está lista para revisión.'}
         </div>
       )}
@@ -159,12 +203,21 @@ export default function ClientReviewPage() {
           </div>
 
           {/* Feedback previo si la rechazó antes */}
-          {campaign.estado === 'rechazado' && campaign.feedbackRechazo && (
+          {['rechazado', 'fracaso'].includes(campaign.estado) && campaign.feedbackRechazo && (
             <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-error">
                 Tu feedback
               </p>
               <p className="text-sm leading-relaxed text-on-surface">{campaign.feedbackRechazo}</p>
+            </div>
+          )}
+
+          {campaign.clienteValoracion && (
+            <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Tu valoración
+              </p>
+              <StarRating value={campaign.clienteValoracion} readOnly />
             </div>
           )}
         </div>
@@ -190,20 +243,30 @@ export default function ClientReviewPage() {
           {puedeRevisar && (
             <div className="glass-soft space-y-3 rounded-xl p-5 shadow-sm">
               <p className="text-sm font-semibold text-on-surface">¿Qué decides?</p>
+              <div className="rounded-lg border border-outline-variant bg-white/70 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                  Valoración
+                </p>
+                <StarRating value={rating} onChange={setRating} />
+              </div>
               <Button
                 size="lg"
                 className="w-full bg-success hover:bg-success/90"
-                disabled={busy}
+                disabled={busy || !rating}
                 onClick={handleApprove}
               >
-                <CircleCheck className="h-5 w-5" />
+                {busy ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <CircleCheck className="h-5 w-5" />
+                )}
                 {busy ? 'Procesando…' : 'Aprobar campaña'}
               </Button>
               <Button
                 size="lg"
                 variant="outline"
                 className="w-full border-error/30 text-error hover:bg-error-container/50"
-                disabled={busy}
+                disabled={busy || !rating}
                 onClick={() => setShowReject(true)}
               >
                 <CircleX className="h-5 w-5" />
@@ -224,6 +287,29 @@ export default function ClientReviewPage() {
         onConfirm={handleReject}
       />
     </>
+  )
+}
+
+function StarRating({ value, onChange, readOnly = false }) {
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => {
+        const active = star <= value
+        return (
+          <button
+            key={star}
+            type="button"
+            disabled={readOnly}
+            onClick={() => onChange?.(star)}
+            className={`rounded-md p-1 transition ${readOnly ? 'cursor-default' : 'hover:scale-110'}`}
+            aria-label={`${star} estrella${star === 1 ? '' : 's'}`}
+          >
+            <Star className={`h-6 w-6 ${active ? 'fill-amber-400 text-amber-500' : 'text-outline'}`} />
+          </button>
+        )
+      })}
+      {value ? <span className="ml-2 text-sm font-semibold text-on-surface">{value}/5</span> : null}
+    </div>
   )
 }
 

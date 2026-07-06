@@ -62,7 +62,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAuthApiService(
-        @AuthHttp retrofit: Retrofit,
+        @ApiHttp retrofit: Retrofit,
     ): AuthApiService = retrofit.create(AuthApiService::class.java)
 
     // ──────────────── Cliente "api" (con authenticator) ────────────────
@@ -95,17 +95,13 @@ object NetworkModule {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    // ──────────────── Cliente "spring" (reusa OkHttp de @ApiHttp) ────────────────
-    // Apunta a Spring Boot :8080. Comparte AuthInterceptor + TokenAuthenticator
-    // con @ApiHttp porque el JWT es el mismo (firmado por Django).
-
     @Provides
     @Singleton
     @SpringHttp
     fun provideSpringRetrofit(
         @ApiHttp client: OkHttpClient,
     ): Retrofit = Retrofit.Builder()
-        .baseUrl(BuildConfig.BASE_URL_SPRING)
+        .baseUrl(BuildConfig.BASE_URL_DJANGO)
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()

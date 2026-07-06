@@ -14,8 +14,12 @@ class AppViewModel @Inject constructor(
     sessionManager: SessionManager,
 ) : ViewModel() {
 
-    val startDestination: String =
-        if (tokenManager.isLoggedIn()) Routes.HOME else Routes.LOGIN
+    val startDestination: String = if (tokenManager.isLoggedIn() && tokenManager.getRole() == "marketero") {
+        Routes.HOME
+    } else {
+        tokenManager.clear()
+        Routes.LOGIN
+    }
 
     val sessionEvents: SharedFlow<SessionEvent> = sessionManager.events
 }

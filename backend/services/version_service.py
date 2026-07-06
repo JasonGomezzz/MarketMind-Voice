@@ -15,10 +15,9 @@ MAX_VERSIONS = 5
 def save_campaign_version(campaign: Campaign) -> None:
     """
     Guarda el estado actual de texto_generado e imagen_b64 como snapshot
-    inmutable antes de sobreescribir. No-op si texto_generado está vacío.
-    Conserva solo las últimas MAX_VERSIONS (LRU).
-
-    Debe llamarse ANTES de modificar campaign.texto_generado.
+    inmutable. No-op si texto_generado está vacío o si el último snapshot
+    ya tiene exactamente el mismo contenido. Conserva solo las últimas
+    MAX_VERSIONS (LRU).
 
     Args:
         campaign: Instancia de Campaign con texto_generado actual.
@@ -33,6 +32,13 @@ def save_campaign_version(campaign: Campaign) -> None:
             .order_by('-version_number')
             .first()
         )
+        if (
+            last is not None
+            and last.texto_generado == campaign.texto_generado
+            and (last.imagen_b64 or "") == (campaign.imagen_b64 or "")
+        ):
+            return
+
         next_number = (last.version_number + 1) if last else 1
 
         CampaignVersion.objects.create(

@@ -2,9 +2,14 @@ package com.marketmind.mobile.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.marketmind.mobile.data.remote.dto.CampaignDto
+import com.marketmind.mobile.data.remote.dto.CampaignCreateRequest
+import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
 import com.marketmind.mobile.data.repository.AuthRepository
 import com.marketmind.mobile.data.repository.CampaignRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +27,7 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private var pollingJob: Job? = null
 
     init {
         load()
@@ -46,20 +52,105 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private suspend fun fetch(markRefreshing: Boolean) {
-        campaignRepository.getPending()
-            .onSuccess { items ->
-                _uiState.value = if (items.isEmpty()) {
-                    HomeUiState.Empty
-                } else {
-                    HomeUiState.Success(items = items, refreshing = false)
+    private suspend fun fetch(markRefreshing: Boolean, updatePolling: Boolean = true) {
+        val user = authRepository.me().getOrElse { throwable ->
+            _uiState.value = HomeUiState.Error(
+                message = throwable.message ?: "Error desconocido al cargar la cuenta."
+            )
+            return
+        }
+        val items = campaignRepository.getMine().getOrElse { throwable ->
+            _uiState.value = HomeUiState.Error(
+                message = throwable.message ?: "Error desconocido al cargar campañas."
+            )
+            return
+        }
+        val stats = campaignRepository.getStats().getOrElse { CampaignStatsDto(total = items.size) }
+        _uiState.value = HomeUiState.Success(
+            user = user,
+            items = items,
+            stats = stats,
+            refreshing = false,
+        )
+        if (updatePolling) {
+            syncGenerationPolling(items)
+        }
+    }
+
+    private fun syncGenerationPolling(items: List<CampaignDto>) {
+        if (items.any { it.estado == "pendiente_ia" }) {
+            startGenerationPolling()
+        } else {
+            pollingJob?.cancel()
+            pollingJob = null
+        }
+    }
+
+    private fun startGenerationPolling() {
+        if (pollingJob?.isActive == true) return
+        pollingJob = viewModelScope.launch {
+            while (true) {
+                delay(3_000)
+                fetch(markRefreshing = false, updatePolling = false)
+                val current = _uiState.value as? HomeUiState.Success ?: break
+                if (current.items.none { it.estado == "pendiente_ia" }) break
+            }
+            pollingJob = null
+        }
+    }
+
+    fun createCampaign(
+        titulo: String,
+        clienteNombre: String,
+        clienteEmail: String,
+        industria: String,
+        tono: String,
+        plataforma: String,
+        prompt: String,
+    ) {
+        val current = _uiState.value as? HomeUiState.Success ?: return
+        if (current.creating || current.items.any { it.estado == "pendiente_ia" }) return
+        if (
+            titulo.isBlank() ||
+            clienteNombre.isBlank() ||
+            clienteEmail.isBlank() ||
+            industria.isBlank() ||
+            tono.isBlank() ||
+            plataforma.isBlank() ||
+            prompt.isBlank()
+        ) {
+            _uiState.value = current.copy(message = "Completa todos los campos antes de generar.")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = current.copy(creating = true, message = null)
+            val request = CampaignCreateRequest(
+                titulo = titulo.trim(),
+                clienteNombre = clienteNombre.trim(),
+                clienteEmail = clienteEmail.trim(),
+                industria = industria.trim().lowercase(),
+                tono = tono.trim().lowercase(),
+                plataforma = plataforma.trim().lowercase(),
+                prompt = prompt.trim(),
+            )
+            campaignRepository.createCampaign(request)
+                .onSuccess {
+                    fetch(markRefreshing = true)
                 }
-            }
-            .onFailure { throwable ->
-                _uiState.value = HomeUiState.Error(
-                    message = throwable.message ?: "Error desconocido al cargar campañas."
-                )
-            }
+                .onFailure { throwable ->
+                    _uiState.value = current.copy(
+                        creating = false,
+                        message = throwable.message ?: "No se pudo crear la campaña.",
+                    )
+                }
+        }
+    }
+
+    fun clearMessage() {
+        val current = _uiState.value
+        if (current is HomeUiState.Success && current.message != null) {
+            _uiState.value = current.copy(message = null)
+        }
     }
 
     fun logout() {

@@ -31,11 +31,21 @@ from services.internal_event_service import notify_campaign_submitted
 from services.n8n_service import trigger_ia_generation
 from services.version_service import restore_campaign_version, save_campaign_version
 
-from .models import Campaign, CampaignStatus, CampaignVersion
+from .models import Campaign, CampaignStatus, CampaignVersion, CreditPurchase
 from .permissions import N8nCallbackPermission
 from .serializers import CampaignEditSerializer, CampaignSerializer, CampaignVersionSerializer
 
 logger = logging.getLogger(__name__)
+
+# Mapeo fijo de planes de créditos — pasarela de pago simulada (siempre
+# aprueba, sin procesador real). Debe mantenerse en sincronía manual con
+# frontend/src/lib/credits.js (PLANS). El cliente solo envía la key del
+# plan; el monto/créditos SIEMPRE se leen de aquí, nunca del body.
+CREDIT_PLAN_MAP = {
+    "basico": {"nombre": "Básico", "precio": 49, "creditos": 500},
+    "pro": {"nombre": "Pro", "precio": 129, "creditos": 1500},
+    "elite": {"nombre": "Elite", "precio": 299, "creditos": 5000},
+}
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
@@ -58,7 +68,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
     serializer_class = CampaignSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
         """
@@ -148,6 +158,27 @@ class CampaignViewSet(viewsets.ModelViewSet):
             ),
             status=status.HTTP_202_ACCEPTED,
         )
+
+    def destroy(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """DELETE /api/campaigns/{id}/ — elimina campañas aún no enviadas al cliente."""
+        campaign = self.get_object()
+        can_delete = campaign.estado in [
+            CampaignStatus.BORRADOR,
+            CampaignStatus.GENERADO,
+        ]
+
+        if not can_delete:
+            return Response(
+                api_response(
+                    success=False,
+                    message="Solo puedes eliminar campañas en estado borrador o generado, antes de enviarlas al cliente.",
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        campaign.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="generate")
     def generate(self, request: Request, pk: int = None) -> Response:
@@ -254,6 +285,16 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        if campaign.estado == CampaignStatus.RECHAZADO and campaign.rechazos_cliente_count >= 2:
+            return Response(
+                api_response(
+                    success=False,
+                    message="Esta campaña ya fue rechazada dos veces y quedó en fracaso.",
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
         if request.user.tokens_disponibles <= 0:
             return Response(
                 api_response(
@@ -317,7 +358,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
         """
         campaign = self.get_object()
 
-        if campaign.estado in [CampaignStatus.APROBADO, CampaignStatus.RECHAZADO]:
+        if campaign.estado in [CampaignStatus.APROBADO, CampaignStatus.FRACASO]:
             return Response(
                 api_response(
                     success=False,
@@ -401,6 +442,30 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 success=True,
                 message="Campaña enviada al cliente para aprobación.",
                 data={"campaign": CampaignSerializer(campaign).data},
+            ),
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["get"], url_path="recent-approved")
+    def recent_approved(self, request: Request) -> Response:
+        """GET /api/campaigns/recent-approved/?limit=10 — aprobadas recientes del marketero."""
+        try:
+            limit = int(request.query_params.get("limit", 10))
+        except (TypeError, ValueError):
+            limit = 10
+        limit = min(max(limit, 1), 10)
+
+        qs = (
+            self.get_queryset()
+            .filter(estado=CampaignStatus.APROBADO)
+            .order_by(F("cliente_valoracion_at").desc(nulls_last=True), "-fecha_actualizacion")[:limit]
+        )
+
+        return Response(
+            api_response(
+                success=True,
+                message="Campañas aprobadas recientes.",
+                data={"campaigns": CampaignSerializer(qs, many=True).data},
             ),
             status=status.HTTP_200_OK,
         )
@@ -505,6 +570,57 @@ class CampaignViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(detail=False, methods=["post"], url_path="credits/purchase")
+    def purchase_credits(self, request: Request) -> Response:
+        """
+        POST /api/campaigns/credits/purchase/
+
+        Pasarela de pago simulada para créditos de IA: siempre aprueba (no
+        hay integración con un procesador real). El plan se identifica por
+        una key fija (CREDIT_PLAN_MAP); el monto y los créditos NUNCA se
+        leen del body para evitar que el cliente se auto-otorgue créditos.
+
+        Body: {"plan": "basico" | "pro" | "elite"}
+
+        Returns:
+            HTTP 200 con tokens_disponibles actualizado y créditos añadidos.
+            HTTP 400 si el plan no existe.
+        """
+        plan_key = request.data.get("plan")
+        plan = CREDIT_PLAN_MAP.get(plan_key)
+        if plan is None:
+            return Response(
+                api_response(
+                    success=False,
+                    message="Plan inválido.",
+                    data={"planes_validos": list(CREDIT_PLAN_MAP.keys())},
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            CreditPurchase.objects.create(
+                usuario=request.user,
+                plan_nombre=plan["nombre"],
+                monto=plan["precio"],
+                creditos=plan["creditos"],
+            )
+            request.user.tokens_disponibles += plan["creditos"]
+            request.user.save(update_fields=["tokens_disponibles"])
+
+        return Response(
+            api_response(
+                success=True,
+                message="Créditos añadidos.",
+                data={
+                    "tokens_disponibles": request.user.tokens_disponibles,
+                    "creditos_agregados": plan["creditos"],
+                    "plan": plan["nombre"],
+                },
+            ),
+            status=status.HTTP_200_OK,
+        )
+
 
 class IaResultCallbackView(APIView):
     """
@@ -545,12 +661,12 @@ class IaResultCallbackView(APIView):
                 )
 
                 if success:
-                    save_campaign_version(campaign)
                     copy = request.data.get("copy", "")
                     imagen_b64 = request.data.get("imagen_b64")
                     campaign.texto_generado = copy
                     campaign.imagen_b64 = imagen_b64
                     campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])
+                    save_campaign_version(campaign)
                     campaign.transition_to(CampaignStatus.GENERADO)
 
                     return Response(

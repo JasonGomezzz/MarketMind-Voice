@@ -97,6 +97,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+input,
+textarea,
+select {
+  background-color: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-outline);
+}
+
+select option {
+  background-color: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+}
+
 #root {
   min-height: 100vh;
 }
@@ -154,6 +171,29 @@ html[data-theme='dark'] .text-white {
   color: #ffffff;
 }
 
+html[data-theme='dark'] input,
+html[data-theme='dark'] textarea,
+html[data-theme='dark'] select {
+  border-color: var(--color-outline-variant);
+  background-color: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] select option {
+  background-color: #11131f;
+  color: #f4f2ff;
+}
+
+html[data-theme='dark'] table,
+html[data-theme='dark'] thead,
+html[data-theme='dark'] tbody,
+html[data-theme='dark'] tr,
+html[data-theme='dark'] td,
+html[data-theme='dark'] th {
+  color-scheme: dark;
+}
+
 .app-shell {
   position: relative;
   isolation: isolate;
@@ -173,13 +213,72 @@ html[data-theme='dark'] .text-white {
   animation: liquid-drift 16s ease-in-out infinite alternate;
 }
 
-.glass-sidebar {
-  background: color-mix(in srgb, var(--color-surface-container-low) 82%, transparent);
-  backdrop-filter: blur(18px) saturate(1.25);
-  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+.app-shell::after,
+.auth-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.48;
+  background-image:
+    linear-gradient(90deg, rgb(255 255 255 / 0.18) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(255 255 255 / 0.14) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, transparent, black 18%, black 82%, transparent);
+}
+
+.liquid-app-shell {
+  background:
+    radial-gradient(1200px 600px at 18% 6%, rgb(174 178 255 / 0.25), transparent 58%),
+    radial-gradient(900px 520px at 92% 20%, rgb(255 189 124 / 0.20), transparent 58%),
+    linear-gradient(135deg, var(--color-background), var(--color-surface-container-low));
+}
+
+.liquid-main {
+  border-radius: 1.75rem;
+}
+
+.liquid-main .bg-white {
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 74%, transparent);
+  backdrop-filter: blur(18px) saturate(1.22);
+  -webkit-backdrop-filter: blur(18px) saturate(1.22);
   box-shadow:
+    0 14px 42px rgb(45 40 90 / 0.10),
+    inset 0 1px 0 rgb(255 255 255 / 0.52);
+}
+
+.liquid-main .shadow-sm,
+.liquid-panel {
+  box-shadow:
+    0 16px 48px rgb(45 40 90 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.42);
+}
+
+.liquid-nav-active {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-surface-container-lowest) 78%, transparent), color-mix(in srgb, var(--color-primary-fixed) 55%, transparent));
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 48%, transparent);
+  box-shadow:
+    0 10px 28px rgb(70 72 212 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.48);
+}
+
+.glass-sidebar {
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 68%, transparent);
+  backdrop-filter: blur(26px) saturate(1.38);
+  -webkit-backdrop-filter: blur(26px) saturate(1.38);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
     inset -1px 0 0 rgb(255 255 255 / 0.18),
-    18px 0 60px rgb(45 40 90 / 0.08);
+    18px 0 60px rgb(45 40 90 / 0.12);
+}
+
+html[data-theme='dark'] .glass-sidebar {
+  background: color-mix(in srgb, var(--color-surface-container-low) 76%, transparent);
+  box-shadow:
+    inset -1px 0 0 rgb(255 255 255 / 0.08),
+    18px 0 60px rgb(0 0 0 / 0.28);
 }
 
 @keyframes liquid-drift {
@@ -194,8 +293,8 @@ html[data-theme='dark'] .text-white {
 /* Tarjeta "glass" premium — features, precios, tarjetas flotantes */
 .glass-card {
   background: color-mix(in srgb, var(--color-surface-container-lowest) 72%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
   border: 1px solid color-mix(in srgb, var(--color-outline-variant) 62%, transparent);
 }
 
@@ -210,6 +309,15 @@ html[data-theme='dark'] .text-white {
     0 8px 32px rgb(45 40 90 / 0.18),
     inset 0 1px 0 rgb(255 255 255 / 0.6),
     inset 0 -8px 24px rgb(255 255 255 / 0.1);
+}
+
+html[data-theme='dark'] .glass-liquid {
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 78%, transparent);
+  border-color: color-mix(in srgb, var(--color-outline-variant) 70%, white 8%);
+  box-shadow:
+    0 18px 60px rgb(0 0 0 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    inset 0 -10px 28px rgb(255 255 255 / 0.04);
 }
 
 /* Variante para superficies flotantes sobre fondos OSCUROS/con color
@@ -233,6 +341,11 @@ html[data-theme='dark'] .text-white {
   border: 1px solid color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
 }
 
+html[data-theme='dark'] .glass-soft {
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 82%, transparent);
+  border-color: color-mix(in srgb, var(--color-outline-variant) 80%, transparent);
+}
+
 /* Micro-interacción para tarjetas glass FLOTANTES (hero, créditos, avisos):
    leve elevación + borde más luminoso al hover. NO usar en modales/drawer
    (no reaccionan al hover) ni en superficies de lectura. La transición se
@@ -254,6 +367,57 @@ html[data-theme='dark'] .text-white {
 /* Degradado indigo para íconos de pasos / acentos */
 .step-gradient {
   background: linear-gradient(135deg, #4648d4 0%, #6063ee 100%);
+}
+
+.auth-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(1100px 620px at 12% 14%, rgb(174 178 255 / 0.28), transparent 58%),
+    radial-gradient(900px 580px at 86% 76%, rgb(255 189 124 / 0.22), transparent 55%),
+    linear-gradient(135deg, var(--color-background), var(--color-surface-container-low));
+}
+
+.auth-form-panel {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-surface-container-lowest) 42%, transparent), transparent);
+}
+
+.auth-brand-diagonal {
+  clip-path: polygon(9% 0, 100% 0, 100% 100%, 0 100%);
+  margin-left: -4%;
+  width: 50%;
+}
+
+.auth-brand-diagonal::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.18), transparent);
+}
+
+.auth-brand-mesh {
+  background:
+    radial-gradient(900px 620px at 24% 18%, rgb(255 255 255 / 0.24), transparent 58%),
+    radial-gradient(700px 520px at 88% 76%, rgb(255 189 124 / 0.30), transparent 58%),
+    linear-gradient(135deg, #3739bd 0%, #6063ee 52%, #9d76ff 100%);
+  background-size: 140% 140%;
+  animation: liquid-drift 18s ease-in-out infinite alternate;
+}
+
+@media (max-width: 767px) {
+  .auth-brand-diagonal {
+    clip-path: none;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .liquid-app-shell {
+    padding: 0;
+  }
 }
 
 /* Respeta a quien prefiere menos movimiento */

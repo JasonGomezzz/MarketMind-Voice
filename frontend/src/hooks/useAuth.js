@@ -12,10 +12,14 @@ export function useAuth() {
       localStorage.setItem('refresh_token', data.refresh)
       localStorage.setItem('user_role', data.role)
       localStorage.setItem('user_nombre', data.nombre)
+      const me = await api.get('/api/auth/me/')
+      const user = me.data?.data?.user
+      if (user?.email) localStorage.setItem('user_email', user.email)
       return { ok: true, role: data.role }
     } catch (err) {
       const status = err.response?.status
-      return { ok: false, status }
+      const message = err.response?.data?.message
+      return { ok: false, status, message }
     } finally {
       setLoading(false)
     }
@@ -32,6 +36,7 @@ export function useAuth() {
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user_role')
       localStorage.removeItem('user_nombre')
+      localStorage.removeItem('user_email')
     }
   }, [])
 
@@ -41,5 +46,7 @@ export function useAuth() {
 
   const getNombre = () => localStorage.getItem('user_nombre')
 
-  return { login, logout, isAuthenticated, getRole, getNombre, loading }
+  const getEmail = () => localStorage.getItem('user_email')
+
+  return { login, logout, isAuthenticated, getRole, getNombre, getEmail, loading }
 }

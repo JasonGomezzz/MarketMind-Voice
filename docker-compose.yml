@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   postgres:
@@ -34,8 +32,12 @@ services:
     restart: unless-stopped
 
   n8n:
-    image: n8nio/n8n:latest
+    build:
+      context: ./n8n
+      dockerfile: Dockerfile
     container_name: marketmind_n8n
+    env_file:
+      - ./backend/.env
     ports:
       - "5678:5678"
     environment:
@@ -50,10 +52,8 @@ services:
       - HTTPS_PROXY=
       - http_proxy=
       - https_proxy=
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_WORKFLOW_ID=QAkaxptDCI9ahjQU
     volumes:
       - n8n_data:/home/node/.n8n
     networks:
@@ -66,7 +66,7 @@ services:
       dockerfile: Dockerfile
     container_name: marketmind_springboot
     ports:
-      - "8080:8080"
+      - "${SPRINGBOOT_HOST_PORT:-8080}:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - DB_HOST=postgres
@@ -74,7 +74,7 @@ services:
       - DB_NAME=${DB_NAME:-marketmind_db}
       - DB_USER=${DB_USER:-marketmind_user}
       - DB_PASSWORD=${DB_PASSWORD:-localpass123}
-      - SECRET_KEY=${SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key-marketmind-2026-local}
       - INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN:-dev-internal-event-token}
     depends_on:
       postgres:

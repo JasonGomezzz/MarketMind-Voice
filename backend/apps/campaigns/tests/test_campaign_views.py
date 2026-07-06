@@ -4,11 +4,19 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.authentication.models import User, UserRole
-from apps.campaigns.models import Campaign, CampaignPlataforma, CampaignStatus, CampaignTono
+from apps.campaigns.models import (
+    Campaign,
+    CampaignPlataforma,
+    CampaignStatus,
+    CampaignTono,
+    CampaignVersion,
+)
 
 CAMPAIGNS_URL = "/api/campaigns/"
 STATS_URL = "/api/campaigns/stats/"
 CREDITS_DETAIL_URL = "/api/campaigns/credits-detail/"
+CREDITS_PURCHASE_URL = "/api/campaigns/credits/purchase/"
+RECENT_APPROVED_URL = "/api/campaigns/recent-approved/"
 
 
 def campaign_url(pk: int) -> str:
@@ -29,8 +37,8 @@ def regenerate_url(pk: int) -> str:
 
 VALID_PAYLOAD = {
     "titulo": "Nueva Campaña",
-    "cliente_nombre": "ACME Corp",
-    "cliente_email": "cliente@acme.com",
+    "cliente_nombre": "Cliente Test",
+    "cliente_email": "cliente@test.com",
     "industria": "tecnologia",
     "tono": "profesional",
     "plataforma": "instagram",
@@ -40,10 +48,26 @@ VALID_PAYLOAD = {
 
 @pytest.mark.django_db
 class TestCampaignCreate:
+    @pytest.fixture(autouse=True)
+    def registered_cliente(self, cliente):
+        self.cliente = cliente
+
     def test_marketero_creates_campaign_202(self, api_client, user_marketero):
         response = api_client.post(CAMPAIGNS_URL, VALID_PAYLOAD, format="json")
         assert response.status_code == 202
         assert response.data["success"] is True
+
+    def test_create_requires_registered_cliente_email(self, api_client):
+        payload = {**VALID_PAYLOAD, "cliente_email": "noexiste@test.com"}
+        response = api_client.post(CAMPAIGNS_URL, payload, format="json")
+        assert response.status_code == 400
+        assert "cliente_email" in response.data["data"]["errors"]
+
+    def test_create_requires_matching_cliente_name(self, api_client):
+        payload = {**VALID_PAYLOAD, "cliente_nombre": "Otro Nombre"}
+        response = api_client.post(CAMPAIGNS_URL, payload, format="json")
+        assert response.status_code == 400
+        assert "cliente_nombre" in response.data["data"]["errors"]
 
     def test_create_with_mock_ai_saves_copy(self, api_client):
         response = api_client.post(CAMPAIGNS_URL, VALID_PAYLOAD, format="json")
@@ -51,6 +75,14 @@ class TestCampaignCreate:
         campaign_data = response.data["data"]["campaign"]
         assert campaign_data["texto_generado"] != ""
         assert "[MOCK]" in campaign_data["texto_generado"]
+
+    def test_create_with_mock_ai_saves_initial_version(self, api_client):
+        response = api_client.post(CAMPAIGNS_URL, VALID_PAYLOAD, format="json")
+        assert response.status_code == 202
+        campaign_id = response.data["data"]["campaign"]["id"]
+        versions = CampaignVersion.objects.filter(campaign_id=campaign_id)
+        assert versions.count() == 1
+        assert "[MOCK]" in versions.first().texto_generado
 
     def test_create_decrements_tokens(self, api_client, user_marketero):
         initial_tokens = user_marketero.tokens_disponibles
@@ -128,6 +160,31 @@ class TestCampaignRetrieve:
 
 
 @pytest.mark.django_db
+class TestCampaignDelete:
+    def test_delete_borrador_returns_204(self, api_client, campaign):
+        response = api_client.delete(campaign_url(campaign.pk))
+        assert response.status_code == 204
+        assert not Campaign.objects.filter(pk=campaign.pk).exists()
+
+    def test_delete_generado_returns_204(self, api_client, campaign_generada):
+        response = api_client.delete(campaign_url(campaign_generada.pk))
+        assert response.status_code == 204
+        assert not Campaign.objects.filter(pk=campaign_generada.pk).exists()
+
+    def test_delete_pendiente_ia_returns_409(self, api_client, campaign_pendiente_ia):
+        response = api_client.delete(campaign_url(campaign_pendiente_ia.pk))
+        assert response.status_code == 409
+        assert Campaign.objects.filter(pk=campaign_pendiente_ia.pk).exists()
+
+    def test_delete_pendiente_aprobacion_returns_409(self, api_client, campaign_generada):
+        campaign_generada.estado = CampaignStatus.PENDIENTE_APROBACION
+        campaign_generada.save(update_fields=["estado"])
+        response = api_client.delete(campaign_url(campaign_generada.pk))
+        assert response.status_code == 409
+        assert Campaign.objects.filter(pk=campaign_generada.pk).exists()
+
+
+@pytest.mark.django_db
 class TestCampaignGenerate:
     def test_generate_borrador_returns_202(self, api_client, campaign):
         response = api_client.post(generate_url(campaign.pk))
@@ -193,6 +250,13 @@ class TestCampaignRegenerate:
         response = client.post(regenerate_url(campaign.pk))
         assert response.status_code == 403
 
+    def test_regenerate_rechazado_dos_veces_409(self, api_client, campaign):
+        campaign.estado = CampaignStatus.RECHAZADO
+        campaign.rechazos_cliente_count = 2
+        campaign.save(update_fields=["estado", "rechazos_cliente_count"])
+        response = api_client.post(regenerate_url(campaign.pk))
+        assert response.status_code == 409
+
 
 @pytest.mark.django_db
 class TestCampaignSubmit:
@@ -211,6 +275,37 @@ class TestCampaignSubmit:
         client.force_authenticate(user=cliente)
         response = client.post(submit_url(campaign_generada.pk))
         assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestCampaignRecentApproved:
+    def test_recent_approved_returns_only_approved(self, api_client, campaign, campaign_generada):
+        campaign.estado = CampaignStatus.APROBADO
+        campaign.cliente_valoracion = 5
+        campaign.save(update_fields=["estado", "cliente_valoracion"])
+        response = api_client.get(RECENT_APPROVED_URL)
+        assert response.status_code == 200
+        ids = [c["id"] for c in response.data["data"]["campaigns"]]
+        assert campaign.id in ids
+        assert campaign_generada.id not in ids
+
+    def test_recent_approved_limits_to_10(self, api_client, user_marketero):
+        for i in range(12):
+            Campaign.objects.create(
+                titulo=f"Aprobada {i}",
+                cliente_nombre="Cliente Test",
+                cliente_email="cliente@test.com",
+                industria="tecnologia",
+                tono=CampaignTono.PROFESIONAL,
+                plataforma=CampaignPlataforma.INSTAGRAM,
+                prompt="Prompt suficientemente largo.",
+                texto_generado="Copy aprobado.",
+                estado=CampaignStatus.APROBADO,
+                marketero=user_marketero,
+            )
+        response = api_client.get(f"{RECENT_APPROVED_URL}?limit=10")
+        assert response.status_code == 200
+        assert len(response.data["data"]["campaigns"]) == 10
 
 
 @pytest.mark.django_db
@@ -278,6 +373,53 @@ class TestCampaignCreditsDetail:
     def test_unauthenticated_401(self):
         client = APIClient()
         response = client.get(CREDITS_DETAIL_URL)
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestCampaignPurchaseCredits:
+    """Pasarela de pago simulada — siempre aprueba, nunca confía en el body."""
+
+    def test_pro_plan_suma_1500_creditos(self, api_client, user_marketero):
+        saldo_inicial = user_marketero.tokens_disponibles
+        response = api_client.post(CREDITS_PURCHASE_URL, {"plan": "pro"}, format="json")
+        assert response.status_code == 200
+        assert response.data["data"]["creditos_agregados"] == 1500
+        user_marketero.refresh_from_db()
+        assert user_marketero.tokens_disponibles == saldo_inicial + 1500
+
+    def test_crea_registro_credit_purchase(self, api_client, user_marketero):
+        from apps.campaigns.models import CreditPurchase
+
+        api_client.post(CREDITS_PURCHASE_URL, {"plan": "elite"}, format="json")
+        compra = CreditPurchase.objects.get(usuario=user_marketero)
+        assert compra.creditos == 5000
+        assert compra.plan_nombre == "Elite"
+        assert compra.estado == "aprobado"
+
+    def test_ignora_creditos_y_monto_enviados_por_el_cliente(self, api_client, user_marketero):
+        """El cliente no debe poder auto-otorgarse créditos manipulando el body."""
+        saldo_inicial = user_marketero.tokens_disponibles
+        response = api_client.post(
+            CREDITS_PURCHASE_URL,
+            {"plan": "basico", "creditos": 999999, "monto": 1},
+            format="json",
+        )
+        assert response.data["data"]["creditos_agregados"] == 500
+        user_marketero.refresh_from_db()
+        assert user_marketero.tokens_disponibles == saldo_inicial + 500
+
+    def test_plan_invalido_400(self, api_client):
+        response = api_client.post(CREDITS_PURCHASE_URL, {"plan": "no-existe"}, format="json")
+        assert response.status_code == 400
+
+    def test_sin_plan_400(self, api_client):
+        response = api_client.post(CREDITS_PURCHASE_URL, {}, format="json")
+        assert response.status_code == 400
+
+    def test_unauthenticated_401(self):
+        client = APIClient()
+        response = client.post(CREDITS_PURCHASE_URL, {"plan": "pro"}, format="json")
         assert response.status_code == 401
 
 

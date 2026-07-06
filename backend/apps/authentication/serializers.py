@@ -11,7 +11,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import Token
 
-from .models import User, UserRole
+from .models import AuthBrandContent, User, UserRole
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -200,6 +200,15 @@ class UserResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "email", "nombre", "rol", "is_active", "fecha_creacion", "tokens_disponibles"]
+        read_only_fields = fields
+
+
+class AuthBrandContentSerializer(serializers.ModelSerializer):
+    """Serializer público para el panel lateral de Login/Register."""
+
+    class Meta:
+        model = AuthBrandContent
+        fields = ["screen", "quote", "person_name", "person_role", "person_image"]
         read_only_fields = fields
 
 

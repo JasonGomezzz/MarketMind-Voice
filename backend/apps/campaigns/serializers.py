@@ -5,6 +5,8 @@ Validación y serialización del modelo Campaign.
 
 from rest_framework import serializers
 
+from apps.authentication.models import User, UserRole
+
 from .models import Campaign, CampaignPlataforma, CampaignStatus, CampaignTono, CampaignVersion
 
 # TODO: mover a TextChoices en models.py (Sprint refactor)
@@ -26,6 +28,7 @@ class CampaignSerializer(serializers.ModelSerializer):
     """
 
     marketero = serializers.StringRelatedField(read_only=True)
+    cliente_email = serializers.EmailField(required=True)
 
     class Meta:
         model = Campaign
@@ -42,9 +45,13 @@ class CampaignSerializer(serializers.ModelSerializer):
             "texto_generado",
             "imagen_url",
             "imagen_b64",
+            "ia_error_message",
             "feedback_rechazo",
             "email_enviado",
             "enviado_cliente_at",
+            "cliente_valoracion",
+            "cliente_valoracion_at",
+            "rechazos_cliente_count",
             "marketero",
             "fecha_creacion",
         ]
@@ -54,9 +61,13 @@ class CampaignSerializer(serializers.ModelSerializer):
             "texto_generado",
             "imagen_url",
             "imagen_b64",
+            "ia_error_message",
             "feedback_rechazo",
             "email_enviado",
             "enviado_cliente_at",
+            "cliente_valoracion",
+            "cliente_valoracion_at",
+            "rechazos_cliente_count",
             "marketero",
             "fecha_creacion",
         ]
@@ -80,6 +91,40 @@ class CampaignSerializer(serializers.ModelSerializer):
                 "El nombre del cliente no puede superar 150 caracteres."
             )
         return value
+
+    def validate_cliente_email(self, value: str) -> str:
+        """Normaliza el email del cliente."""
+        return value.strip().lower()
+
+    def validate(self, attrs: dict) -> dict:
+        """Valida que el cliente exista y que nombre/email correspondan."""
+        attrs = super().validate(attrs)
+        email = attrs.get("cliente_email")
+        nombre = attrs.get("cliente_nombre")
+        if not email:
+            raise serializers.ValidationError(
+                {"cliente_email": "El email del cliente es obligatorio."}
+            )
+        if not nombre:
+            raise serializers.ValidationError(
+                {"cliente_nombre": "El nombre del cliente es obligatorio."}
+            )
+
+        try:
+            cliente = User.objects.get(email=email, rol=UserRole.CLIENTE)
+        except User.DoesNotExist as exc:
+            raise serializers.ValidationError(
+                {"cliente_email": "Debe existir un usuario cliente registrado con este email."}
+            ) from exc
+
+        if cliente.nombre.strip().casefold() != nombre.strip().casefold():
+            raise serializers.ValidationError(
+                {"cliente_nombre": "El nombre del cliente no coincide con el usuario registrado."}
+            )
+
+        attrs["cliente_email"] = cliente.email
+        attrs["cliente_nombre"] = cliente.nombre
+        return attrs
 
     def validate_prompt(self, value: str) -> str:
         """Valida longitud mínima y máxima del prompt."""
@@ -119,11 +164,19 @@ class CampaignSerializer(serializers.ModelSerializer):
 
 
 class CampaignEditSerializer(serializers.ModelSerializer):
-    """Serializer para edición de texto_generado por el marketero (HU10)."""
+    """Serializer para edición de prompt y texto_generado por el marketero."""
 
     class Meta:
         model = Campaign
-        fields = ["texto_generado"]
+        fields = ["prompt", "texto_generado"]
+
+    def validate_prompt(self, value: str) -> str:
+        value = value.strip()
+        if len(value) < 10:
+            raise serializers.ValidationError("El prompt debe tener al menos 10 caracteres.")
+        if len(value) > 2000:
+            raise serializers.ValidationError("El prompt no puede superar los 2000 caracteres.")
+        return value
 
     def validate_texto_generado(self, value: str) -> str:
         value = value.strip()

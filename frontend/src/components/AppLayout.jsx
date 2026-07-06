@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
-import { useTheme } from '../hooks/useTheme'
 
 /**
  * Navegación por rol. Etiquetas en español, sin nav pública dentro del panel.
@@ -55,7 +54,6 @@ export default function AppLayout() {
   const role = getRole() || 'cliente'
   const nombre = getNombre() || ''
   const navItems = NAV_ITEMS[role] ?? NAV_ITEMS.cliente
-  useTheme()
 
   // Créditos de IA vivos (solo roles que crean campañas en Django).
   // Refresca al navegar Y cuando alguna página dispara 'credits-updated'
@@ -101,8 +99,8 @@ export default function AppLayout() {
       .toUpperCase() || 'U'
 
   return (
-    <div className="app-shell flex h-screen bg-background">
-      <aside className="glass-sidebar flex w-64 flex-col border-r border-outline-variant">
+    <div className="app-shell liquid-app-shell flex h-screen bg-background p-3">
+      <aside className="glass-sidebar liquid-panel flex w-64 flex-col overflow-hidden rounded-3xl border border-outline-variant">
         <div className="px-6 py-6">
           <span className="text-xl font-bold tracking-tight text-primary">MarketMind IA</span>
         </div>
@@ -116,8 +114,8 @@ export default function AppLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-secondary-container text-on-secondary-container'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                    ? 'liquid-nav-active text-on-surface'
+                    : 'text-on-surface-variant hover:bg-surface-container-high/70 hover:text-on-surface'
                 }`
               }
             >
@@ -185,7 +183,7 @@ export default function AppLayout() {
 
       {/* Contenido */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <main className="relative flex-1 overflow-auto bg-transparent p-8">
+        <main className="liquid-main relative flex-1 overflow-auto bg-transparent p-6 lg:p-8">
           <div className="mx-auto max-w-[1440px]">
             <Outlet />
           </div>

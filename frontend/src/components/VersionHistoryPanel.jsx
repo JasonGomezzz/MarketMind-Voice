@@ -8,13 +8,18 @@ import { cn } from '@/lib/utils'
 
 /**
  * Historial de versiones (HU23) como drawer lateral — portado de Stitch
- * "comparativa lateral". Cada regeneración guarda copy + imagen (LRU-5).
+ * "comparativa lateral". Cada generación guarda copy + imagen (LRU-5).
  * GET /api/campaigns/{id}/versions/ → [{id, version_number, texto_preview,
  * tiene_imagen, imagen_b64, created_at}] (más reciente primero).
  * Restaurar: POST /versions/{vid}/restore/ — solo si `canRestore`
  * (estado editable); guarda snapshot del contenido actual antes de copiar.
  */
-export default function VersionHistoryPanel({ campaignId, canRestore = false, onRestored }) {
+export default function VersionHistoryPanel({
+  campaignId,
+  canRestore = false,
+  onRestored,
+  refreshKey = 0,
+}) {
   const [versions, setVersions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -38,7 +43,7 @@ export default function VersionHistoryPanel({ campaignId, canRestore = false, on
   useEffect(() => {
     fetchVersions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId])
+  }, [campaignId, refreshKey])
 
   async function handleRestore(version) {
     setRestoringId(version.id)
@@ -86,7 +91,7 @@ export default function VersionHistoryPanel({ campaignId, canRestore = false, on
           <p className="text-xs text-error">No se pudo cargar el historial.</p>
         ) : versions.length === 0 ? (
           <p className="text-xs text-on-surface-variant">
-            Aún no hay versiones. Se guardan al regenerar.
+            Aún no hay versiones. Se guardan desde la primera generación.
           </p>
         ) : (
           <Button variant="outline" size="sm" className="w-full" onClick={() => setOpen(true)}>
@@ -121,7 +126,7 @@ export default function VersionHistoryPanel({ campaignId, canRestore = false, on
                 <div>
                   <h3 className="text-lg font-semibold text-on-surface">Historial de versiones</h3>
                   <p className="text-xs text-on-surface-variant">
-                    Se guardan las últimas 5 versiones generadas.
+                    Se guardan las últimas 5 versiones generadas desde la primera creación.
                   </p>
                 </div>
                 <button

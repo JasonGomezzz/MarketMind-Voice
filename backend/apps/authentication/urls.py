@@ -6,7 +6,7 @@ Monta los endpoints de auth bajo el prefijo /api/auth/
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .views import ChangePasswordView, LogoutView, MeView, RegisterView
+from .views import AuthBrandContentView, ChangePasswordView, LogoutView, MeView, RegisterView
 from .token_views import CustomTokenObtainPairView
 
 urlpatterns = [
@@ -28,4 +28,7 @@ urlpatterns = [
 
     # Settings: cambio de contraseña del propio usuario
     path("me/change-password/", ChangePasswordView.as_view(), name="auth-change-password"),
+
+    # Contenido público para panel Login/Register
+    path("brand-content/", AuthBrandContentView.as_view(), name="auth-brand-content"),
 ]

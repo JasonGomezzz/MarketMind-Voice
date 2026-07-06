@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
-import { Megaphone, Coins, Sparkles, CircleCheck, Clock, AlertCircle, Plus } from 'lucide-react'
+import { motion } from 'motion/react'
+import {
+  Megaphone,
+  Coins,
+  Sparkles,
+  CircleCheck,
+  Clock,
+  AlertCircle,
+  Plus,
+  ImageOff,
+  Star,
+} from 'lucide-react'
 import api from '../services/api'
 import { STATES } from '@/lib/campaignStates'
 
@@ -16,6 +27,7 @@ export default function DashboardPage() {
 
   const [stats, setStats] = useState(null)
   const [tokens, setTokens] = useState(null)
+  const [recentApproved, setRecentApproved] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
@@ -29,13 +41,15 @@ export default function DashboardPage() {
 
     async function fetchData() {
       try {
-        const [statsRes, meRes] = await Promise.all([
+        const [statsRes, meRes, recentRes] = await Promise.all([
           api.get('/api/campaigns/stats/'),
           api.get('/api/auth/me/'),
+          api.get('/api/campaigns/recent-approved/', { params: { limit: 10 } }),
         ])
         if (!cancelled) {
           setStats(statsRes.data.data)
           setTokens(meRes.data.data.user.tokens_disponibles)
+          setRecentApproved(recentRes.data.data.campaigns ?? [])
         }
       } catch {
         if (!cancelled) setError(true)
@@ -95,6 +109,11 @@ export default function DashboardPage() {
     return val ?? 0
   }
 
+  const cardReveal = {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+  }
+
   return (
     <div>
       {/* Encabezado */}
@@ -148,9 +167,11 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(({ label, value, icon: Icon, tint, warn }) => (
-          <div
+        {cards.map(({ label, value, icon: Icon, tint, warn }, index) => (
+          <motion.div
             key={label}
+            {...cardReveal}
+            transition={{ duration: 0.35, delay: index * 0.06 }}
             className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm transition-all hover:shadow-lg"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -170,7 +191,7 @@ export default function DashboardPage() {
                 {displayValue(value)}
               </h3>
             )}
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -190,6 +211,64 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {!loading && !error && recentApproved.length > 0 && (
+        <section className="mt-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-on-surface">
+                Campañas aceptadas recientes
+              </h2>
+              <p className="text-sm text-on-surface-variant">
+                Las últimas 10 aprobadas con valoración del cliente.
+              </p>
+            </div>
+            <CircleCheck className="h-5 w-5 text-success" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {recentApproved.map((campaign) => (
+              <Link
+                key={campaign.id}
+                to={`/campaigns/${campaign.id}`}
+                className="group overflow-hidden rounded-xl border border-outline-variant bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-surface-container-low">
+                  {campaign.imagen_b64 ? (
+                    <img
+                      src={`data:image/png;base64,${campaign.imagen_b64}`}
+                      alt={campaign.titulo}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-outline">
+                      <ImageOff className="h-8 w-8" />
+                    </div>
+                  )}
+
+                  {campaign.cliente_valoracion && (
+                    <div className="absolute left-2 top-2 inline-flex items-center gap-0.5 rounded-full bg-black/45 px-2 py-1 text-amber-300 backdrop-blur-md">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-3.5 w-3.5 ${
+                            star <= campaign.cliente_valoracion ? 'fill-current' : 'text-white/35'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-on-surface">
+                    {campaign.titulo}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )

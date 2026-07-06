@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { X } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -133,6 +133,7 @@ export default function RejectModal({ open, onConfirm, onCancel, busy }) {
             disabled={!valid || busy}
             onClick={() => onConfirm(feedback.trim())}
           >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {busy ? 'Enviando…' : 'Confirmar rechazo'}
           </Button>
         </div>

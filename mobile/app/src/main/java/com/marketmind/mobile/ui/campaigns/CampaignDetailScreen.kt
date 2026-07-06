@@ -10,7 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AssistChipDefaults
@@ -21,9 +25,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -60,9 +64,7 @@ fun CampaignDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showRejectSheet by remember { mutableStateOf(false) }
-    var feedbackText by remember { mutableStateOf("") }
-
+    var showDeleteDialog by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -78,9 +80,9 @@ fun CampaignDetailScreen(
                 title = { Text("Detalle de campaña") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text(
-                            text = "←",
-                            style = MaterialTheme.typography.titleLarge,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
                         )
                     }
                 },
@@ -89,8 +91,8 @@ fun CampaignDetailScreen(
         bottomBar = {
             DetailActionsBar(
                 state = state,
-                onApproveClick = viewModel::approve,
-                onRejectClick = { showRejectSheet = true },
+                onSendClick = viewModel::sendToClient,
+                onDeleteClick = { showDeleteDialog = true },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -111,31 +113,28 @@ fun CampaignDetailScreen(
         }
     }
 
-    if (showRejectSheet) {
-        RejectFeedbackSheet(
-            feedbackText = feedbackText,
-            onFeedbackChange = { if (it.length <= 500) feedbackText = it },
-            onDismiss = {
-                showRejectSheet = false
-                feedbackText = ""
-            },
-            onConfirm = { feedback ->
-                viewModel.reject(feedback)
-                showRejectSheet = false
-                feedbackText = ""
+    if (showDeleteDialog) {
+        DeleteCampaignDialog(
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.deleteCampaign()
             },
         )
     }
+
 }
 
 @Composable
 private fun DetailActionsBar(
     state: CampaignDetailUiState,
-    onApproveClick: () -> Unit,
-    onRejectClick: () -> Unit,
+    onSendClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
-    val submitting = (state as? CampaignDetailUiState.Success)?.submitting == true
-    val canAct = state is CampaignDetailUiState.Success && !submitting
+    val successState = state as? CampaignDetailUiState.Success
+    val submitting = successState?.submitting == true
+    val deleting = successState?.deleting == true
+    val canAct = successState != null && !submitting && !deleting
 
     Row(
         modifier = Modifier
@@ -143,26 +142,28 @@ private fun DetailActionsBar(
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OutlinedButton(
-            onClick = onRejectClick,
+        IconButton(
+            onClick = onDeleteClick,
             enabled = canAct,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.error,
-            ),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.size(52.dp),
         ) {
-            if (submitting) {
+            if (deleting) {
                 CircularProgressIndicator(
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(18.dp),
                     color = MaterialTheme.colorScheme.error,
                 )
             } else {
-                Text("Rechazar")
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "Eliminar campaña",
+                    tint = MaterialTheme.colorScheme.error,
+                )
             }
         }
+
         Button(
-            onClick = onApproveClick,
+            onClick = onSendClick,
             enabled = canAct,
             modifier = Modifier.weight(1f),
         ) {
@@ -173,10 +174,37 @@ private fun DetailActionsBar(
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
-                Text("Aprobar")
+                Text("Enviar al cliente")
             }
         }
     }
+}
+
+@Composable
+private fun DeleteCampaignDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Eliminar campaña") },
+        text = { Text("Esta acción eliminará la campaña si aún está en borrador o generado.") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text("Eliminar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+    )
 }
 
 @Composable
