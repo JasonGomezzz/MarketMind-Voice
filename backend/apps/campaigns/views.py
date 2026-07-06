@@ -27,6 +27,7 @@ from weasyprint import HTML as WeasyHTML
 
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
+from services.internal_event_service import notify_campaign_submitted
 from services.n8n_service import trigger_ia_generation
 from services.version_service import restore_campaign_version, save_campaign_version
 
@@ -382,6 +383,9 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
         try:
             campaign.transition_to(CampaignStatus.PENDIENTE_APROBACION)
+            campaign.enviado_cliente_at = timezone.now()
+            campaign.save(update_fields=["enviado_cliente_at", "fecha_actualizacion"])
+            notify_campaign_submitted(campaign.id)
         except ValidationError as e:
             return Response(
                 api_response(

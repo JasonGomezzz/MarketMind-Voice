@@ -40,7 +40,7 @@ public class CampaignService {
     /** HU12 — lista todas las campañas pendientes de aprobación. */
     public Page<CampaignResponseDTO> findPending(Pageable pageable) {
         Page<CampaignEntity> page = campaignRepository
-                .findByEstado("pendiente_aprobacion", pageable);
+                .findPendingOrdered("pendiente_aprobacion", pageable);
         // Nombres de marketero resueltos en UN solo query (sin N+1 por fila)
         Map<Long, String> nombres = nombresPorId(
                 page.getContent().stream()
@@ -149,6 +149,7 @@ public class CampaignService {
                 .marketeroNombre(marketeroNombre)
                 .fechaCreacion(e.getFechaCreacion())
                 .fechaActualizacion(e.getFechaActualizacion())
+                .enviadoClienteAt(e.getEnviadoClienteAt())
                 .version(e.getVersion())
                 .build();
     }

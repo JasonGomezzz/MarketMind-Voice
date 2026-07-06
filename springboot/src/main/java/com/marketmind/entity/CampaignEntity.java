@@ -81,6 +81,9 @@ public class CampaignEntity {
     @Column(name = "fecha_actualizacion", updatable = false)
     private OffsetDateTime fechaActualizacion;
 
+    @Column(name = "enviado_cliente_at", updatable = false)
+    private OffsetDateTime enviadoClienteAt;
+
     // @Version: JPA emite UPDATE ... SET estado=?, version=version+1 WHERE id=? AND version=?
     // Si la versión no coincide → ObjectOptimisticLockingFailureException
     @Version

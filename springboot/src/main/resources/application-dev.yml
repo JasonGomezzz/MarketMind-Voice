@@ -17,6 +17,8 @@ spring:
 app:
   jwt:
     secret: ${SECRET_KEY:django-insecure-dev-key-marketmind-2026-local}
+  internal:
+    event-token: ${INTERNAL_EVENT_TOKEN:dev-internal-event-token}
 
 # HU17 — n8n webhook para notificación de email al marketero.
 # host.docker.internal apunta al host Mac desde el container Spring Boot;

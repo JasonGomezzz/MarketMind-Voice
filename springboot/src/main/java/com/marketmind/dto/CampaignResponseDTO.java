@@ -35,5 +35,6 @@ public class CampaignResponseDTO {
     private String marketeroNombre;
     private OffsetDateTime fechaCreacion;
     private OffsetDateTime fechaActualizacion;
+    private OffsetDateTime enviadoClienteAt;
     private Integer version;
 }

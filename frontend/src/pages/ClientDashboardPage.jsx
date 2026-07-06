@@ -1,8 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ClipboardCheck, CircleCheck, CircleX, AlertCircle, ArrowRight, Inbox } from 'lucide-react'
+import {
+  ClipboardCheck,
+  CircleCheck,
+  CircleX,
+  AlertCircle,
+  ArrowRight,
+  Inbox,
+  X,
+  ImageOff,
+} from 'lucide-react'
 import { getPendingCampaigns, getCampaignSummary } from '../services/clientCampaigns'
 import { Button } from '@/components/ui/button'
+import { useClientCampaignSocket } from '../hooks/useClientCampaignSocket'
+import { campaignSentAt, relativeTimeFrom } from '../utils/date'
 
 /**
  * Dashboard del rol CLIENTE. Consume Spring Boot :8080 (arquitectura políglota).
@@ -19,13 +30,29 @@ export default function ClientDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [retry, setRetry] = useState(0)
+  const [detailCampaign, setDetailCampaign] = useState(null)
+
+  const handleRealtimeCampaign = useCallback((campaign) => {
+    if (campaign.estado !== 'pendiente_aprobacion') return
+    setPending((current) => {
+      const withoutDuplicate = current.filter((item) => item.id !== campaign.id)
+      return [campaign, ...withoutDuplicate].slice(0, 7)
+    })
+    setSummary((current) => (
+      current
+        ? { ...current, pendientes: (current.pendientes ?? 0) + 1 }
+        : current
+    ))
+  }, [])
+
+  useClientCampaignSocket(handleRealtimeCampaign)
 
   // Sin setState síncrono en el efecto: el estado inicial cubre el primer
   // load; el retry resetea en su handler; location.key refresca en silencio.
   useEffect(() => {
     let cancelled = false
 
-    getPendingCampaigns()
+    getPendingCampaigns({ page: 0, size: 7 })
       .then((data) => {
         if (!cancelled) setPending(data?.content ?? [])
       })
@@ -48,7 +75,7 @@ export default function ClientDashboardPage() {
     }
   }, [retry, location.key])
 
-  const porRevisar = pending.length
+  const porRevisar = summary?.pendientes ?? pending.length
 
   const stats = [
     {
@@ -141,7 +168,17 @@ export default function ClientDashboardPage() {
 
       {/* Lista de campañas pendientes */}
       <section>
-        <h2 className="mb-4 text-xl font-semibold text-on-surface">Campañas pendientes</h2>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-on-surface">Campañas recientes</h2>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Las 7 solicitudes más recientes enviadas por marketers.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/client-campaigns')}>
+            Ver todas
+          </Button>
+        </div>
 
         {loading ? (
           <div className="space-y-3">
@@ -180,9 +217,12 @@ export default function ClientDashboardPage() {
                   <p className="truncate text-sm text-on-surface-variant">
                     {c.clienteNombre || 'Cliente'} · {c.plataforma || '—'}
                   </p>
+                  <p className="mt-1 text-xs font-medium text-primary">
+                    Enviada {relativeTimeFrom(campaignSentAt(c))}
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/review/${c.id}`)}>
+                  <Button variant="outline" size="sm" onClick={() => setDetailCampaign(c)}>
                     Detalles
                   </Button>
                   <Button size="sm" onClick={() => navigate(`/review/${c.id}`)}>
@@ -195,6 +235,101 @@ export default function ClientDashboardPage() {
           </div>
         )}
       </section>
+
+      <CampaignDetailsModal
+        campaign={detailCampaign}
+        onClose={() => setDetailCampaign(null)}
+      />
+    </div>
+  )
+}
+
+function CampaignDetailsModal({ campaign, onClose }) {
+  if (!campaign) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="campaign-details-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl border border-outline-variant bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-outline-variant px-5 py-4">
+          <div className="min-w-0">
+            <h3 id="campaign-details-title" className="truncate text-lg font-semibold text-on-surface">
+              {campaign.titulo}
+            </h3>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              {campaign.clienteNombre || 'Cliente'} · {campaign.plataforma || '—'}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
+            aria-label="Cerrar detalles"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid max-h-[calc(90vh-73px)] gap-5 overflow-y-auto p-5 md:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="space-y-4">
+            <section className="rounded-lg border border-outline-variant p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Copy propuesto
+              </p>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
+                {campaign.textoGenerado || 'Sin copy generado.'}
+              </p>
+            </section>
+
+            <section className="rounded-lg border border-outline-variant p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Detalles
+              </p>
+              <div className="grid gap-2 text-sm sm:grid-cols-2">
+                <DetailMeta label="Industria" value={campaign.industria} />
+                <DetailMeta label="Tono" value={campaign.tono} />
+                <DetailMeta label="Estado" value={campaign.estado} />
+                <DetailMeta label="Marketero" value={campaign.marketeroNombre} />
+                <DetailMeta label="Enviada" value={relativeTimeFrom(campaignSentAt(campaign))} />
+              </div>
+            </section>
+          </div>
+
+          <section className="rounded-lg border border-outline-variant p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              Imagen
+            </p>
+            {campaign.imagenB64 ? (
+              <img
+                src={`data:image/png;base64,${campaign.imagenB64}`}
+                alt={`Imagen propuesta para ${campaign.titulo}`}
+                className="aspect-square w-full rounded-lg object-cover"
+              />
+            ) : (
+              <div className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-lg bg-surface-container-high text-center text-on-surface-variant">
+                <ImageOff className="h-8 w-8 text-outline" />
+                <p className="text-sm">Imagen no disponible</p>
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DetailMeta({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs text-on-surface-variant">{label}</p>
+      <p className="capitalize text-on-surface">{value || '—'}</p>
     </div>
   )
 }

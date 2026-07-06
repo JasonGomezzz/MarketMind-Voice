@@ -10,9 +10,11 @@ import {
   Coins,
   Settings,
   Lightbulb,
+  ClipboardList,
 } from 'lucide-react'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 
 /**
  * Navegación por rol. Etiquetas en español, sin nav pública dentro del panel.
@@ -35,6 +37,7 @@ const NAV_ITEMS = {
   ],
   cliente: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/client-campaigns', label: 'Pendientes', icon: ClipboardList },
     { to: '/settings', label: 'Configuración', icon: Settings },
   ],
 }
@@ -52,6 +55,7 @@ export default function AppLayout() {
   const role = getRole() || 'cliente'
   const nombre = getNombre() || ''
   const navItems = NAV_ITEMS[role] ?? NAV_ITEMS.cliente
+  useTheme()
 
   // Créditos de IA vivos (solo roles que crean campañas en Django).
   // Refresca al navegar Y cuando alguna página dispara 'credits-updated'
@@ -97,9 +101,8 @@ export default function AppLayout() {
       .toUpperCase() || 'U'
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar claro Lumina Creative */}
-      <aside className="flex w-64 flex-col border-r border-outline-variant bg-surface-container-low">
+    <div className="app-shell flex h-screen bg-background">
+      <aside className="glass-sidebar flex w-64 flex-col border-r border-outline-variant">
         <div className="px-6 py-6">
           <span className="text-xl font-bold tracking-tight text-primary">MarketMind IA</span>
         </div>
@@ -163,7 +166,7 @@ export default function AppLayout() {
           </div>
           <div className="space-y-1">
             <NavLink
-              to="/prompt-guide"
+              to={role === 'cliente' ? '/client-help' : '/prompt-guide'}
               className="flex items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-primary"
             >
               <LifeBuoy className="h-4 w-4" />
@@ -182,7 +185,7 @@ export default function AppLayout() {
 
       {/* Contenido */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <main className="flex-1 overflow-auto bg-background p-8">
+        <main className="relative flex-1 overflow-auto bg-transparent p-8">
           <div className="mx-auto max-w-[1440px]">
             <Outlet />
           </div>

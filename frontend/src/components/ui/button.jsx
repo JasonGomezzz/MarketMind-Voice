@@ -16,7 +16,7 @@ const buttonVariants = cva(
       variant: {
         default: 'bg-primary text-on-primary shadow-lg hover:bg-primary-container',
         outline:
-          'border border-outline-variant bg-white text-on-surface hover:bg-surface-container-low',
+          'border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
         secondary:
           'bg-secondary-container text-on-secondary-container hover:bg-surface-container-high',
         ghost: 'text-on-surface-variant hover:text-primary hover:bg-primary/5',

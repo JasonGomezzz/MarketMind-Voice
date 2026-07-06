@@ -8,9 +8,12 @@ import {
   CalendarDays,
   AlertCircle,
   Lock,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
+import { useTheme } from '../hooks/useTheme'
 
 /**
  * Configuración de cuenta (portado de Stitch: account_settings, adaptado a los
@@ -42,6 +45,7 @@ export default function AccountSettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     let cancelled = false
@@ -269,6 +273,43 @@ export default function AccountSettingsPage() {
               </Button>
             </div>
           </form>
+        </section>
+
+        {/* Apariencia */}
+        <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+          <h2 className="mb-1 flex items-center gap-2 text-xl font-semibold text-on-surface">
+            {theme === 'dark' ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
+            Apariencia
+          </h2>
+          <p className="mb-5 text-sm text-on-surface-variant">
+            Cambia entre tema claro y oscuro. Tu elección se guarda en este navegador.
+          </p>
+          <div className="inline-flex rounded-xl border border-outline-variant bg-surface-container-low p-1">
+            <button
+              type="button"
+              onClick={() => setTheme('light')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                theme === 'light'
+                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Sun className="h-4 w-4" />
+              Claro
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme('dark')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                theme === 'dark'
+                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Moon className="h-4 w-4" />
+              Oscuro
+            </button>
+          </div>
         </section>
 
         {/* Créditos de IA — solo roles que generan */}

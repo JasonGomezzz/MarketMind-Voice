@@ -181,6 +181,12 @@ class Campaign(models.Model):
         verbose_name="Email cliente enviado",
         help_text="True tras confirmación del callback n8n de envío exitoso vía Resend (HU16).",
     )
+    enviado_cliente_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de envío al cliente",
+        help_text="Momento en que el marketero envió la campaña para aprobación.",
+    )
 
     # ── Optimistic locking — Spring Boot JPA usa @Version sobre este campo ──
     version = models.IntegerField(

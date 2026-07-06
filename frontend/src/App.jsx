@@ -5,6 +5,8 @@ import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import ClientDashboardPage from './pages/ClientDashboardPage'
 import ClientReviewPage from './pages/ClientReviewPage'
+import ClientCampaignsPage from './pages/ClientCampaignsPage'
+import ClientHelpPage from './pages/ClientHelpPage'
 import CampaignListPage from './pages/CampaignListPage'
 import NewCampaignPage from './pages/NewCampaignPage'
 import CampaignDetailPage from './pages/CampaignDetailPage'
@@ -26,6 +28,11 @@ function DashboardRouter() {
   return role === 'cliente' ? <ClientDashboardPage /> : <DashboardPage />
 }
 
+function PromptGuideRouter() {
+  const role = localStorage.getItem('user_role') || ''
+  return role === 'cliente' ? <Navigate to="/client-help" replace /> : <PromptGuidePage />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -41,10 +48,12 @@ export default function App() {
             <Route path="/campaigns/new" element={<NewCampaignPage />} />
             <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
             <Route path="/review/:id" element={<ClientReviewPage />} />
+            <Route path="/client-campaigns" element={<ClientCampaignsPage />} />
+            <Route path="/client-help" element={<ClientHelpPage />} />
             <Route path="/admin" element={<UsersAdminPage />} />
             <Route path="/admin/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<AccountSettingsPage />} />
-            <Route path="/prompt-guide" element={<PromptGuidePage />} />
+            <Route path="/prompt-guide" element={<PromptGuideRouter />} />
             <Route path="/credits" element={<CreditsDetailPage />} />
           </Route>
         </Route>

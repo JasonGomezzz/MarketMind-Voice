@@ -44,6 +44,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "imagen_b64",
             "feedback_rechazo",
             "email_enviado",
+            "enviado_cliente_at",
             "marketero",
             "fecha_creacion",
         ]
@@ -55,6 +56,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "imagen_b64",
             "feedback_rechazo",
             "email_enviado",
+            "enviado_cliente_at",
             "marketero",
             "fecha_creacion",
         ]
