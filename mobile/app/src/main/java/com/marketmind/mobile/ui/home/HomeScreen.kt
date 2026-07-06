@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatListBulleted
@@ -57,6 +58,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -161,10 +163,7 @@ fun HomeScreen(
             } else {
                 HomeTopBar(
                     nombre = (uiState as? HomeUiState.Success)?.user?.nombre,
-                    onLogout = {
-                        viewModel.logout()
-                        onLogout()
-                    },
+                    onAvatarClick = { selectedTab = AppTab.Account },
                 )
             }
         },
@@ -239,11 +238,27 @@ fun HomeScreen(
                 )
                 AppTab.Account -> AccountScreen(
                     user = state.user,
+                    onLogout = {
+                        viewModel.logout()
+                        onLogout()
+                    },
                     modifier = Modifier.padding(innerPadding),
                 )
                 AppTab.ProjectDetail -> selectedProject?.let {
                     ProjectDetailScreen(
                         campaign = it,
+                        onImproveText = { onDone ->
+                            viewModel.improveText(it.id) { updated ->
+                                if (updated != null) selectedProject = updated
+                                onDone()
+                            }
+                        },
+                        onEditText = { nuevoTexto, onDone ->
+                            viewModel.editText(it.id, nuevoTexto) { updated ->
+                                if (updated != null) selectedProject = updated
+                                onDone()
+                            }
+                        },
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
@@ -349,9 +364,9 @@ private fun AiLabScreen(
     var titulo by remember { mutableStateOf("") }
     var clienteNombre by remember { mutableStateOf("") }
     var clienteEmail by remember { mutableStateOf("") }
-    var industria by remember { mutableStateOf("tecnologia") }
-    var tono by remember { mutableStateOf("profesional") }
-    var plataforma by remember { mutableStateOf("instagram") }
+    var industria by remember { mutableStateOf("") }
+    var tono by remember { mutableStateOf("") }
+    var plataforma by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
 
     LazyColumn(
@@ -367,15 +382,9 @@ private fun AiLabScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "New Campaign",
+                    text = "Nueva campaña",
                     color = TextDark,
                     fontSize = 26.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Text(
-                    text = "Version 1/3",
-                    color = BrandBlue,
-                    fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
                 )
             }
@@ -478,7 +487,7 @@ private fun AiLabScreen(
 }
 
 @Composable
-private fun HomeTopBar(nombre: String?, onLogout: () -> Unit) {
+private fun HomeTopBar(nombre: String?, onAvatarClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -504,7 +513,7 @@ private fun HomeTopBar(nombre: String?, onLogout: () -> Unit) {
                 .size(22.dp),
         )
         Surface(
-            onClick = onLogout,
+            onClick = onAvatarClick,
             modifier = Modifier.size(31.dp),
             shape = CircleShape,
             color = Color(0xFFE4F2F4),
@@ -772,7 +781,7 @@ private fun CampaignBuilderCard(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            CampaignField(label = "Titulo de campaña", value = titulo, onValueChange = onTituloChange)
+            CampaignField(label = "Título de campaña", value = titulo, onValueChange = onTituloChange)
             CampaignField(label = "Nombre del cliente", value = clienteNombre, onValueChange = onClienteNombreChange)
             CampaignField(label = "Email del cliente", value = clienteEmail, onValueChange = onClienteEmailChange)
             CampaignDropdown(
@@ -780,12 +789,14 @@ private fun CampaignBuilderCard(
                 value = industria,
                 options = industryOptions,
                 onValueChange = onIndustriaChange,
+                placeholder = "Selecciona una industria",
             )
             CampaignDropdown(
                 label = "Tono",
                 value = tono,
                 options = toneOptions,
                 onValueChange = onTonoChange,
+                placeholder = "Selecciona un tono",
             )
             PlatformSelector(
                 selected = plataforma,
@@ -868,6 +879,7 @@ private fun CampaignDropdown(
     value: String,
     options: List<String>,
     onValueChange: (String) -> Unit,
+    placeholder: String = "Selecciona una opción",
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -885,6 +897,7 @@ private fun CampaignDropdown(
                 value = value,
                 onValueChange = {},
                 readOnly = true,
+                placeholder = { Text(placeholder, color = TextMuted) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .menuAnchor()
@@ -1159,6 +1172,8 @@ private fun TagPill(text: String) {
 @Composable
 private fun ProjectDetailScreen(
     campaign: CampaignDto,
+    onImproveText: (onDone: () -> Unit) -> Unit,
+    onEditText: (nuevoTexto: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -1215,6 +1230,8 @@ private fun ProjectDetailScreen(
 
             EditorCard(
                 campaign = campaign,
+                onImproveText = onImproveText,
+                onEditText = onEditText,
                 modifier = Modifier.padding(top = 16.dp, bottom = 18.dp),
             )
         }
@@ -1245,8 +1262,16 @@ private fun DetailChip(
 @Composable
 private fun EditorCard(
     campaign: CampaignDto,
+    onImproveText: (onDone: () -> Unit) -> Unit,
+    onEditText: (nuevoTexto: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var improving by remember(campaign.id) { mutableStateOf(false) }
+    var editing by remember(campaign.id) { mutableStateOf(false) }
+    var saving by remember(campaign.id) { mutableStateOf(false) }
+    var editText by remember(campaign.id, campaign.textoGenerado) {
+        mutableStateOf(campaign.textoGenerado.orEmpty())
+    }
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
@@ -1294,12 +1319,20 @@ private fun EditorCard(
                         .size(21.dp),
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = null,
-                    tint = TextDark,
-                    modifier = Modifier.size(22.dp),
-                )
+                IconButton(
+                    onClick = {
+                        editText = campaign.textoGenerado.orEmpty()
+                        editing = !editing
+                    },
+                    modifier = Modifier.size(28.dp),
+                ) {
+                    Icon(
+                        imageVector = if (editing) Icons.Filled.Close else Icons.Filled.Edit,
+                        contentDescription = if (editing) "Cancelar edición" else "Editar texto",
+                        tint = if (editing) Color(0xFFE23D3D) else BrandBlue,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
 
             Text(
@@ -1310,18 +1343,67 @@ private fun EditorCard(
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier.padding(top = 24.dp),
             )
-            Text(
-                text = campaign.textoGenerado
-                    ?.takeIf { it.isNotBlank() }
-                    ?: campaign.prompt
-                    ?.takeIf { it.isNotBlank() }
-                    ?: "La campaña todavía no tiene contenido generado.",
-                color = Color(0xFF4A4D66),
-                fontSize = 14.sp,
-                lineHeight = 21.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            if (editing) {
+                OutlinedTextField(
+                    value = editText,
+                    onValueChange = { editText = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        fontSize = 14.sp,
+                        lineHeight = 21.sp,
+                        color = TextDark,
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    minLines = 4,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            if (!saving && editText.isNotBlank()) {
+                                saving = true
+                                onEditText(editText.trim()) {
+                                    saving = false
+                                    editing = false
+                                }
+                            }
+                        },
+                        enabled = !saving && editText.isNotBlank(),
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
+                    ) {
+                        if (saving) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        } else {
+                            Text("Guardar cambios", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    text = campaign.textoGenerado
+                        ?.takeIf { it.isNotBlank() }
+                        ?: campaign.prompt
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "La campaña todavía no tiene contenido generado.",
+                    color = Color(0xFF4A4D66),
+                    fontSize = 14.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
 
             Row(
                 modifier = Modifier
@@ -1353,7 +1435,13 @@ private fun EditorCard(
             }
 
             Button(
-                onClick = { },
+                onClick = {
+                    if (!improving) {
+                        improving = true
+                        onImproveText { improving = false }
+                    }
+                },
+                enabled = !improving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -1362,18 +1450,32 @@ private fun EditorCard(
                 colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = "  Mejorar redacción con IA",
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                )
+                if (improving) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = "  Mejorando…",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = "  Mejorar redacción con IA",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                }
             }
         }
     }
@@ -1634,6 +1736,7 @@ private fun ProjectsScreen(
 @Composable
 private fun AccountScreen(
     user: UserSession,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier.fillMaxSize()) {
@@ -1687,17 +1790,17 @@ private fun AccountScreen(
                     AccountField(label = "TOKENS IA", value = user.tokensDisponibles.toString())
 
                     Button(
-                        onClick = { },
+                        onClick = onLogout,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
                             .padding(top = 4.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE23D3D)),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
                     ) {
                         Text(
-                            text = "Datos sincronizados",
+                            text = "Cerrar sesión",
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.ExtraBold,

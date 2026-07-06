@@ -153,6 +153,58 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Edición manual del copy (letra por letra). [onResult] recibe la campaña
+     * actualizada (o null si falló) para refrescar el editor.
+     */
+    fun editText(
+        campaignId: Long,
+        texto: String,
+        onResult: (com.marketmind.mobile.data.remote.dto.CampaignDto?) -> Unit,
+    ) {
+        viewModelScope.launch {
+            campaignRepository.editText(campaignId, texto)
+                .onSuccess { updated ->
+                    onResult(updated)
+                    fetch(markRefreshing = true)
+                }
+                .onFailure { throwable ->
+                    val current = _uiState.value
+                    if (current is HomeUiState.Success) {
+                        _uiState.value = current.copy(
+                            message = throwable.message ?: "No se pudo guardar el texto.",
+                        )
+                    }
+                    onResult(null)
+                }
+        }
+    }
+
+    /**
+     * Mejora el copy de una campaña con IA (Gemini) sin tocar la imagen.
+     * [onResult] recibe la campaña con el texto mejorado (o null si falló);
+     * la pantalla la usa para refrescar el editor.
+     */
+    fun improveText(campaignId: Long, onResult: (com.marketmind.mobile.data.remote.dto.CampaignDto?) -> Unit) {
+        viewModelScope.launch {
+            campaignRepository.improveText(campaignId)
+                .onSuccess { updated ->
+                    onResult(updated)
+                    // refrescar la lista para que el nuevo texto se refleje en el feed
+                    fetch(markRefreshing = true)
+                }
+                .onFailure { throwable ->
+                    val current = _uiState.value
+                    if (current is HomeUiState.Success) {
+                        _uiState.value = current.copy(
+                            message = throwable.message ?: "No se pudo mejorar el copy.",
+                        )
+                    }
+                    onResult(null)
+                }
+        }
+    }
+
     fun logout() {
         authRepository.logout()
     }
