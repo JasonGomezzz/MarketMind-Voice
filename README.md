@@ -540,6 +540,27 @@ VITE_USER_API_URL=http://localhost:8080
 
 Reinicia `npm run dev` después de cualquier cambio a variables `VITE_*`.
 
+### Login funciona pero el dashboard dice "no se pudieron cargar los datos" (error de CORS)
+
+Si la terminal de `npm run dev` muestra `Port 5173 is in use, trying another
+one...` y Vite arrancó en `5174` (o `5175`), Django va a **rechazar por CORS**
+cualquier petición que no venga de un origen dentro de `CORS_ALLOWED_ORIGINS`.
+El login puede llegar a funcionar (a veces pasa antes de que el navegador
+bloquee) pero las llamadas siguientes (stats, campañas, analytics) fallan.
+
+Dos soluciones:
+
+1. **Libera el puerto 5173** antes de correr `npm run dev` (cierra cualquier
+   otro `npm run dev` que haya quedado abierto en otra terminal), o
+2. **Agrega el puerto real a `backend/.env`** y reinicia `runserver`:
+
+```env
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000
+```
+
+`backend/.env.example` ya trae estos 3 puertos por defecto — si tu `.env` es
+viejo (de antes de este fix) o te lo pasó un compañero, actualízalo a mano.
+
 ### La app móvil no conecta (emulador Android)
 
 - Usa `10.0.2.2`, nunca `localhost` ni `127.0.0.1` — ya viene configurado así
