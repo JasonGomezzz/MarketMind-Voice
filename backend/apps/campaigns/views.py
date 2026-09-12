@@ -23,7 +23,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from weasyprint import HTML as WeasyHTML
+try:
+    from weasyprint import HTML as WeasyHTML
+except (OSError, ImportError):
+    WeasyHTML = None
 
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
