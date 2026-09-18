@@ -64,7 +64,7 @@ docker compose up springboot
 1. `File → Open` → seleccionar la carpeta `springboot/` (no la raíz del repo)
 2. IntelliJ detecta el `pom.xml` y configura Maven automáticamente
 3. Importar como proyecto Maven
-4. Configurar SDK: Java 21
+4. Configurar SDK: Java 25
 5. Para correr: botón Run en `MarketMindApplication.java`
 6. Agregar las variables de entorno en `Run/Debug Configurations → Environment variables`
 

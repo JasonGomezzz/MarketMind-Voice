@@ -39,7 +39,7 @@ Arquitectura políglota distribuida sobre una misma base de datos PostgreSQL:
 - Docker Desktop instalado y corriendo (Mac, Windows o WSL).
 - Node.js 18 o superior.
 - Git.
-- Java 21 (solo si vas a compilar Spring Boot fuera de Docker).
+- Java 25 (solo si vas a compilar Spring Boot fuera de Docker).
 - Android Studio (solo si vas a correr la app móvil).
 
 > **Windows:** si usas WSL, ejecuta todos los comandos desde la terminal de
