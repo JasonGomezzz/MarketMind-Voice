@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
@@ -22,6 +22,7 @@
         <java.version>25</java.version>
         <lombok.version>1.18.48</lombok.version>
         <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
+        <postgresql.version>42.7.12</postgresql.version>
         <jjwt.version>0.12.6</jjwt.version>
     </properties>
 
