@@ -254,12 +254,14 @@ N8N_WEBHOOK_BASE_URL = config(
     default=config("N8N_WEBHOOK_URL", default="http://localhost:5678"),
 )
 N8N_WEBHOOK_TIMEOUT = 5             # segundos — "Respond Immediately" debe responder < 500ms
-DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://localhost:8000")
+DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://host.docker.internal:8000")
 SPRINGBOOT_INTERNAL_URL = config("SPRINGBOOT_INTERNAL_URL", default="http://localhost:8080")
 INTERNAL_EVENT_TOKEN = config("INTERNAL_EVENT_TOKEN", default="dev-internal-event-token")
 
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_TTS_MODEL = config("GEMINI_TTS_MODEL", default="gemini-2.5-flash-preview-tts")
+GEMINI_TTS_VOICE = config("GEMINI_TTS_VOICE", default="Kore")
 GEMINI_TIMEOUT = 10                 # segundos — manejo de timeout según HU4
 
 USE_MOCK_AI = config("USE_MOCK_AI", cast=bool, default=False)

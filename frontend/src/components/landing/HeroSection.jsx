@@ -70,7 +70,7 @@ export default function HeroSection() {
           <div className="overflow-hidden rounded-3xl border-4 border-white/50 bg-surface-variant shadow-2xl">
             <img
               src={heroImg}
-              alt="Panel de MarketMind IA generando el copy y la imagen de una campaña"
+              alt="Panel de NexoMark IA generando el copy y la imagen de una campaña"
               className="aspect-[16/10] w-full object-cover"
             />
           </div>

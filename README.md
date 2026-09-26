@@ -1,11 +1,14 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/Q8MxYa_E)
 [![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=23827676&assignment_repo_type=AssignmentRepo)
 
-# MarketMind IA
+# NexoMark IA
 
 SaaS de automatización de campañas publicitarias con IA para agencias de
 marketing digital. Genera copy + imagen de anuncios automáticamente y
 gestiona el flujo de aprobación entre marketero y cliente.
+
+La identidad visual del proyecto se encuentra en [`brand/`](brand/README.md):
+logo principal, isotipo, paleta y reglas básicas de uso.
 
 Arquitectura políglota distribuida sobre una misma base de datos PostgreSQL:
 
@@ -14,7 +17,8 @@ Arquitectura políglota distribuida sobre una misma base de datos PostgreSQL:
 - **Spring Boot** (Java) — API de cara al cliente final (revisar/aprobar
   campañas), solo lee/actualiza estado, nunca migra el schema.
 - **React** — frontend web (SuperAdmin, Marketero, Cliente).
-- **Android/Kotlin** — app móvil (Marketero y Cliente).
+- **Flutter** — app móvil de presentación con creación y lectura por voz.
+- **Android/Kotlin** — cliente móvil anterior, conservado como referencia.
 - **n8n** — orquesta la generación asíncrona de copy + imagen con Gemini.
 
 ## Índice
@@ -28,6 +32,7 @@ Arquitectura políglota distribuida sobre una misma base de datos PostgreSQL:
 - [9. Spring Boot](#9-levantar-spring-boot)
 - [10. Frontend React](#10-correr-el-frontend-web)
 - [11. App móvil Android/Kotlin](#11-correr-la-app-movil-androidkotlin)
+- [12. App móvil Flutter con voz](#12-correr-la-app-movil-flutter-con-voz)
 - [Usuarios de prueba (3 roles)](#usuarios-de-prueba-3-roles)
 - [Arranque rápido del día a día](#orden-recomendado-para-volver-a-correr-el-proyecto)
 - [Despliegue en producción](#despliegue-en-producción)
@@ -375,6 +380,36 @@ Requisitos para que el modo `debug` funcione:
 - Usa las mismas credenciales de [Usuarios de prueba](#usuarios-de-prueba-3-roles):
   el login móvil de marketero/cliente pega contra Django (`:8000`), y las
   pantallas de campañas del cliente pegan contra Spring Boot (`:8080`).
+
+## 12. Correr la app móvil Flutter con voz
+
+La aplicación nueva está en `mobile_flutter/`. Incluye dictado en español para
+crear el prompt y lectura del copy mediante Gemini TTS. Si Gemini no tiene una
+API key válida, utiliza automáticamente la voz del dispositivo como modo demo.
+
+```bash
+cd mobile_flutter
+flutter pub get
+flutter run
+```
+
+El emulador Android usa `http://10.0.2.2:8000` por defecto. Para un teléfono
+físico conectado a la misma red, indica la IP local de la computadora:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8000
+```
+
+La clave nunca se guarda en Flutter. Configura la voz real en `backend/.env`:
+
+```env
+GEMINI_API_KEY=tu-clave-real
+GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts
+GEMINI_TTS_VOICE=Kore
+```
+
+Luego reinicia Django. El endpoint autenticado usado por la app es
+`POST /api/campaigns/voice/synthesize/`.
 
 ## Usuarios de prueba (3 roles)
 

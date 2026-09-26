@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "MarketMind: Docker",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "up",
+        "-d",
+        "postgres",
+        "redis",
+        "n8n",
+        "springboot"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "SPRINGBOOT_HOST_PORT": "8081"
+        }
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "group": "marketmind"
+      }
+    },
+    {
+      "label": "MarketMind: Django :8000",
+      "type": "process",
+      "command": "${workspaceFolder}\\backend\\venv\\Scripts\\python.exe",
+      "args": [
+        "manage.py",
+        "runserver",
+        "0.0.0.0:8000"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\backend",
+        "env": {
+          "SPRINGBOOT_INTERNAL_URL": "http://localhost:8081"
+        }
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "marketmind"
+      }
+    },
+    {
+      "label": "MarketMind: Vite :5173",
+      "type": "process",
+      "command": "npm.cmd",
+      "args": [
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\frontend",
+        "env": {
+          "VITE_USER_API_URL": "http://localhost:8081"
+        }
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "marketmind"
+      }
+    }
+  ]
+}

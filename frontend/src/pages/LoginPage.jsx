@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
 import { useAuthBrandContent } from '../hooks/useAuthBrandContent'
+import BrandLogo from '@/components/BrandLogo'
 
 /**
  * Login rediseñado (sistema Lumina Creative). Split: formulario + panel de marca.
@@ -59,8 +60,8 @@ export default function LoginPage() {
       <section className="auth-form-panel z-10 flex w-full items-center justify-center p-8 md:w-[54%] md:p-16 lg:p-24">
         <div className="glass-liquid w-full max-w-md rounded-[2rem] p-7 md:p-9">
           <div className="mb-12">
-            <Link to="/" className="text-3xl font-bold tracking-tight text-primary">
-              MarketMind IA
+            <Link to="/" className="text-3xl">
+              <BrandLogo />
             </Link>
             <p className="mt-2 text-base text-on-surface-variant">
               Impulsa tu marketing con inteligencia artificial de alto rendimiento.

@@ -2,7 +2,7 @@ import { motion } from 'motion/react'
 import { FileText, PenLine, Image as ImageIcon, CheckCheck, Rocket } from 'lucide-react'
 
 /**
- * "Cómo funciona": el pipeline real de MarketMind como 5 pasos animados
+ * "Cómo funciona": el pipeline real de NexoMark como 5 pasos animados
  * al hacer scroll. Refleja el flujo Brief → Copy IA → Imagen IA → Aprobación → Publicar.
  */
 const STEPS = [

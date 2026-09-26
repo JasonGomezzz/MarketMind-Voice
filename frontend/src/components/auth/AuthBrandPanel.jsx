@@ -9,7 +9,7 @@ import testimonialImg from '@/assets/landing/testimonial.png'
 export default function AuthBrandPanel({
   highlights = [],
   badgeIcon: BadgeIcon,
-  quote = 'MarketMind transformó nuestra estrategia digital. Lo que antes nos tomaba una semana, ahora lo resolvemos en una mañana.',
+  quote = 'NexoMark transformó nuestra estrategia digital. Lo que antes nos tomaba una semana, ahora lo resolvemos en una mañana.',
   personName = 'Elena Rodríguez',
   personRole = 'Directora de Marketing, Global Creative Co.',
   personImage = testimonialImg,
@@ -108,7 +108,7 @@ export default function AuthBrandPanel({
 
       {/* Pie */}
       <div className="absolute bottom-8 left-12 right-12 z-10 flex items-center justify-between text-xs text-on-primary/60">
-        <span>© {new Date().getFullYear()} MarketMind IA</span>
+        <span>© {new Date().getFullYear()} NexoMark IA</span>
         <div className="flex gap-6">
           <a href="#" className="transition-colors hover:text-white">Privacidad</a>
           <a href="#" className="transition-colors hover:text-white">Términos</a>

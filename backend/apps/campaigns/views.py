@@ -33,6 +33,7 @@ from core.exceptions import api_response
 from services.gemini_text_service import improve_copy
 from services.internal_event_service import notify_campaign_submitted
 from services.n8n_service import trigger_ia_generation
+from services.gemini_voice_service import GeminiVoiceError, synthesize_speech
 from services.version_service import restore_campaign_version, save_campaign_version
 
 from .models import Campaign, CampaignStatus, CampaignVersion, CreditPurchase
@@ -50,6 +51,30 @@ CREDIT_PLAN_MAP = {
     "pro": {"nombre": "Pro", "precio": 129, "creditos": 1500},
     "elite": {"nombre": "Elite", "precio": 299, "creditos": 5000},
 }
+
+
+class GeminiVoiceView(APIView):
+    """Convierte copy publicitario a voz sin exponer la API key en Flutter."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> HttpResponse | Response:
+        text = str(request.data.get("text", "")).strip()
+        if not text:
+            return Response({"detail": "Se requiere el texto a leer."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(text) > 5000:
+            return Response({"detail": "El texto no puede superar 5000 caracteres."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            audio = synthesize_speech(text)
+        except GeminiVoiceError as exc:
+            return Response(
+                {"detail": str(exc), "fallback": "device_tts"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        response = HttpResponse(audio, content_type="audio/wav")
+        response["Content-Disposition"] = 'inline; filename="nexomark-voice.wav"'
+        response["X-Voice-Provider"] = "gemini"
+        return response
 
 
 class CampaignViewSet(viewsets.ModelViewSet):

@@ -498,7 +498,7 @@ private fun HomeTopBar(nombre: String?, onAvatarClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "MarketMind IA",
+            text = "NexoMark IA",
             color = Color(0xFF252166),
             fontSize = 22.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -1109,7 +1109,7 @@ private fun AiPreviewCard(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.padding(top = 18.dp),
                 ) {
-                    TagPill("#${campaign.plataforma ?: "marketmind"}")
+                    TagPill("#${campaign.plataforma ?: "nexomark"}")
                     TagPill("#${campaign.industria ?: "ia"}")
                 }
             }
@@ -2187,4 +2187,3 @@ private enum class CampaignStatus(val label: String) {
     Approved("APPROVED"),
     Pending("PENDING"),
 }
-

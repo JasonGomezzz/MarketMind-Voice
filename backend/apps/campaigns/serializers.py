@@ -29,6 +29,16 @@ class CampaignSerializer(serializers.ModelSerializer):
 
     marketero = serializers.StringRelatedField(read_only=True)
     cliente_email = serializers.EmailField(required=True)
+    plataforma = serializers.ChoiceField(
+        choices=CampaignPlataforma.choices,
+        required=False,
+    )
+    plataformas = serializers.ListField(
+        child=serializers.ChoiceField(choices=CampaignPlataforma.choices),
+        required=False,
+        allow_empty=False,
+        max_length=len(CampaignPlataforma.values),
+    )
 
     class Meta:
         model = Campaign
@@ -40,6 +50,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "industria",
             "tono",
             "plataforma",
+            "plataformas",
             "prompt",
             "estado",
             "texto_generado",
@@ -107,6 +118,21 @@ class CampaignSerializer(serializers.ModelSerializer):
         destinatarios inexistentes).
         """
         attrs = super().validate(attrs)
+        plataformas = attrs.get("plataformas")
+        plataforma_legacy = attrs.get("plataforma")
+        if not plataformas and plataforma_legacy:
+            plataformas = [plataforma_legacy]
+        if not plataformas:
+            raise serializers.ValidationError(
+                {"plataformas": "Selecciona al menos una plataforma."}
+            )
+
+        # Quitar duplicados conservando el orden elegido. El primer valor se
+        # replica en el campo histórico para no romper Flutter/Spring actuales.
+        plataformas = list(dict.fromkeys(plataformas))
+        attrs["plataformas"] = plataformas
+        attrs["plataforma"] = plataformas[0]
+
         email = attrs.get("cliente_email")
         nombre = attrs.get("cliente_nombre")
         if not email:

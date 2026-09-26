@@ -4,7 +4,7 @@ import featureCopy from '@/assets/landing/feature-copy.png'
 import featureImage from '@/assets/landing/feature-image.png'
 
 /**
- * Bento grid de funciones reales de MarketMind:
+ * Bento grid de funciones reales de NexoMark:
  * copy cognitivo, imágenes IA, analytics y app del cliente.
  */
 const reveal = {

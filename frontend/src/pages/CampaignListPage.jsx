@@ -156,7 +156,20 @@ export default function CampaignListPage() {
                       </td>
                       <td className="px-4 py-4 text-on-surface-variant">{c.cliente_nombre}</td>
                       <td className="px-4 py-4 capitalize text-on-surface-variant">{c.industria}</td>
-                      <td className="px-4 py-4 capitalize text-on-surface-variant">{c.plataforma}</td>
+                      <td className="px-4 py-4 text-on-surface-variant">
+                        {(c.plataformas?.length ? c.plataformas : [c.plataforma])
+                          .map((platform) =>
+                            ({
+                              instagram: 'Instagram',
+                              facebook: 'Facebook',
+                              twitter: 'Twitter / X',
+                              linkedin: 'LinkedIn',
+                              google_ads: 'Google Ads',
+                              tiktok: 'TikTok',
+                            })[platform] || platform,
+                          )
+                          .join(', ')}
+                      </td>
                       <td className="px-4 py-4">
                         <StatusBadge estado={c.estado} />
                       </td>

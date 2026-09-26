@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthBrandContent } from '../hooks/useAuthBrandContent'
+import BrandLogo from '@/components/BrandLogo'
 
 /**
  * Registro rediseñado (sistema Lumina Creative). Mismo split que Login.
@@ -43,7 +44,7 @@ export default function RegisterPage() {
         navigate('/login', { replace: true })
         return
       }
-      toast.success('Cuenta creada. Bienvenido a MarketMind.')
+      toast.success('Cuenta creada. Bienvenido a NexoMark.')
       navigate('/dashboard', { replace: true })
     } catch (err) {
       // El backend envuelve los errores por campo en {success, message, data: {campo: [...]}}
@@ -81,8 +82,8 @@ export default function RegisterPage() {
       <section className="auth-form-panel z-10 flex w-full items-center justify-center p-8 md:w-[54%] md:p-16 lg:p-20">
         <div className="glass-liquid w-full max-w-md rounded-[2rem] p-7 md:p-9">
           <div className="mb-10">
-            <Link to="/" className="text-3xl font-bold tracking-tight text-primary">
-              MarketMind IA
+            <Link to="/" className="text-3xl">
+              <BrandLogo />
             </Link>
             <p className="mt-2 text-base text-on-surface-variant">
               Impulsa tu marketing con inteligencia artificial de alto rendimiento.
@@ -173,7 +174,7 @@ export default function RegisterPage() {
               {/* Selector de rol */}
               <div className="space-y-2">
                 <span className="px-1 text-sm font-medium text-on-surface-variant">
-                  ¿Cómo usarás MarketMind?
+                  ¿Cómo usarás NexoMark?
                 </span>
                 <div className="grid grid-cols-2 gap-3">
                   {roles.map((r) => (

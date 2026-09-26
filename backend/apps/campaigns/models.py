@@ -118,6 +118,15 @@ class Campaign(models.Model):
         default=CampaignPlataforma.INSTAGRAM,
         verbose_name="Plataforma de publicación",
     )
+    plataformas = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Plataformas de publicación",
+        help_text=(
+            "Lista de plataformas elegidas. El campo plataforma conserva la "
+            "primera selección para compatibilidad con clientes antiguos."
+        ),
+    )
     prompt = models.TextField(
         verbose_name="Prompt de entrada",
         help_text="Descripción de la campaña enviada a Gemini vía n8n.",

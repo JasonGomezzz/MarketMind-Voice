@@ -132,7 +132,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "MarketMind IA",
+                    text = "NexoMark IA",
                     color = BrandBlue,
                     fontSize = 25.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -199,7 +199,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(28.dp))
 
                 Text(
-                    text = "© 2024 MarketMind IA. AI-Powered Growth.",
+                    text = "© 2026 NexoMark IA. Campañas conectadas con IA.",
                     color = TextDark,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,

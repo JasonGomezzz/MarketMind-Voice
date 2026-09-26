@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, FileText, ImageOff, RefreshCw, Send, Star, Trash2 } from 'lucide-react'
+import { ArrowLeft, Copy, ExternalLink, FileText, ImageOff, RefreshCw, Send, Star, Trash2 } from 'lucide-react'
 import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
@@ -11,6 +11,24 @@ import StatusBadge from '@/components/StatusBadge'
 import CampaignStepper from '@/components/CampaignStepper'
 
 const READONLY_STATES = ['aprobado', 'fracaso']
+
+const PLATFORM_LABELS = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  twitter: 'Twitter / X',
+  linkedin: 'LinkedIn',
+  google_ads: 'Google Ads',
+  tiktok: 'TikTok',
+}
+
+const PLATFORM_PUBLISH_URLS = {
+  instagram: () => 'https://www.instagram.com/',
+  facebook: (copy) => `https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(copy)}`,
+  twitter: (copy) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(copy.slice(0, 280))}`,
+  linkedin: (copy) => `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(copy)}`,
+  google_ads: () => 'https://ads.google.com/aw/campaigns/new',
+  tiktok: () => 'https://www.tiktok.com/upload',
+}
 
 function wordCount(text) {
   return text.trim() ? text.trim().split(/\s+/).length : 0
@@ -209,6 +227,20 @@ export default function CampaignDetailPage() {
     }
   }
 
+  async function handlePreparePublication(platform) {
+    const destination = PLATFORM_PUBLISH_URLS[platform]?.(text)
+    if (!destination) return
+
+    // Abrir durante el clic evita que el navegador bloquee la nueva pestaña.
+    window.open(destination, '_blank', 'noopener,noreferrer')
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success(`Copy copiado. Completa la publicación en ${PLATFORM_LABELS[platform]}.`)
+    } catch {
+      toast.success(`Se abrió ${PLATFORM_LABELS[platform]}. Copia el texto desde esta campaña.`)
+    }
+  }
+
   async function handleDeleteCampaign() {
     if (!window.confirm(`¿Eliminar la campaña "${campaign.titulo}"? Esta acción no se puede deshacer.`)) {
       return
@@ -276,7 +308,11 @@ export default function CampaignDetailPage() {
             <MetaRow label="Cliente">{campaign.cliente_nombre}</MetaRow>
             <MetaRow label="Industria" capitalize>{campaign.industria}</MetaRow>
             <MetaRow label="Tono" capitalize>{campaign.tono}</MetaRow>
-            <MetaRow label="Plataforma" capitalize>{campaign.plataforma}</MetaRow>
+            <MetaRow label="Plataformas">
+              {(campaign.plataformas?.length ? campaign.plataformas : [campaign.plataforma])
+                .map((platform) => PLATFORM_LABELS[platform] || platform)
+                .join(', ')}
+            </MetaRow>
             <MetaRow label="Creada">
               {new Date(campaign.fecha_creacion).toLocaleDateString('es-PE')}
             </MetaRow>
@@ -484,6 +520,38 @@ export default function CampaignDetailPage() {
               </div>
             )}
           </div>
+
+          {campaign.texto_generado && (
+            <div className="mt-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-on-surface">Publicación rápida</p>
+                <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
+                  El botón copia el copy y abre el editor oficial de la plataforma. Por seguridad,
+                  la confirmación final de la publicación se realiza en tu cuenta de la red social.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(campaign.plataformas?.length ? campaign.plataformas : [campaign.plataforma]).map(
+                  (platform) => (
+                    <Button
+                      key={platform}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePreparePublication(platform)}
+                    >
+                      {['instagram', 'google_ads', 'tiktok'].includes(platform) ? (
+                        <Copy className="h-4 w-4" />
+                      ) : (
+                        <ExternalLink className="h-4 w-4" />
+                      )}
+                      Publicar en {PLATFORM_LABELS[platform] || platform}
+                    </Button>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

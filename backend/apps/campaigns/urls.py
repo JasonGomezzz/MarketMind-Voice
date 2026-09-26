@@ -8,12 +8,14 @@ from .views import (
     CampaignViewSet,
     EmailSentCallbackView,
     IaResultCallbackView,
+    GeminiVoiceView,
 )
 
 router = SimpleRouter()
 router.register(r"", CampaignViewSet, basename="campaign")
 
 urlpatterns = [
+    path("voice/synthesize/", GeminiVoiceView.as_view(), name="gemini-voice"),
     # Rutas de callback n8n → Django (sin JWT, antes del router para evitar colisiones)
     path("webhook/ia-result/", IaResultCallbackView.as_view(), name="ia-result-callback"),
     path("webhook/email-sent/", EmailSentCallbackView.as_view(), name="email-sent-callback"),

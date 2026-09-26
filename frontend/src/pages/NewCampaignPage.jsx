@@ -38,6 +38,7 @@ const PLATAFORMAS = [
   { value: 'twitter', label: 'Twitter / X' },
   { value: 'linkedin', label: 'LinkedIn' },
   { value: 'google_ads', label: 'Google Ads' },
+  { value: 'tiktok', label: 'TikTok' },
 ]
 
 function FieldError({ message }) {
@@ -69,6 +70,7 @@ export default function NewCampaignPage() {
     defaultValues: {
       prompt: location.state?.prompt || '',
       tono: location.state?.tono || '',
+      plataformas: [],
     },
   })
 
@@ -292,25 +294,40 @@ export default function NewCampaignPage() {
               </div>
             </div>
 
-            {/* Plataforma */}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-on-surface-variant">
-                Plataforma
-              </label>
-              <select
-                className={inputCls(errors.plataforma)}
-                disabled={submitting}
-                {...register('plataforma', { required: 'Selecciona una plataforma.' })}
+            {/* Plataformas */}
+            <fieldset>
+              <legend className="mb-1 block text-sm font-medium text-on-surface-variant">
+                Plataformas de publicación
+              </legend>
+              <p className="mb-3 text-xs text-on-surface-variant">
+                Puedes elegir una o varias. La IA adaptará la campaña a todas las seleccionadas.
+              </p>
+              <div
+                className={`grid grid-cols-2 gap-3 rounded-xl border p-3 sm:grid-cols-3 ${
+                  errors.plataformas ? 'border-error' : 'border-outline-variant'
+                }`}
               >
-                <option value="">Seleccionar…</option>
                 {PLATAFORMAS.map(({ value, label }) => (
-                  <option key={value} value={value}>
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2.5 text-sm text-on-surface transition hover:border-primary has-[:checked]:border-primary has-[:checked]:bg-primary-container has-[:checked]:font-semibold has-[:checked]:text-primary"
+                  >
+                    <input
+                      type="checkbox"
+                      value={value}
+                      disabled={submitting}
+                      className="h-4 w-4 accent-primary"
+                      {...register('plataformas', {
+                        validate: (values) =>
+                          values?.length > 0 || 'Selecciona al menos una plataforma.',
+                      })}
+                    />
                     {label}
-                  </option>
+                  </label>
                 ))}
-              </select>
-              <FieldError message={errors.plataforma?.message} />
-            </div>
+              </div>
+              <FieldError message={errors.plataformas?.message} />
+            </fieldset>
 
             {/* Prompt */}
             <div>

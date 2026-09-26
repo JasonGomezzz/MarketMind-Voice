@@ -72,6 +72,29 @@ class TestCampaignCreate:
         assert response.status_code == 202
         assert response.data["data"]["campaign"]["cliente_nombre"] == "Gimnasio Mega Force"
 
+    def test_create_accepts_multiple_platforms(self, api_client):
+        payload = {
+            **VALID_PAYLOAD,
+            "plataformas": ["instagram", "facebook", "linkedin"],
+        }
+        payload.pop("plataforma")
+
+        response = api_client.post(CAMPAIGNS_URL, payload, format="json")
+
+        assert response.status_code == 202
+        campaign = response.data["data"]["campaign"]
+        assert campaign["plataformas"] == ["instagram", "facebook", "linkedin"]
+        assert campaign["plataforma"] == "instagram"
+
+    def test_create_requires_at_least_one_platform(self, api_client):
+        payload = {**VALID_PAYLOAD, "plataformas": []}
+        payload.pop("plataforma")
+
+        response = api_client.post(CAMPAIGNS_URL, payload, format="json")
+
+        assert response.status_code == 400
+        assert "plataformas" in response.data["data"]["errors"]
+
     def test_create_rejects_unregistered_cliente_email(self, api_client):
         """El email SÍ debe pertenecer a un cliente registrado."""
         payload = {**VALID_PAYLOAD, "cliente_email": "noexiste@ejemplo.com"}

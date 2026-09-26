@@ -22,6 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MarketMind Mobile"
+rootProject.name = "NexoMark Mobile"
 include(":app")
- 
