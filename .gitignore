@@ -47,6 +47,7 @@ mobile/local.properties
 springboot/target/
 *.class
 *.jar
+!mobile/gradle/wrapper/gradle-wrapper.jar
 *.war
 springboot/.gradle/
 
