@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import 'models.dart';
 
@@ -81,6 +82,37 @@ class ApiClient {
       );
     }
     return response.bodyBytes;
+  }
+
+  Future<String> geminiTranscription(
+    Uint8List audio, {
+    String mimeType = 'audio/mp4',
+    String filename = 'dictado.m4a',
+  }) async {
+    final token = await _storage.read(key: 'access');
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/campaigns/voice/transcribe/'),
+    )
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'audio',
+          audio,
+          filename: filename,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+    final response = await http.Response.fromStream(await _client.send(request));
+    final body = _json(response);
+    if (response.statusCode != 200) {
+      throw ApiException(_message(body, 'No se pudo transcribir el audio.'));
+    }
+    final transcript = body['transcript']?.toString().trim() ?? '';
+    if (transcript.isEmpty) {
+      throw const ApiException('Gemini no detectó voz en el audio.');
+    }
+    return transcript;
   }
 
   Future<http.Response> _get(String path) async {

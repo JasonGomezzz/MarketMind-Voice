@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 import 'api_client.dart';
 import 'models.dart';
@@ -205,48 +207,93 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
   final clientName = TextEditingController();
   final clientEmail = TextEditingController();
   final prompt = TextEditingController();
-  final speech = SpeechToText();
+  final recorder = AudioRecorder();
+  TextEditingController? dictationTarget;
+  String dictationTargetLabel = 'instrucciones';
   String industry = 'tecnologia', tone = 'profesional', platform = 'instagram';
   bool listening = false, saving = false;
   String? message;
 
-  Future<void> toggleDictation() async {
+  Future<void> toggleDictation(
+    TextEditingController target,
+    String targetLabel,
+  ) async {
     if (listening) {
-      await speech.stop();
-      setState(() => listening = false);
+      await finishDictation();
       return;
     }
-    final ready = await speech.initialize(
-      onStatus: (status) {
-        if ((status == 'done' || status == 'notListening') && mounted) {
-          setState(() => listening = false);
-        }
-      },
-    );
+    final ready = await recorder.hasPermission();
     if (!ready) {
       setState(() => message = 'Activa el permiso de micrófono para dictar.');
       return;
     }
+    final temporaryDirectory = await getTemporaryDirectory();
+    final path =
+        '${temporaryDirectory.path}/nexomark_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    dictationTarget = target;
+    dictationTargetLabel = targetLabel;
+    await recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        sampleRate: 16000,
+        numChannels: 1,
+        echoCancel: true,
+        noiseSuppress: true,
+      ),
+      path: path,
+    );
     setState(() {
       listening = true;
-      message = 'Escuchando… describe tu campaña.';
+      message = 'Escuchando $targetLabel… toca detener cuando termines.';
     });
-    await speech.listen(
-      listenOptions: SpeechListenOptions(
-        localeId: 'es_PE',
-        listenMode: ListenMode.dictation,
-      ),
-      onResult: (result) {
-        prompt.text = result.recognizedWords;
-        prompt.selection = TextSelection.collapsed(offset: prompt.text.length);
-        setState(() {});
-      },
-    );
+  }
+
+  Future<void> finishDictation() async {
+    final path = await recorder.stop();
+    if (mounted) {
+      setState(() {
+        listening = false;
+        message = 'Transcribiendo con Gemini…';
+      });
+    }
+    if (path == null || dictationTarget == null) return;
+    try {
+      final bytes = await File(path).readAsBytes();
+      final transcript = await widget.api.geminiTranscription(bytes);
+      final controller = dictationTarget!;
+      final selection = controller.selection;
+      final start = selection.isValid ? selection.start : controller.text.length;
+      final end = selection.isValid ? selection.end : start;
+      final separator =
+          start > 0 && !RegExp(r'\s$').hasMatch(controller.text.substring(0, start))
+          ? ' '
+          : '';
+      final next = controller.text.replaceRange(
+        start,
+        end,
+        '$separator$transcript',
+      );
+      final cursor = start + separator.length + transcript.length;
+      controller
+        ..text = next
+        ..selection = TextSelection.collapsed(offset: cursor);
+      if (mounted) {
+        setState(() => message = 'Dictado insertado en $dictationTargetLabel.');
+      }
+    } catch (error) {
+      if (mounted) setState(() => message = error.toString());
+    } finally {
+      try {
+        await File(path).delete();
+      } catch (_) {
+        // El sistema puede limpiar el archivo temporal si ya no existe.
+      }
+    }
   }
 
   Future<void> create() async {
     if (!form.currentState!.validate()) return;
-    await speech.stop();
+    if (listening) await recorder.stop();
     setState(() {
       saving = true;
       message = null;
@@ -273,6 +320,16 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
 
   String? required(String? value) =>
       value == null || value.trim().isEmpty ? 'Completa este campo' : null;
+
+  @override
+  void dispose() {
+    recorder.dispose();
+    title.dispose();
+    clientName.dispose();
+    clientEmail.dispose();
+    prompt.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Form(
@@ -317,13 +374,35 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
         TextFormField(
           controller: title,
           validator: required,
-          decoration: const InputDecoration(labelText: 'Título de la campaña'),
+          decoration: InputDecoration(
+            labelText: 'Título de la campaña',
+            suffixIcon: IconButton(
+              onPressed: () => toggleDictation(title, 'el título'),
+              tooltip: 'Dictar título con Gemini',
+              icon: Icon(
+                listening && identical(dictationTarget, title)
+                    ? Icons.stop
+                    : Icons.mic,
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         TextFormField(
           controller: clientName,
           validator: required,
-          decoration: const InputDecoration(labelText: 'Nombre del cliente'),
+          decoration: InputDecoration(
+            labelText: 'Nombre del cliente',
+            suffixIcon: IconButton(
+              onPressed: () => toggleDictation(clientName, 'el cliente'),
+              tooltip: 'Dictar cliente con Gemini',
+              icon: Icon(
+                listening && identical(dictationTarget, clientName)
+                    ? Icons.stop
+                    : Icons.mic,
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         TextFormField(
@@ -396,7 +475,7 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
             suffixIcon: Padding(
               padding: const EdgeInsets.only(right: 8, bottom: 72),
               child: IconButton.filled(
-                onPressed: toggleDictation,
+                onPressed: () => toggleDictation(prompt, 'las instrucciones'),
                 tooltip: listening ? 'Detener dictado' : 'Dictar',
                 icon: Icon(listening ? Icons.stop : Icons.mic),
               ),
