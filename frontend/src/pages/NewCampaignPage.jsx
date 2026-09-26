@@ -9,6 +9,7 @@ import StatusBadge from '@/components/StatusBadge'
 import GeneratingState from '@/components/campaign/GeneratingState'
 import ErrorState from '@/components/campaign/ErrorState'
 import CreditsExhausted from '@/components/campaign/CreditsExhausted'
+import { VoiceDictationButton } from '@/components/voice/GeminiVoiceControls'
 
 const INDUSTRIAS = [
   { value: 'tecnologia', label: 'Tecnología' },
@@ -64,6 +65,8 @@ export default function NewCampaignPage() {
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     reset,
     formState: { errors },
   } = useForm({
@@ -73,6 +76,30 @@ export default function NewCampaignPage() {
       plataformas: [],
     },
   })
+  const cursorPositionsRef = useRef({})
+
+  function insertTranscript(fieldName, transcript) {
+    const current = getValues(fieldName) || ''
+    const position = cursorPositionsRef.current[fieldName]
+    const start = position?.start ?? current.length
+    const end = position?.end ?? start
+    const separator = start > 0 && !/\s$/.test(current.slice(0, start)) ? ' ' : ''
+    const next = `${current.slice(0, start)}${separator}${transcript}${current.slice(end)}`
+    const cursor = start + separator.length + transcript.length
+    setValue(fieldName, next, { shouldDirty: true, shouldValidate: true })
+    window.setTimeout(() => {
+      const field = document.querySelector(`[name="${fieldName}"]`)
+      field?.focus()
+      field?.setSelectionRange(cursor, cursor)
+    })
+  }
+
+  function rememberCursor(fieldName, event) {
+    cursorPositionsRef.current[fieldName] = {
+      start: event.currentTarget.selectionStart,
+      end: event.currentTarget.selectionEnd,
+    }
+  }
 
   // Polling del modo REAL: la generación es asíncrona (Django responde 202 con
   // estado pendiente_ia y n8n tarda 8-30 s). Consultamos la campaña cada 4 s
@@ -196,14 +223,22 @@ export default function NewCampaignPage() {
 
             {/* Título */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-on-surface-variant">
-                Título de la campaña
-              </label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-sm font-medium text-on-surface-variant">
+                  Título de la campaña
+                </label>
+                <VoiceDictationButton
+                  disabled={submitting}
+                  onTranscript={(text) => insertTranscript('titulo', text)}
+                  onError={setServerError}
+                />
+              </div>
               <input
                 type="text"
                 placeholder="Ej: Lanzamiento Black Friday 2026"
                 className={inputCls(errors.titulo)}
                 disabled={submitting}
+                onSelect={(event) => rememberCursor('titulo', event)}
                 {...register('titulo', {
                   required: 'El título es obligatorio.',
                   minLength: { value: 5, message: 'Mínimo 5 caracteres.' },
@@ -216,14 +251,22 @@ export default function NewCampaignPage() {
             {/* Cliente — nombre + email */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium text-on-surface-variant">
-                  Nombre del cliente
-                </label>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="block text-sm font-medium text-on-surface-variant">
+                    Nombre del cliente
+                  </label>
+                  <VoiceDictationButton
+                    disabled={submitting}
+                    onTranscript={(text) => insertTranscript('cliente_nombre', text)}
+                    onError={setServerError}
+                  />
+                </div>
                 <input
                   type="text"
                   placeholder="Ej: Empresa S.A.C."
                   className={inputCls(errors.cliente_nombre)}
                   disabled={submitting}
+                  onSelect={(event) => rememberCursor('cliente_nombre', event)}
                   {...register('cliente_nombre', {
                     required: 'El nombre del cliente es obligatorio.',
                     maxLength: { value: 150, message: 'Máximo 150 caracteres.' },
@@ -331,14 +374,22 @@ export default function NewCampaignPage() {
 
             {/* Prompt */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-on-surface-variant">
-                Instrucciones para la IA
-              </label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-sm font-medium text-on-surface-variant">
+                  Instrucciones para la IA
+                </label>
+                <VoiceDictationButton
+                  disabled={submitting}
+                  onTranscript={(text) => insertTranscript('prompt', text)}
+                  onError={setServerError}
+                />
+              </div>
               <textarea
                 rows={5}
                 placeholder="Describe el objetivo de la campaña, el público objetivo, puntos clave a destacar y cualquier restricción creativa…"
                 className={`${inputCls(errors.prompt)} resize-y`}
                 disabled={submitting}
+                onSelect={(event) => rememberCursor('prompt', event)}
                 {...register('prompt', {
                   required: 'Las instrucciones son obligatorias.',
                   minLength: { value: 10, message: 'Mínimo 10 caracteres.' },

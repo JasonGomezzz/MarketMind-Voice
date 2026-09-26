@@ -9,6 +9,7 @@ import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import CampaignStepper from '@/components/CampaignStepper'
+import { VoiceDictationButton, VoicePlaybackButton } from '@/components/voice/GeminiVoiceControls'
 
 const READONLY_STATES = ['aprobado', 'fracaso']
 
@@ -60,6 +61,22 @@ export default function CampaignDetailPage() {
   const debounceRef = useRef(null)
   const pollAttemptsRef = useRef(0)
   const draftKey = `campaign_${id}_draft`
+  const promptRef = useRef(null)
+  const copyRef = useRef(null)
+
+  function insertAtCursor(ref, value, setter, transcript) {
+    const element = ref.current
+    const start = element?.selectionStart ?? value.length
+    const end = element?.selectionEnd ?? start
+    const separator = start > 0 && !/\s$/.test(value.slice(0, start)) ? ' ' : ''
+    const next = `${value.slice(0, start)}${separator}${transcript}${value.slice(end)}`
+    const cursor = start + separator.length + transcript.length
+    setter(next)
+    window.setTimeout(() => {
+      element?.focus()
+      element?.setSelectionRange(cursor, cursor)
+    })
+  }
 
   const fetchCampaign = useCallback(
     async ({ useDraft = true } = {}) => {
@@ -396,8 +413,21 @@ export default function CampaignDetailPage() {
           )}
 
           <div className="mb-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
-            <p className="mb-3 text-sm font-semibold text-on-surface">Prompt de generación</p>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-on-surface">Prompt de generación</p>
+              <div className="flex gap-2">
+                <VoicePlaybackButton text={promptText} disabled={isGenerating} />
+                <VoiceDictationButton
+                  disabled={isReadonly || isGenerating}
+                  onTranscript={(transcript) =>
+                    insertAtCursor(promptRef, promptText, setPromptText, transcript)
+                  }
+                  onError={(message) => toast.error(message)}
+                />
+              </div>
+            </div>
             <textarea
+              ref={promptRef}
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
               disabled={isReadonly || isGenerating}
@@ -412,7 +442,15 @@ export default function CampaignDetailPage() {
 
           <div className="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-on-surface">Copy publicitario</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-on-surface">Copy publicitario</p>
+                <VoicePlaybackButton text={text} disabled={isGenerating} />
+                <VoiceDictationButton
+                  disabled={isReadonly || isGenerating}
+                  onTranscript={(transcript) => insertAtCursor(copyRef, text, setText, transcript)}
+                  onError={(message) => toast.error(message)}
+                />
+              </div>
               {autoSavedAt && (
                 <p className="text-xs text-on-surface-variant">
                   Guardado automáticamente a las {autoSavedAt}
@@ -433,6 +471,7 @@ export default function CampaignDetailPage() {
             )}
 
             <textarea
+              ref={copyRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={isReadonly || isGenerating}
