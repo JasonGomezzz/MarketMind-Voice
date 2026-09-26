@@ -262,6 +262,8 @@ GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_TTS_MODEL = config("GEMINI_TTS_MODEL", default="gemini-2.5-flash-preview-tts")
 GEMINI_TTS_VOICE = config("GEMINI_TTS_VOICE", default="Kore")
+GEMINI_TRANSCRIPTION_MODEL = config("GEMINI_TRANSCRIPTION_MODEL", default="gemini-2.5-flash")
+GEMINI_TRANSCRIPTION_TIMEOUT = config("GEMINI_TRANSCRIPTION_TIMEOUT", cast=int, default=45)
 GEMINI_TIMEOUT = 10                 # segundos — manejo de timeout según HU4
 
 USE_MOCK_AI = config("USE_MOCK_AI", cast=bool, default=False)

@@ -31,6 +31,10 @@ except (OSError, ImportError):
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
 from services.gemini_text_service import improve_copy
+from services.gemini_transcription_service import (
+    GeminiTranscriptionError,
+    transcribe_speech,
+)
 from services.internal_event_service import notify_campaign_submitted
 from services.n8n_service import trigger_ia_generation
 from services.gemini_voice_service import GeminiVoiceError, synthesize_speech
@@ -75,6 +79,54 @@ class GeminiVoiceView(APIView):
         response["Content-Disposition"] = 'inline; filename="nexomark-voice.wav"'
         response["X-Voice-Provider"] = "gemini"
         return response
+
+
+class GeminiTranscriptionView(APIView):
+    """Transcribe audio de web o Flutter con Gemini."""
+
+    permission_classes = [IsAuthenticated]
+    max_audio_bytes = 10 * 1024 * 1024
+    supported_mime_types = {
+        "audio/aac",
+        "audio/flac",
+        "audio/m4a",
+        "audio/mp3",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/ogg",
+        "audio/wav",
+        "audio/webm",
+        "audio/x-m4a",
+    }
+
+    def post(self, request: Request) -> Response:
+        uploaded = request.FILES.get("audio")
+        if uploaded is None:
+            return Response(
+                {"detail": "Se requiere un archivo de audio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if uploaded.size <= 0 or uploaded.size > self.max_audio_bytes:
+            return Response(
+                {"detail": "El audio debe pesar entre 1 byte y 10 MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        mime_type = (uploaded.content_type or "").lower().split(";", 1)[0]
+        if mime_type not in self.supported_mime_types:
+            return Response(
+                {"detail": "Formato de audio no compatible."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            transcript = transcribe_speech(uploaded.read(), mime_type)
+        except GeminiTranscriptionError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({"transcript": transcript, "provider": "gemini"})
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
