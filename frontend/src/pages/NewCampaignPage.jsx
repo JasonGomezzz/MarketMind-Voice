@@ -9,6 +9,8 @@ import StatusBadge from '@/components/StatusBadge'
 import GeneratingState from '@/components/campaign/GeneratingState'
 import ErrorState from '@/components/campaign/ErrorState'
 import CreditsExhausted from '@/components/campaign/CreditsExhausted'
+import VoiceBriefCard from '@/components/campaign/VoiceBriefCard'
+import { camposParaFormulario } from '../services/voiceIntent'
 
 const INDUSTRIAS = [
   { value: 'tecnologia', label: 'Tecnología' },
@@ -23,13 +25,14 @@ const INDUSTRIAS = [
 ]
 
 // Valores EXACTOS de CampaignTono/CampaignPlataforma del backend —
-// un valor fuera de choices (p. ej. 'persuasivo' o 'tiktok') devuelve 400.
+// un valor fuera de choices devuelve 400.
 const TONOS = [
   { value: 'profesional', label: 'Profesional' },
   { value: 'casual', label: 'Casual' },
   { value: 'urgente', label: 'Urgente' },
   { value: 'inspiracional', label: 'Inspiracional' },
   { value: 'humoristico', label: 'Humorístico' },
+  { value: 'persuasivo', label: 'Persuasivo' },
 ]
 
 const PLATAFORMAS = [
@@ -38,7 +41,26 @@ const PLATAFORMAS = [
   { value: 'twitter', label: 'Twitter / X' },
   { value: 'linkedin', label: 'LinkedIn' },
   { value: 'google_ads', label: 'Google Ads' },
+  { value: 'tiktok', label: 'TikTok' },
 ]
+
+// Opciones que el formulario acepta: lo que interprete la IA fuera de estas
+// listas no se vuelca y queda para que el usuario lo elija.
+const OPCIONES_FORMULARIO = {
+  industria: INDUSTRIAS.map((o) => o.value),
+  tono: TONOS.map((o) => o.value),
+  plataforma: PLATAFORMAS.map((o) => o.value),
+}
+
+const ETIQUETAS = {
+  titulo: 'título',
+  cliente_nombre: 'nombre del cliente',
+  cliente_email: 'email del cliente',
+  industria: 'industria',
+  tono: 'tono',
+  plataforma: 'plataforma',
+  prompt: 'instrucciones',
+}
 
 function FieldError({ message }) {
   if (!message) return null
@@ -58,12 +80,18 @@ export default function NewCampaignPage() {
   const [result, setResult] = useState(null) // { campaign, warning }
   const [serverError, setServerError] = useState('')
   const [noCredits, setNoCredits] = useState(false)
+  // Intención creada al interpretar el brief (voz o texto). Si existe, el
+  // formulario confirma esa intención en vez de crear la campaña directamente.
+  const [intent, setIntent] = useState(null)
+  const [resumenIntent, setResumenIntent] = useState(null)
+  const [briefKey, setBriefKey] = useState(0)
 
   // Prellenado desde la Guía de prompts (state del router; no persiste al recargar)
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -113,6 +141,23 @@ export default function NewCampaignPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result?.campaign?.id, result?.campaign?.estado])
 
+  function handleInterpreted(nuevoIntent) {
+    const { valores, completados, pendientes } = camposParaFormulario(
+      nuevoIntent.campos_finales,
+      OPCIONES_FORMULARIO,
+    )
+    Object.entries(valores).forEach(([campo, valor]) =>
+      setValue(campo, valor, { shouldValidate: true, shouldDirty: true }),
+    )
+    setIntent(nuevoIntent)
+    setResumenIntent({
+      completados,
+      pendientes: pendientes.map((campo) => ETIQUETAS[campo]),
+      advertencias: nuevoIntent.advertencias ?? [],
+    })
+    setServerError('')
+  }
+
   async function onSubmit(formData) {
     setSubmitting(true)
     setServerError('')
@@ -120,7 +165,9 @@ export default function NewCampaignPage() {
     setResult(null)
 
     try {
-      const { data } = await api.post('/api/campaigns/', formData)
+      const { data } = intent
+        ? await api.post(`/api/intents/${intent.id}/confirm/`, { campos: formData })
+        : await api.post('/api/campaigns/', formData)
       const campaign = data.data.campaign
       setResult({
         campaign,
@@ -142,6 +189,10 @@ export default function NewCampaignPage() {
       } else if (httpStatus === 402) {
         // Sin créditos → estado dedicado (HU24)
         setNoCredits(true)
+      } else if (httpStatus === 409) {
+        // La intención ya no es editable (p. ej. se descartó en otro dispositivo)
+        setIntent(null)
+        setServerError(body?.message || 'Este brief ya no está disponible. Vuelve a generar.')
       } else if (httpStatus === 503) {
         // Campaña guardada como borrador pero IA falló
         setResult({ campaign: body?.data?.campaign, warning: body?.message })
@@ -157,6 +208,9 @@ export default function NewCampaignPage() {
     setResult(null)
     setServerError('')
     setNoCredits(false)
+    setIntent(null)
+    setResumenIntent(null)
+    setBriefKey((k) => k + 1)
     reset()
   }
 
@@ -180,6 +234,13 @@ export default function NewCampaignPage() {
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* ── Panel de configuración ── */}
         <div className="min-w-0 flex-1">
+          <VoiceBriefCard
+            key={briefKey}
+            onInterpreted={handleInterpreted}
+            resumen={resumenIntent}
+            disabled={submitting}
+          />
+
           <form
             onSubmit={handleSubmit(onSubmit)}
             noValidate
