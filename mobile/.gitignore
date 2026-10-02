@@ -16,3 +16,6 @@ local.properties
 
 # APK release (binario, no va al repo)
 app/release/
+
+# Required to run the checked-in Gradle wrapper on a fresh checkout.
+!gradle/wrapper/gradle-wrapper.jar
