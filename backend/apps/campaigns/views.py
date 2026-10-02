@@ -29,7 +29,7 @@ from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
 from services.gemini_text_service import improve_copy
 from services.internal_event_service import notify_campaign_submitted
-from services.n8n_service import trigger_ia_generation
+from services.n8n_service import describir_resultado, trigger_ia_generation
 from services.version_service import restore_campaign_version, save_campaign_version
 
 from .models import Campaign, CampaignStatus, CampaignVersion, CreditPurchase
@@ -144,17 +144,10 @@ class CampaignViewSet(viewsets.ModelViewSet):
         # Recargar campaña — el servicio pudo haber cambiado estado y texto
         campaign.refresh_from_db()
 
-        if resultado.get("mock"):
-            message = "Campaña creada y contenido generado (modo mock)."
-        elif resultado["dispatched"]:
-            message = "Campaña creada. Generando contenido IA en segundo plano..."
-        else:
-            message = "Campaña creada como borrador. El servicio IA no está disponible."
-
         return Response(
             api_response(
                 success=True,
-                message=message,
+                message=describir_resultado(resultado),
                 data={"campaign": CampaignSerializer(campaign).data},
             ),
             status=status.HTTP_202_ACCEPTED,

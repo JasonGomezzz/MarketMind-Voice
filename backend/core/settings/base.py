@@ -155,6 +155,7 @@ REST_FRAMEWORK = {
         "user": "1000/hour",
         "register": "5/minute",   # RegisterRateThrottle sobrescribe duration → 600s (5/10min)
         "login": "10/minute",     # LoginRateThrottle sobrescribe duration → 300s (10/5min)
+        "intent_interpret": "30/hour",  # interpretar un brief cuesta cuota del proveedor
     },
     # Renderer solo JSON, sin BrowsableAPI en producción
     "DEFAULT_RENDERER_CLASSES": [

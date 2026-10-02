@@ -30,6 +30,7 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
     "login": "1000/min",
     "anon": "1000/min",
     "user": "1000/min",
+    "intent_interpret": "1000/min",
 }
 
 # ── Sin llamadas reales a n8n ──

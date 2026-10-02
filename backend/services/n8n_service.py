@@ -171,3 +171,12 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             user.id,
         )
         return {"dispatched": False, "error": error_msg}
+
+
+def describir_resultado(resultado: dict[str, Any]) -> str:
+    """Mensaje para el usuario según el resultado de trigger_ia_generation."""
+    if resultado.get("mock"):
+        return "Campaña creada y contenido generado (modo mock)."
+    if resultado["dispatched"]:
+        return "Campaña creada. Generando contenido IA en segundo plano..."
+    return "Campaña creada como borrador. El servicio IA no está disponible."
