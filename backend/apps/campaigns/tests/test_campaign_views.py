@@ -1,6 +1,8 @@
 """Tests de CampaignViewSet: create, list, retrieve, generate, submit, stats."""
 
 import pytest
+from unittest.mock import patch
+from django.db import transaction
 from rest_framework.test import APIClient
 
 from apps.authentication.models import User, UserRole
@@ -270,6 +272,35 @@ class TestCampaignRegenerate:
 
 @pytest.mark.django_db
 class TestCampaignSubmit:
+    def test_submit_notifies_only_after_commit(self, api_client, campaign_generada, django_capture_on_commit_callbacks):
+        with patch("apps.campaigns.views.notify_campaign_submitted") as notify, patch(
+            "services.email_n8n_service.disparar_email_cliente"
+        ) as email:
+            with django_capture_on_commit_callbacks(execute=True) as callbacks:
+                response = api_client.post(submit_url(campaign_generada.pk))
+                assert response.status_code == 200
+                notify.assert_not_called()
+                email.assert_not_called()
+            assert len(callbacks) == 2
+            notify.assert_called_once_with(campaign_generada.pk)
+            email.assert_called_once()
+            assert email.call_args.args[0].pk == campaign_generada.pk
+
+    def test_rolled_back_submit_never_notifies(self, api_client, campaign_generada, django_capture_on_commit_callbacks):
+        with patch("apps.campaigns.views.notify_campaign_submitted") as notify, patch(
+            "services.email_n8n_service.disparar_email_cliente"
+        ) as email:
+            with django_capture_on_commit_callbacks(execute=True) as callbacks:
+                with transaction.atomic():
+                    response = api_client.post(submit_url(campaign_generada.pk))
+                    assert response.status_code == 200
+                    transaction.set_rollback(True)
+            assert callbacks == []
+            notify.assert_not_called()
+            email.assert_not_called()
+        campaign_generada.refresh_from_db()
+        assert campaign_generada.estado == CampaignStatus.GENERADO
+
     def test_submit_generado_returns_200(self, api_client, campaign_generada):
         response = api_client.post(submit_url(campaign_generada.pk))
         assert response.status_code == 200

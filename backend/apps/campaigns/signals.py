@@ -7,6 +7,7 @@ Dispara el email al cliente (HU16) cuando la campaña transita a PENDIENTE_APROB
 import logging
 
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
@@ -61,7 +62,18 @@ def disparar_email_cliente_hu16(
     # Import diferido para evitar ciclos durante la inicialización de Django.
     from services import email_n8n_service
 
-    try:
-        email_n8n_service.disparar_email_cliente(instance)
-    except Exception as exc:  # noqa: BLE001 — fire-and-forget, no romper transición
-        logger.error("HU16 signal falló para campaña %s: %s", instance.pk, exc)
+    campaign_id = instance.pk
+
+    def notify_committed_campaign():
+        try:
+            campaign = Campaign.objects.filter(
+                pk=campaign_id,
+                estado=CampaignStatus.PENDIENTE_APROBACION,
+                email_enviado=False,
+            ).first()
+            if campaign is not None:
+                email_n8n_service.disparar_email_cliente(campaign)
+        except Exception as exc:  # noqa: BLE001 — no revertir una transición confirmada
+            logger.error("HU16 signal falló para campaña %s: %s", campaign_id, exc)
+
+    transaction.on_commit(notify_committed_campaign)

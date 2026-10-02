@@ -478,10 +478,11 @@ class CampaignViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            campaign.transition_to(CampaignStatus.PENDIENTE_APROBACION)
-            campaign.enviado_cliente_at = timezone.now()
-            campaign.save(update_fields=["enviado_cliente_at", "fecha_actualizacion"])
-            notify_campaign_submitted(campaign.id)
+            with transaction.atomic():
+                campaign.transition_to(CampaignStatus.PENDIENTE_APROBACION)
+                campaign.enviado_cliente_at = timezone.now()
+                campaign.save(update_fields=["enviado_cliente_at", "fecha_actualizacion"])
+                transaction.on_commit(lambda: notify_campaign_submitted(campaign.id))
         except ValidationError as e:
             return Response(
                 api_response(
