@@ -63,7 +63,10 @@ export default function ClientDashboardPage() {
     })
   }, [])
 
+  const handleConnected = useCallback(() => setRetry((value) => value + 1), [setRetry])
+
   useClientCampaignSocket({
+    onConnected: handleConnected,
     onCampaignSubmitted: handleRealtimeCampaign,
     onCampaignStatusChanged: handleStatusChanged,
   })

@@ -21,6 +21,7 @@ export default function ClientReviewPage() {
   const navigate = useNavigate()
 
   const [campaign, setCampaign] = useState(null)
+  const [revision, setRevision] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -49,7 +50,8 @@ export default function ClientReviewPage() {
     [id]
   )
 
-  useClientCampaignSocket({ onCampaignStatusChanged: handleStatusChanged })
+  const handleConnected = useCallback(() => setRevision((value) => value + 1), [setRevision])
+  useClientCampaignSocket({ onCampaignStatusChanged: handleStatusChanged, onConnected: handleConnected })
 
   // Sin setState síncrono en el efecto: el estado inicial cubre el primer load.
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function ClientReviewPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, revision])
 
   async function handleApprove() {
     if (!rating) {

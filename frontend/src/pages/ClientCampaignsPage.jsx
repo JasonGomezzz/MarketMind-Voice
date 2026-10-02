@@ -9,6 +9,7 @@ import { campaignSentAt, relativeTimeFrom } from '../utils/date'
 export default function ClientCampaignsPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
+  const [revision, setRevision] = useState(0)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -59,7 +60,10 @@ export default function ClientCampaignsPage() {
     [page, filters.estado]
   )
 
+  const handleConnected = useCallback(() => setRevision((value) => value + 1), [setRevision])
+
   useClientCampaignSocket({
+    onConnected: handleConnected,
     onCampaignSubmitted: handleCampaignSubmitted,
     onCampaignStatusChanged: handleStatusChanged,
   })
@@ -83,7 +87,7 @@ export default function ClientCampaignsPage() {
     return () => {
       cancelled = true
     }
-  }, [page, filters])
+  }, [page, filters, revision])
 
   const campaigns = data?.content ?? []
   const totalPages = data?.totalPages ?? 1

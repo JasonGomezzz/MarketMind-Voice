@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import api from '../services/api'
+import { clearSession, storeTokens } from '../services/session'
 
 export function useAuth() {
   const [loading, setLoading] = useState(false)
@@ -8,8 +9,7 @@ export function useAuth() {
     setLoading(true)
     try {
       const { data } = await api.post('/api/auth/token/', { email, password })
-      localStorage.setItem('access_token', data.access)
-      localStorage.setItem('refresh_token', data.refresh)
+      storeTokens(data)
       localStorage.setItem('user_role', data.role)
       localStorage.setItem('user_nombre', data.nombre)
       const me = await api.get('/api/auth/me/')
@@ -32,11 +32,7 @@ export function useAuth() {
     } catch {
       // ignore — clear session regardless
     } finally {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('user_role')
-      localStorage.removeItem('user_nombre')
-      localStorage.removeItem('user_email')
+      clearSession({ redirect: false })
     }
   }, [])
 
