@@ -55,6 +55,7 @@ coverage/
 .pytest_cache/
 htmlcov/
 .coverage
+/ci-artifacts/
 
 # IDE
 .vscode/settings.json

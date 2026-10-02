@@ -1,0 +1,10 @@
+# Python 3.11.9. CI tests the current runtime; upgrades are separate work.
+# Regenerate ci.txt with the command recorded in scripts/ci/README.md.
+-r base.txt
+
+# Pin the open PDF range to the version already exercised in the local baseline.
+weasyprint==70.0
+pytest==8.2.2
+pytest-django==4.8.0
+pytest-cov==5.0.0
+pytest-socket==0.8.1
