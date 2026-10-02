@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -31,13 +32,17 @@ public class N8nEmailClient {
     private static final Logger log = LoggerFactory.getLogger(N8nEmailClient.class);
 
     private final UserRepository userRepository;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     @Value("${n8n.webhook-url:http://host.docker.internal:5678}")
     private String n8nBaseUrl;
 
     public N8nEmailClient(UserRepository userRepository) {
         this.userRepository = userRepository;
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(2000);
+        factory.setReadTimeout(3000);
+        this.restTemplate = new RestTemplate(factory);
     }
 
     /**
@@ -48,7 +53,12 @@ public class N8nEmailClient {
      * @param newEstado "aprobado" o "rechazado"
      */
     public void notify(CampaignEntity campaign, String newEstado) {
-        UserEntity marketero = userRepository.findById(campaign.getMarketeroId()).orElse(null);
+        Long marketeroId = campaign.getMarketeroId();
+        if (marketeroId == null) {
+            log.warn("HU17: campaña {} sin marketero asignado", campaign.getId());
+            return;
+        }
+        UserEntity marketero = userRepository.findById(marketeroId).orElse(null);
         if (marketero == null) {
             log.warn("HU17: marketero {} no encontrado para campaña {}",
                     campaign.getMarketeroId(), campaign.getId());

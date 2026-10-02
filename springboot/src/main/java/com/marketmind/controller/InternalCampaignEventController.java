@@ -1,12 +1,11 @@
 package com.marketmind.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketmind.dto.ApiResponse;
 import com.marketmind.dto.CampaignResponseDTO;
 import com.marketmind.dto.CampaignSubmittedEventRequest;
 import com.marketmind.service.CampaignService;
-import com.marketmind.websocket.ClientCampaignWebSocketHandler;
+import com.marketmind.websocket.ClientCampaignEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -25,8 +24,7 @@ import java.util.Map;
 public class InternalCampaignEventController {
 
     private final CampaignService campaignService;
-    private final ClientCampaignWebSocketHandler webSocketHandler;
-    private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.internal.event-token:dev-internal-event-token}")
     private String eventToken;
@@ -34,7 +32,7 @@ public class InternalCampaignEventController {
     @PostMapping("/submitted")
     public ResponseEntity<ApiResponse<Map<String, Object>>> submitted(
             @RequestHeader(value = "X-Internal-Event-Token", required = false) String token,
-            @RequestBody CampaignSubmittedEventRequest request) throws JsonProcessingException {
+            @RequestBody CampaignSubmittedEventRequest request) {
 
         if (!eventToken.equals(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -42,11 +40,8 @@ public class InternalCampaignEventController {
         }
 
         CampaignResponseDTO campaign = campaignService.findById(request.getCampaignId());
-        String payload = objectMapper.writeValueAsString(Map.of(
-                "type", "campaign_submitted",
-                "campaign", campaign
-        ));
-        webSocketHandler.broadcast(payload);
+        eventPublisher.publishEvent(new ClientCampaignEvent(
+                "campaign_submitted", campaign.getId(), campaign.getClienteEmail()));
 
         return ResponseEntity.ok(ApiResponse.ok("Evento emitido.", Map.of("campaignId", request.getCampaignId())));
     }

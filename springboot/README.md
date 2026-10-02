@@ -1,4 +1,4 @@
-****# MarketMind — Spring Boot (Bloque Usuario)
+# MarketMind — Spring Boot (Bloque Usuario)
 
 API REST de cara al cliente final. Puerto `8080`.
 Convive con Django (puerto `8000`) sobre la misma PostgreSQL.
@@ -14,9 +14,9 @@ Convive con Django (puerto `8000`) sobre la misma PostgreSQL.
 | Spring Boot hace | Spring Boot NO hace |
 |-----------------|---------------------|
 | Leer campañas y usuarios | Crear/modificar el schema |
-| Escribir solo el campo `estado` | Emitir tokens JWT |
+| Escribir estado, feedback, valoración, contador de rechazos y versión | Emitir tokens JWT |
 | Validar JWT emitidos por Django | Gestionar migraciones |
-| Aprobar / rechazar campañas | Llamar a n8n o Gemini |
+| Aprobar / rechazar campañas y notificar email mediante n8n | Generar contenido con Gemini |
 
 ## Variables de entorno requeridas
 
@@ -32,7 +32,7 @@ SPRING_PROFILES_ACTIVE=dev
 
 ## Correr localmente (fuera de Docker)
 
-Prerequisito: Django debe tener aplicada la migración `0003_campaign_version`.
+Prerequisito: Django debe tener aplicadas todas las migraciones de la versión actual del repositorio (`python manage.py migrate` en `backend/`). Confirmar primero la base de datos y el ambiente de destino.
 
 ```bash
 cd springboot
@@ -84,8 +84,9 @@ El token es emitido por Django (`POST /api/auth/token/`) y validado aquí.
 
 ## Optimistic locking
 
-El campo `version` en cada campaña protege contra escrituras concurrentes entre Django y Spring Boot.
-Al hacer `PATCH /{id}/status`, si otra operación ya modificó la campaña, recibirás HTTP 409:
+El campo `version` permite a JPA detectar actualizaciones concurrentes realizadas por Spring.
+Django todavía no participa plenamente de ese protocolo, por lo que no garantiza exclusión entre ambos backends.
+El PATCH también valida la versión enviada por el cliente: una discrepancia previa devuelve HTTP 400 con indicación de recargar; un conflicto detectado al guardar por JPA devuelve HTTP 409:
 
 ```json
 {
@@ -94,3 +95,47 @@ Al hacer `PATCH /{id}/status`, si otra operación ya modificó la campaña, reci
   "data": null
 }
 ```
+
+## Notificaciones de cliente autenticadas
+
+`/ws/client-campaigns` admite el upgrade del navegador, pero no suscribe ni envía
+notificaciones hasta recibir, en un máximo de cinco segundos, el primer mensaje:
+
+```json
+{"type":"authenticate","accessToken":"<access JWT de Django>"}
+```
+
+El JWT no se coloca en URL ni subprotocolo. El servidor exige token de acceso
+con expiración, rol cliente, usuario activo y versión vigente. Responde
+`{"type":"authenticated"}` y cierra al expirar. Antes de cada entrega vuelve a
+consultar estado, rol, versión y email del usuario mediante una proyección
+escalar, evitando datos de autenticación cacheados en JPA.
+
+Las notificaciones sólo contienen `type` (`campaign_submitted` o
+`campaign_status_changed`) y `campaignId`. Se entregan exclusivamente a las
+conexiones del destinatario; el contenido se obtiene por la API autenticada.
+React resincroniza por esa API al conectar/reconectar. Las conexiones anónimas
+no reciben IDs ni contenido de campaña.
+
+Códigos de cierre: `4401` credencial inválida o ausente; `4403` sesión revocada o
+rol denegado; `4408` access expirado. HTTP devuelve `401` cuando falta una sesión
+válida, y conserva `403` para falta de permisos. Django, Spring y WebSocket en
+React comparten una sola renovación por pestaña, preservan sesión ante fallos de
+red/5xx y descartan respuestas de una sesión reemplazada.
+
+Los cambios de estado se notifican por WebSocket y email sólo después del commit;
+Django aplica la misma regla al envío al cliente. Esto evita notificar cambios
+revertidos, pero no constituye una cola durable: una caída entre commit y envío
+puede perder una notificación. La API sigue siendo la fuente de verdad. La llamada
+email Spring tiene límites de conexión de 2 s y lectura de 3 s.
+
+En producción deben usarse HTTPS/WSS y orígenes explícitos del despliegue. La
+configuración actual mantiene los orígenes de desarrollo existentes. El canal
+en memoria corresponde a una instancia Spring; varias réplicas requieren un
+mecanismo compartido de entrega, fuera de este cambio.
+
+Validación: `mvn verify` (Java 25), `cd ../frontend && npm test && npm run lint && npm run build`.
+Los tests Spring comprueban destinatarios, anónimo, JWT inválido/expirado/refresh,
+revocación y commit/rollback; los de React comprueban rotación, reconexión y
+cambios de sesión. Los tests unitarios no sustituyen una prueba integrada con
+PostgreSQL y navegador.

@@ -1,7 +1,5 @@
 package com.marketmind.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketmind.dto.CampaignResponseDTO;
 import com.marketmind.entity.CampaignEntity;
 import com.marketmind.entity.UserEntity;
@@ -10,7 +8,8 @@ import com.marketmind.exception.InvalidStatusTransitionException;
 import com.marketmind.repository.CampaignRepository;
 import com.marketmind.repository.UserRepository;
 import com.marketmind.security.AuthenticatedUser;
-import com.marketmind.websocket.ClientCampaignWebSocketHandler;
+import com.marketmind.websocket.ClientCampaignEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -44,8 +45,7 @@ public class CampaignService {
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
     private final N8nEmailClient n8nEmailClient;
-    private final ClientCampaignWebSocketHandler webSocketHandler;
-    private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** HU12 — lista campañas pendientes de aprobación del cliente autenticado. */
     public Page<CampaignResponseDTO> findPending(AuthenticatedUser user, Pageable pageable) {
@@ -96,14 +96,14 @@ public class CampaignService {
 
     /** HU13 — detalle de campaña por id. */
     public CampaignResponseDTO findById(Long id) {
-        return campaignRepository.findById(id)
+        return campaignRepository.findById(Objects.requireNonNull(id, "id"))
                 .map(this::toDTOConNombre)
                 .orElseThrow(() -> new CampaignNotFoundException(id));
     }
 
     /** HU13 — detalle de campaña por id con control de acceso para usuarios finales. */
     public CampaignResponseDTO findById(Long id, AuthenticatedUser user) {
-        CampaignEntity campaign = campaignRepository.findById(id)
+        CampaignEntity campaign = campaignRepository.findById(Objects.requireNonNull(id, "id"))
                 .orElseThrow(() -> new CampaignNotFoundException(id));
         assertCanRead(campaign, user);
         return toDTOConNombre(campaign);
@@ -122,7 +122,7 @@ public class CampaignService {
             Integer valoracion,
             Integer requestVersion,
             AuthenticatedUser user) {
-        CampaignEntity campaign = campaignRepository.findById(id)
+        CampaignEntity campaign = campaignRepository.findById(Objects.requireNonNull(id, "id"))
                 .orElseThrow(() -> new CampaignNotFoundException(id));
         assertClientOwns(campaign, user);
 
@@ -162,35 +162,31 @@ public class CampaignService {
         campaign.setClienteValoracionAt(OffsetDateTime.now());
         CampaignEntity saved = campaignRepository.save(campaign);
 
-        // Dashboard de cliente en vivo — mismo canal WS que ya usa
-        // InternalCampaignEventController para "campaign_submitted".
-        // Fire-and-forget, misma convención que n8nEmailClient.notify() abajo.
-        broadcastStatusChanged(saved);
+        // Delivered after transaction commit; rolled-back changes never reach sockets.
+        eventPublisher.publishEvent(new ClientCampaignEvent(
+                "campaign_status_changed", saved.getId(), saved.getClienteEmail()));
 
-        // HU17 — notificar al marketero vía n8n + Resend.
-        // Fire-and-forget interno (N8nEmailClient absorbe excepciones);
-        // si el HTTP demora, agregamos hasta N8N_WEBHOOK_TIMEOUT a la respuesta.
-        n8nEmailClient.notify(saved, finalStatus);
+        // Email must follow the same committed decision as the socket notification.
+        // No notification is issued if JPA flush/optimistic locking rolls back.
+        String committedStatus = finalStatus;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    n8nEmailClient.notify(saved, committedStatus);
+                } catch (RuntimeException ex) {
+                    log.warn("No se pudo notificar la decisión confirmada de campaña {}", saved.getId());
+                }
+            }
+        });
 
         return toDTOConNombre(saved);
-    }
-
-    private void broadcastStatusChanged(CampaignEntity saved) {
-        try {
-            String payload = objectMapper.writeValueAsString(Map.of(
-                    "type", "campaign_status_changed",
-                    "campaign", toDTOConNombre(saved)
-            ));
-            webSocketHandler.broadcast(payload);
-        } catch (JsonProcessingException e) {
-            log.warn("No se pudo serializar el evento campaign_status_changed para campaña {}", saved.getId(), e);
-        }
     }
 
     private Page<CampaignResponseDTO> withMarketerNames(Page<CampaignEntity> page) {
         Map<Long, String> nombres = nombresPorId(
                 page.getContent().stream()
-                        .map(CampaignEntity::getMarketeroId)
+                        .map(campaign -> campaign.getMarketeroId())
                         .filter(Objects::nonNull)
                         .collect(Collectors.toSet()));
         return page.map(e -> toDTO(e, nombres.get(e.getMarketeroId())));
@@ -198,7 +194,7 @@ public class CampaignService {
 
     private String authenticatedEmail(AuthenticatedUser user) {
         return userRepository.findById(user.userId())
-                .map(UserEntity::getEmail)
+                .map(entity -> entity.getEmail())
                 .orElseThrow(() -> new AccessDeniedException("Usuario autenticado no encontrado."));
     }
 
@@ -233,7 +229,7 @@ public class CampaignService {
             return Set.of();
         }
         return userRepository.findByNombreContainingIgnoreCase(q).stream()
-                .map(UserEntity::getId)
+                .map(entity -> entity.getId())
                 .collect(Collectors.toSet());
     }
 
@@ -247,15 +243,16 @@ public class CampaignService {
         }
         List<UserEntity> users = userRepository.findAllById(ids);
         return users.stream()
-                .collect(Collectors.toMap(UserEntity::getId, UserEntity::getNombre));
+                .collect(Collectors.toMap(entity -> entity.getId(), entity -> entity.getNombre()));
     }
 
     /** Variante para flujos de UNA campaña (detalle, updateStatus). */
     private CampaignResponseDTO toDTOConNombre(CampaignEntity e) {
-        String nombre = e.getMarketeroId() == null
+        Long marketeroId = e.getMarketeroId();
+        String nombre = marketeroId == null
                 ? null
-                : userRepository.findById(e.getMarketeroId())
-                        .map(UserEntity::getNombre)
+                : userRepository.findById(marketeroId)
+                        .map(entity -> entity.getNombre())
                         .orElse(null);
         return toDTO(e, nombre);
     }
