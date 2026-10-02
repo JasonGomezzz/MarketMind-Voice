@@ -5,12 +5,12 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -42,8 +42,8 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(
-                        FieldError::getField,
-                        FieldError::getDefaultMessage,
+                        error -> error.getField(),
+                        error -> Objects.requireNonNullElse(error.getDefaultMessage(), "Valor inválido."),
                         (a, b) -> a
                 ));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
