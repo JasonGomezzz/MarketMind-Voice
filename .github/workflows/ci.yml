@@ -115,7 +115,11 @@ jobs:
           validate-wrappers: true
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Ensure the existing Android SDK target is installed
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+        # sdkmanager is not on PATH in the hosted runner; resolve it from the SDK.
+        run: |
+          sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -n 1)"
+          test -x "$sdkmanager"
+          "$sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
       - name: Test and assemble with the checked-in Gradle wrapper
         working-directory: mobile
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
