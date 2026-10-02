@@ -65,6 +65,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,9 +86,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.marketmind.mobile.data.remote.dto.CampaignDto
+import com.marketmind.mobile.data.remote.dto.CampaignIntentDto
 import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
 import com.marketmind.mobile.data.repository.UserSession
 import com.marketmind.mobile.R
+import com.marketmind.mobile.ui.voice.IntentFormMapper
+import com.marketmind.mobile.ui.voice.VoiceBriefCard
+import com.marketmind.mobile.ui.voice.VoiceResumen
 
 private val BrandBlue = Color(0xFF4D4AF0)
 private val BrandBlueSoft = Color(0xFF6865F3)
@@ -225,6 +230,9 @@ fun HomeScreen(
                     generating = state.creating || state.items.any { it.estado == "pendiente_ia" },
                     previewCampaign = state.items.firstOrNull { it.hasReadyImage() },
                     message = state.message,
+                    interpreting = state.interpreting,
+                    intent = state.intent,
+                    onInterpret = viewModel::interpretBrief,
                     onCreate = viewModel::createCampaign,
                     modifier = Modifier.padding(innerPadding),
                 )
@@ -350,6 +358,9 @@ private fun AiLabScreen(
     generating: Boolean,
     previewCampaign: CampaignDto?,
     message: String?,
+    interpreting: Boolean,
+    intent: CampaignIntentDto?,
+    onInterpret: (texto: String, porVoz: Boolean) -> Unit,
     onCreate: (
         titulo: String,
         clienteNombre: String,
@@ -368,6 +379,32 @@ private fun AiLabScreen(
     var tono by remember { mutableStateOf("") }
     var plataforma by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
+    var resumen by remember { mutableStateOf<VoiceResumen?>(null) }
+
+    // Al llegar una interpretación nueva se vuelcan al formulario los campos válidos.
+    LaunchedEffect(intent?.id) {
+        if (intent == null) return@LaunchedEffect
+        val resultado = IntentFormMapper.paraFormulario(
+            intent.camposFinales,
+            mapOf(
+                "industria" to industryOptions,
+                "tono" to toneOptions,
+                "plataforma" to platformOptions.map { it.value },
+            ),
+        )
+        resultado.valores["titulo"]?.let { titulo = it }
+        resultado.valores["cliente_nombre"]?.let { clienteNombre = it }
+        resultado.valores["cliente_email"]?.let { clienteEmail = it }
+        resultado.valores["industria"]?.let { industria = it }
+        resultado.valores["tono"]?.let { tono = it }
+        resultado.valores["plataforma"]?.let { plataforma = it }
+        resultado.valores["prompt"]?.let { prompt = it }
+        resumen = VoiceResumen(
+            completados = resultado.completados.size,
+            pendientes = resultado.pendientesLegibles,
+            advertencias = intent.advertencias.orEmpty(),
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -405,6 +442,18 @@ private fun AiLabScreen(
                         .background(BrandBlue),
                 )
             }
+        }
+
+        item {
+            VoiceBriefCard(
+                interpreting = interpreting,
+                resumen = resumen,
+                enabled = !generating,
+                onInterpret = onInterpret,
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .padding(top = 22.dp),
+            )
         }
 
         item {

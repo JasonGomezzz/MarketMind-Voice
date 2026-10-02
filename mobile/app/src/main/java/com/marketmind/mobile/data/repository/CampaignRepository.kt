@@ -3,8 +3,11 @@ package com.marketmind.mobile.data.repository
 import com.marketmind.mobile.data.remote.CampaignApiService
 import com.marketmind.mobile.data.remote.dto.CampaignCreateRequest
 import com.marketmind.mobile.data.remote.dto.CampaignDto
+import com.marketmind.mobile.data.remote.dto.CampaignIntentDto
 import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
+import com.marketmind.mobile.data.remote.dto.ConfirmIntentRequest
 import com.marketmind.mobile.data.remote.dto.EditTextRequest
+import com.marketmind.mobile.data.remote.dto.InterpretRequest
 import com.google.gson.JsonSyntaxException
 import retrofit2.HttpException
 import java.io.IOException
@@ -166,6 +169,63 @@ class CampaignRepository @Inject constructor(
             )
         } catch (io: IOException) {
             Result.failure(CampaignFetchException("No se pudo conectar con el servidor. Revisa tu conexión."))
+        }
+    }
+
+    /** Convierte el brief (dictado o escrito) en campos editables. No cobra crédito. */
+    suspend fun interpretBrief(texto: String, porVoz: Boolean): Result<CampaignIntentDto> {
+        return try {
+            val envelope = api.interpretBrief(
+                InterpretRequest(texto = texto.trim(), origen = if (porVoz) "voz" else "formulario"),
+            )
+            val intent = envelope.data?.intent
+            if (envelope.success && intent != null) {
+                Result.success(intent)
+            } else {
+                Result.failure(CampaignFetchException(envelope.message ?: "No se pudo interpretar el brief."))
+            }
+        } catch (http: HttpException) {
+            Result.failure(
+                when (http.code()) {
+                    400 -> CampaignFetchException("El brief debe tener entre 10 y 2000 caracteres.")
+                    403 -> CampaignFetchException("Solo los marketeros pueden crear campañas.")
+                    429 -> CampaignFetchException("Demasiadas interpretaciones seguidas. Espera un momento.")
+                    502 -> CampaignFetchException("La IA no pudo interpretar el brief. Completa el formulario a mano.")
+                    else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
+                }
+            )
+        } catch (io: IOException) {
+            Result.failure(CampaignFetchException("No se pudo conectar con el servidor. Revisa tu conexión."))
+        } catch (parse: JsonSyntaxException) {
+            Result.failure(CampaignFetchException("La respuesta de la IA no tiene el formato esperado."))
+        }
+    }
+
+    /** Crea la campaña a partir de la intención y dispara la generación. Repetirlo no cobra dos veces. */
+    suspend fun confirmIntent(id: Long, campos: Map<String, String?>): Result<CampaignDto> {
+        return try {
+            val envelope = api.confirmIntent(id, ConfirmIntentRequest(campos))
+            val campaign = envelope.data?.campaign
+            if (envelope.success && campaign != null) {
+                Result.success(campaign)
+            } else {
+                Result.failure(CampaignFetchException(envelope.message ?: "No se pudo crear la campaña."))
+            }
+        } catch (http: HttpException) {
+            Result.failure(
+                when (http.code()) {
+                    400 -> CampaignFetchException("Faltan datos o hay campos inválidos. El email debe ser de un cliente registrado.")
+                    402 -> CampaignFetchException("Sin tokens disponibles para generar con IA.")
+                    403 -> CampaignFetchException("Solo los marketeros pueden crear campañas desde mobile.")
+                    404, 409 -> CampaignFetchException("Este brief ya no está disponible. Vuelve a interpretarlo.")
+                    in 500..599 -> CampaignFetchException("El backend no pudo iniciar la IA. Intenta más tarde.")
+                    else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
+                }
+            )
+        } catch (io: IOException) {
+            Result.failure(CampaignFetchException("No se pudo conectar con el servidor. Revisa tu conexión."))
+        } catch (parse: JsonSyntaxException) {
+            Result.failure(CampaignFetchException("La respuesta de campañas no tiene el formato esperado."))
         }
     }
 

@@ -66,11 +66,14 @@ class HomeViewModel @Inject constructor(
             return
         }
         val stats = campaignRepository.getStats().getOrElse { CampaignStatsDto(total = items.size) }
+        // El polling refresca la lista: no debe perder un brief interpretado sin confirmar.
+        val previous = _uiState.value as? HomeUiState.Success
         _uiState.value = HomeUiState.Success(
             user = user,
             items = items,
             stats = stats,
             refreshing = false,
+            intent = previous?.intent,
         )
         if (updatePolling) {
             syncGenerationPolling(items)
@@ -133,14 +136,43 @@ class HomeViewModel @Inject constructor(
                 plataforma = plataforma.trim().lowercase(),
                 prompt = prompt.trim(),
             )
-            campaignRepository.createCampaign(request)
+            // Si el brief vino de la voz, se confirma esa intención; si no, se crea como siempre.
+            val intent = current.intent
+            val result = if (intent != null) {
+                campaignRepository.confirmIntent(intent.id, request.toCampos())
+            } else {
+                campaignRepository.createCampaign(request)
+            }
+            result
                 .onSuccess {
+                    (_uiState.value as? HomeUiState.Success)?.let { _uiState.value = it.copy(intent = null) }
                     fetch(markRefreshing = true)
                 }
                 .onFailure { throwable ->
                     _uiState.value = current.copy(
                         creating = false,
                         message = throwable.message ?: "No se pudo crear la campaña.",
+                    )
+                }
+        }
+    }
+
+    /** Interpreta el brief dictado o escrito. No crea la campaña ni descuenta crédito. */
+    fun interpretBrief(texto: String, porVoz: Boolean) {
+        val current = _uiState.value as? HomeUiState.Success ?: return
+        if (current.interpreting) return
+        viewModelScope.launch {
+            _uiState.value = current.copy(interpreting = true, message = null)
+            campaignRepository.interpretBrief(texto, porVoz)
+                .onSuccess { intent ->
+                    val latest = _uiState.value as? HomeUiState.Success ?: return@onSuccess
+                    _uiState.value = latest.copy(interpreting = false, intent = intent)
+                }
+                .onFailure { throwable ->
+                    val latest = _uiState.value as? HomeUiState.Success ?: return@onFailure
+                    _uiState.value = latest.copy(
+                        interpreting = false,
+                        message = throwable.message ?: "No se pudo interpretar el brief.",
                     )
                 }
         }
@@ -209,3 +241,13 @@ class HomeViewModel @Inject constructor(
         authRepository.logout()
     }
 }
+
+private fun CampaignCreateRequest.toCampos(): Map<String, String?> = mapOf(
+    "titulo" to titulo,
+    "cliente_nombre" to clienteNombre,
+    "cliente_email" to clienteEmail,
+    "industria" to industria,
+    "tono" to tono,
+    "plataforma" to plataforma,
+    "prompt" to prompt,
+)

@@ -5,8 +5,11 @@ import com.marketmind.mobile.data.remote.dto.CampaignCreateRequest
 import com.marketmind.mobile.data.remote.dto.CampaignDto
 import com.marketmind.mobile.data.remote.dto.CampaignEnvelopeDto
 import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
+import com.marketmind.mobile.data.remote.dto.ConfirmIntentRequest
 import com.marketmind.mobile.data.remote.dto.DjangoPageDto
 import com.marketmind.mobile.data.remote.dto.EditTextRequest
+import com.marketmind.mobile.data.remote.dto.IntentEnvelopeDto
+import com.marketmind.mobile.data.remote.dto.InterpretRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -52,4 +55,16 @@ interface CampaignApiService {
     suspend fun deleteCampaign(
         @Path("id") id: Long,
     )
+
+    // Voz → campaña: interpretar no genera ni descuenta crédito; confirmar sí.
+    @POST("api/intents/interpret/")
+    suspend fun interpretBrief(
+        @Body body: InterpretRequest,
+    ): ApiEnvelope<IntentEnvelopeDto>
+
+    @POST("api/intents/{id}/confirm/")
+    suspend fun confirmIntent(
+        @Path("id") id: Long,
+        @Body body: ConfirmIntentRequest,
+    ): ApiEnvelope<IntentEnvelopeDto>
 }
