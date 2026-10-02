@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -95,6 +98,7 @@ fun ClientCampaignDetailScreen(
         bottomBar = {
             DetailActionsBar(
                 state = state,
+                onRatingChange = viewModel::setRating,
                 onApproveClick = viewModel::approve,
                 onRejectClick = { showRejectSheet = true },
             )
@@ -176,53 +180,81 @@ private fun ClientDetailTopBar(onBack: () -> Unit) {
 @Composable
 private fun DetailActionsBar(
     state: ClientCampaignDetailUiState,
+    onRatingChange: (Int) -> Unit,
     onApproveClick: () -> Unit,
     onRejectClick: () -> Unit,
 ) {
-    val submitting = (state as? ClientCampaignDetailUiState.Success)?.submitting == true
-    val canAct = state is ClientCampaignDetailUiState.Success && !submitting
+    val current = state as? ClientCampaignDetailUiState.Success
+    val submitting = current?.submitting == true
+    val canReview = current?.campaign?.estado == "pendiente_aprobacion" && !submitting
+    val rating = current?.rating ?: 0
+    val canAct = canReview && rating in 1..5
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White.copy(alpha = 0.92f))
             .navigationBarsPadding()
             .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        OutlinedButton(
-            onClick = onRejectClick,
-            enabled = canAct,
-            shape = RoundedCornerShape(10.dp),
-            border = BorderStroke(1.dp, DangerRed),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
-            modifier = Modifier.weight(1f),
-        ) {
-            if (submitting) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(18.dp),
-                    color = DangerRed,
-                )
-            } else {
-                Text("Rechazar", fontWeight = FontWeight.ExtraBold)
+        if (current?.campaign?.estado == "pendiente_aprobacion") {
+            Text(
+                text = if (rating == 0) "Valora la campaña para aprobar o rechazar" else "Valoración: $rating de 5",
+                color = TextDark,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                (1..5).forEach { value ->
+                    IconButton(
+                        onClick = { onRatingChange(value) },
+                        enabled = canReview,
+                    ) {
+                        Icon(
+                            imageVector = if (value <= rating) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = "Valorar con $value de 5 estrellas",
+                            tint = if (value <= rating) BrandBlue else TextMuted,
+                        )
+                    }
+                }
             }
         }
-        Button(
-            onClick = onApproveClick,
-            enabled = canAct,
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            modifier = Modifier.weight(1f),
-        ) {
-            if (submitting) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(18.dp),
-                    color = Color.White,
-                )
-            } else {
-                Text("Aprobar", color = Color.White, fontWeight = FontWeight.ExtraBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(
+                onClick = onRejectClick,
+                enabled = canAct,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, DangerRed),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
+                modifier = Modifier.weight(1f),
+            ) {
+                if (submitting) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp),
+                        color = DangerRed,
+                    )
+                } else {
+                    Text("Rechazar", fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            Button(
+                onClick = onApproveClick,
+                enabled = canAct,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
+                modifier = Modifier.weight(1f),
+            ) {
+                if (submitting) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp),
+                        color = Color.White,
+                    )
+                } else {
+                    Text("Aprobar", color = Color.White, fontWeight = FontWeight.ExtraBold)
+                }
             }
         }
     }

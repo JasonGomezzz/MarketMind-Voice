@@ -54,12 +54,18 @@ class ClientCampaignRepository @Inject constructor(
         id: Long,
         estado: String,
         version: Int,
+        valoracion: Int,
         feedback: String? = null,
     ): Result<CampaignDto> {
         return try {
             val envelope = api.updateStatus(
                 id,
-                StatusUpdateRequestDto(estado = estado, version = version, feedback = feedback),
+                StatusUpdateRequestDto(
+                    estado = estado,
+                    version = version,
+                    valoracion = valoracion,
+                    feedback = feedback,
+                ),
             )
             val data = envelope.data
             if (envelope.success && data != null) {

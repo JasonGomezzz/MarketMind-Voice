@@ -52,14 +52,15 @@ class TokenAuthenticator @Inject constructor(
             return null
         }
 
-        val newAccess = refreshResponse.body()?.access
+        val refreshedTokens = refreshResponse.body()
+        val newAccess = refreshedTokens?.access
         if (newAccess.isNullOrBlank()) {
             tokenManager.clear()
             sessionManager.tryEmit(SessionEvent.Expired)
             return null
         }
 
-        tokenManager.updateAccess(newAccess)
+        tokenManager.updateTokens(newAccess, refreshedTokens.refresh)
 
         return response.request.newBuilder()
             .header("Authorization", "Bearer $newAccess")

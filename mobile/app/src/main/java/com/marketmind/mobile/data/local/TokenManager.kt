@@ -40,8 +40,13 @@ class TokenManager @Inject constructor(
             .apply()
     }
 
-    fun updateAccess(access: String) {
-        prefs.edit().putString(KEY_ACCESS, access).apply()
+    fun updateTokens(access: String, refresh: String?) {
+        prefs.edit()
+            .putString(KEY_ACCESS, access)
+            .apply {
+                if (!refresh.isNullOrBlank()) putString(KEY_REFRESH, refresh)
+            }
+            .apply()
     }
 
     fun getAccessToken(): String? = prefs.getString(KEY_ACCESS, null)

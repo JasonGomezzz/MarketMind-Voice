@@ -43,6 +43,13 @@ class ClientCampaignDetailViewModel @Inject constructor(
 
     fun retry() = load()
 
+    fun setRating(rating: Int) {
+        val current = _uiState.value as? ClientCampaignDetailUiState.Success ?: return
+        if (!current.submitting && rating in 1..5) {
+            _uiState.value = current.copy(rating = rating)
+        }
+    }
+
     fun approve() = submit(estado = "aprobado", successMessage = "Campaña aprobada ✓")
 
     fun reject(feedback: String) = submit(
@@ -53,7 +60,9 @@ class ClientCampaignDetailViewModel @Inject constructor(
 
     private fun submit(estado: String, successMessage: String, feedback: String? = null) {
         val current = _uiState.value as? ClientCampaignDetailUiState.Success ?: return
-        if (current.submitting) return
+        if (current.submitting || current.rating !in 1..5 ||
+            current.campaign.estado != "pendiente_aprobacion"
+        ) return
 
         viewModelScope.launch {
             _uiState.value = current.copy(submitting = true)
@@ -61,6 +70,7 @@ class ClientCampaignDetailViewModel @Inject constructor(
                 id = current.campaign.id,
                 estado = estado,
                 version = current.campaign.version,
+                valoracion = current.rating,
                 feedback = feedback,
             )
                 .onSuccess {
