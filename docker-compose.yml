@@ -1,3 +1,6 @@
+# Nombre fijo del proyecto: sin esto Docker usa el nombre de la carpeta clonada.
+name: marketmind-voice
+
 services:
 
   postgres:
