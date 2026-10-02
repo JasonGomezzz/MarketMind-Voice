@@ -14,6 +14,46 @@ BRAND_CONTENT_URL = "/api/auth/brand-content/"
 
 @pytest.mark.django_db
 class TestRegisterView:
+    def test_public_registration_rejects_superadmin(self):
+        client = APIClient()
+        response = client.post(REGISTER_URL, {
+            "email": "self-admin@test.com",
+            "nombre": "Registro Público",
+            "password": "Test1234!",
+            "rol": "superadmin",
+        }, format="json")
+
+        assert response.status_code == 400
+        assert "rol" in response.data["data"]
+        assert not User.objects.filter(email="self-admin@test.com").exists()
+
+    @pytest.mark.parametrize("rol", ["marketero", "cliente"])
+    def test_public_registration_preserves_normal_roles_without_admin_access(self, rol):
+        client = APIClient()
+        email = f"public-{rol}@test.com"
+        response = client.post(REGISTER_URL, {
+            "email": email,
+            "nombre": "Registro Público",
+            "password": "Test1234!",
+            "rol": rol,
+            "is_staff": True,
+            "is_superuser": True,
+        }, format="json")
+
+        assert response.status_code == 201
+        user = User.objects.get(email=email)
+        assert user.rol == rol
+        assert user.is_staff is False
+        assert user.is_superuser is False
+
+        login = client.post(LOGIN_URL, {
+            "email": email,
+            "password": "Test1234!",
+        }, format="json")
+        assert login.status_code == 200
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        assert client.get("/api/admin/users/").status_code == 403
+
     def test_register_success(self):
         client = APIClient()
         response = client.post(REGISTER_URL, {
