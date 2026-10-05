@@ -176,10 +176,11 @@ export default function RegisterPage() {
                 <span className="px-1 text-sm font-medium text-on-surface-variant">
                   ¿Cómo usarás NexoMark?
                 </span>
-                <div className="grid grid-cols-2 gap-3">
+                <div role="group" aria-label="Rol de la cuenta" className="grid grid-cols-2 gap-3">
                   {roles.map((r) => (
                     <button
                       key={r.val}
+                      aria-pressed={rolSel === r.val}
                       type="button"
                       onClick={() => {
                         setRolSel(r.val)

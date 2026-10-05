@@ -1,6 +1,6 @@
 import { getAuthItem } from '@/lib/authStorage'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Megaphone, AlertCircle, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
@@ -149,11 +149,12 @@ export default function CampaignListPage() {
                   {campaigns.map((c) => (
                     <tr
                       key={c.id}
-                      onClick={() => navigate(`/campaigns/${c.id}`)}
-                      className="cursor-pointer border-b border-outline-variant/40 transition-colors last:border-0 hover:bg-surface-container-low"
+                      className="border-b border-outline-variant/40 transition-colors last:border-0 hover:bg-surface-container-low"
                     >
                       <td className="max-w-[200px] truncate px-4 py-4 font-medium text-on-surface">
-                        {c.titulo}
+                        <Link to={`/campaigns/${c.id}`} className="rounded text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+                          {c.titulo}
+                        </Link>
                       </td>
                       <td className="px-4 py-4 text-on-surface-variant">{c.cliente_nombre}</td>
                       <td className="px-4 py-4 capitalize text-on-surface-variant">{c.industria}</td>
@@ -182,6 +183,7 @@ export default function CampaignListPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            aria-label={`Eliminar campaña ${c.titulo}`}
                             onClick={(event) => handleDelete(event, c)}
                           >
                             <Trash2 className="h-4 w-4" />
