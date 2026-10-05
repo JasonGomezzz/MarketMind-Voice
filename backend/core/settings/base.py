@@ -274,6 +274,9 @@ RESEND_API_KEY = config("RESEND_API_KEY", default="")
 RESEND_FROM_EMAIL = config("RESEND_FROM_EMAIL", default="noreply@marketmind.ai")
 
 FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:5173')
+RECOVERY_EMAIL_COOLDOWN_SECONDS = 60
+RECOVERY_EMAIL_HOURLY_LIMIT = 5
+RECOVERY_IP_HOURLY_LIMIT = 20
 PASSWORD_RESET_TIMEOUT = 1800
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='')

@@ -1,5 +1,6 @@
 """Recuperación por enlace de un solo uso sin revelar cuentas existentes."""
 import logging
+import math
 from urllib.parse import urlencode
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -13,14 +14,26 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.exceptions import Throttled
 from rest_framework.views import APIView
+from .recovery_throttles import RecoveryRequestThrottle, RecoveryConfirmThrottle
 
 logger = logging.getLogger(__name__)
 
-class RecoveryThrottle(AnonRateThrottle):
-    scope = 'password_recovery'
-    rate = '5/hour'
+class RecoveryAPIView(APIView):
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if isinstance(exc, Throttled):
+            seconds = max(1, math.ceil(exc.wait or 60))
+            minutes = math.ceil(seconds / 60)
+            duration = f'{seconds} {"segundo" if seconds == 1 else "segundos"}' if seconds < 60 else f'{minutes} {"minuto" if minutes == 1 else "minutos"}'
+            response.data = {
+                'success': False,
+                'message': f'Demasiados intentos. Intenta nuevamente en {duration}.',
+                'data': {'retry_after': seconds},
+            }
+            response['Retry-After'] = str(seconds)
+        return response
 
 class RecoveryRequest(serializers.Serializer):
     email = serializers.EmailField()
@@ -30,10 +43,10 @@ class RecoveryConfirm(serializers.Serializer):
     token = serializers.CharField(max_length=256)
     new_password = serializers.CharField(write_only=True, max_length=128)
 
-class PasswordResetRequestView(APIView):
+class PasswordResetRequestView(RecoveryAPIView):
     permission_classes = [AllowAny]
     authentication_classes = []
-    throttle_classes = [RecoveryThrottle]
+    throttle_classes = [RecoveryRequestThrottle]
 
     def post(self, request):
         serializer = RecoveryRequest(data=request.data)
@@ -49,12 +62,12 @@ class PasswordResetRequestView(APIView):
                           settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
             except Exception:
                 logger.error('No se pudo enviar el correo de recuperación; revisa la configuración SMTP.')
-        return Response({'message': 'Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña.'})
+        return Response({'message': 'Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña.', 'data': {'resend_after': settings.RECOVERY_EMAIL_COOLDOWN_SECONDS}})
 
-class PasswordResetConfirmView(APIView):
+class PasswordResetConfirmView(RecoveryAPIView):
     permission_classes = [AllowAny]
     authentication_classes = []
-    throttle_classes = [RecoveryThrottle]
+    throttle_classes = [RecoveryConfirmThrottle]
 
     @transaction.atomic
     def post(self, request):

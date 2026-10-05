@@ -68,8 +68,13 @@ def test_inactive_account_does_not_receive_mail(user_marketero):
     assert APIClient().post(REQUEST, {'email': user_marketero.email}, format='json').status_code == 200
     assert len(mail.outbox) == 0
 
-def test_recovery_is_rate_limited():
+def test_recovery_cooldown_and_spanish_wait():
     client = APIClient()
-    for _ in range(5):
-        assert client.post(REQUEST, {'email': 'unknown@example.com'}, format='json').status_code == 200
-    assert client.post(REQUEST, {'email': 'unknown@example.com'}, format='json').status_code == 429
+    assert client.post(REQUEST, {'email': 'unknown@example.com'}, format='json').status_code == 200
+    response = client.post(REQUEST, {'email': 'UNKNOWN@example.com'}, format='json')
+    assert response.status_code == 429
+    assert 1 <= response.data['data']['retry_after'] <= 60
+    assert int(response['Retry-After']) == response.data['data']['retry_after']
+    assert 'Demasiados intentos' in response.data['message']
+    assert 'throttled' not in response.data['message']
+    assert client.post(REQUEST, {'email': 'another@example.com'}, format='json').status_code == 200
