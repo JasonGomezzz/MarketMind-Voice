@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { MotionConfig } from 'motion/react'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
+import PasswordRecoveryPage from './pages/PasswordRecoveryPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import ClientDashboardPage from './pages/ClientDashboardPage'
@@ -42,6 +43,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<PasswordRecoveryPage key="request" />} />
+          <Route path="/reset-password" element={<PasswordRecoveryPage key="confirm" />} />
           <Route path="/register" element={<RegisterPage />} />
 
           <Route element={<PrivateRoute />}>

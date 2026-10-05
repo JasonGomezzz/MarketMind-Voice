@@ -182,6 +182,7 @@ SIMPLE_JWT = {
 
     # Claims adicionales — campo "role" en payload (criterio HU2)
     "TOKEN_OBTAIN_SERIALIZER": "apps.authentication.serializers.CustomTokenObtainPairSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "apps.authentication.serializers.VersionedTokenRefreshSerializer",
 
     # Headers
     "AUTH_HEADER_TYPES": ("Bearer",),
@@ -271,3 +272,15 @@ USE_MOCK_AI = config("USE_MOCK_AI", cast=bool, default=False)
 # Resend (activo en Sprint 4)
 RESEND_API_KEY = config("RESEND_API_KEY", default="")
 RESEND_FROM_EMAIL = config("RESEND_FROM_EMAIL", default="noreply@marketmind.ai")
+
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:5173')
+PASSWORD_RESET_TIMEOUT = 1800
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_PORT = config('EMAIL_PORT', cast=int, default=587)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool, default=True)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', cast=bool, default=False)
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='NexoMark IA <noreply@localhost>')

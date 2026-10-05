@@ -8,8 +8,11 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import AuthBrandContentView, ChangePasswordView, LogoutView, MeView, RegisterView
 from .token_views import CustomTokenObtainPairView
+from .password_reset import PasswordResetRequestView, PasswordResetConfirmView
 
 urlpatterns = [
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset'),
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     # HU1: Registro de usuarios
     path("register/", RegisterView.as_view(), name="auth-register"),
 

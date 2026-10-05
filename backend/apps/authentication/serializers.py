@@ -8,10 +8,20 @@ from typing import Any
 
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.tokens import Token
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import Token, RefreshToken
+from rest_framework_simplejwt.exceptions import InvalidToken
 
 from .models import AuthBrandContent, User, UserRole
+
+
+class VersionedTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        token = RefreshToken(attrs['refresh'])
+        user = User.objects.filter(pk=token.get('user_id'), is_active=True).first()
+        if user is None or user.token_version != token.get('token_version', 0):
+            raise InvalidToken('La sesión ya no es válida. Inicia sesión nuevamente.')
+        return super().validate(attrs)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
