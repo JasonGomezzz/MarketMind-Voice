@@ -1,0 +1,19 @@
+name: Spring client API tests
+on:
+  push:
+    paths: ['springboot/**', '.github/workflows/spring-tests.yml']
+  pull_request:
+    paths: ['springboot/**', '.github/workflows/spring-tests.yml']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Test client API without external services
+        working-directory: springboot
+        run: mvn --batch-mode test
