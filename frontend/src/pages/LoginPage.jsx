@@ -27,8 +27,8 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm()
 
-  async function onSubmit({ email, password }) {
-    const result = await login(email, password)
+  async function onSubmit({ email, password, remember }) {
+    const result = await login(email, password, remember)
 
     if (!result.ok) {
       const msg =
@@ -145,6 +145,7 @@ export default function LoginPage() {
               <div className="flex items-center gap-2 px-1">
                 <input
                   id="remember"
+                  {...register('remember')}
                   type="checkbox"
                   className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
                 />

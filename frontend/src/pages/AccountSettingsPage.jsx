@@ -1,3 +1,4 @@
+import { setAuthItem } from '@/lib/authStorage'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
@@ -74,7 +75,7 @@ export default function AccountSettingsPage() {
     try {
       const { data } = await api.patch('/api/auth/me/', { nombre: nombre.trim() })
       setUser(data.data.user)
-      localStorage.setItem('user_nombre', data.data.user.nombre)
+      setAuthItem('user_nombre', data.data.user.nombre)
       toast.success('Perfil actualizado')
     } catch (err) {
       const fieldError = err.response?.data?.data?.nombre?.[0]

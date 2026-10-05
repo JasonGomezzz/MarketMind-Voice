@@ -1,3 +1,4 @@
+import { getAuthItem, setAuthItem, clearAuthSession } from '@/lib/authStorage'
 import axios from 'axios'
 
 const api = axios.create({
@@ -7,7 +8,7 @@ const api = axios.create({
 
 // Attach access token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthItem('access_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -44,9 +45,11 @@ api.interceptors.response.use(
       }
 
       isRefreshing = true
-      const refresh = localStorage.getItem('refresh_token')
+      const refresh = getAuthItem('refresh_token')
 
       if (!refresh) {
+        isRefreshing = false
+        processQueue(error)
         clearSession()
         return Promise.reject(error)
       }
@@ -56,8 +59,8 @@ api.interceptors.response.use(
           `${import.meta.env.VITE_API_URL}/api/auth/token/refresh/`,
           { refresh }
         )
-        localStorage.setItem('access_token', data.access)
-        if (data.refresh) localStorage.setItem('refresh_token', data.refresh)
+        setAuthItem('access_token', data.access)
+        if (data.refresh) setAuthItem('refresh_token', data.refresh)
         processQueue(null, data.access)
         original.headers.Authorization = `Bearer ${data.access}`
         return api(original)
@@ -75,11 +78,7 @@ api.interceptors.response.use(
 )
 
 function clearSession() {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('refresh_token')
-  localStorage.removeItem('user_role')
-  localStorage.removeItem('user_nombre')
-  localStorage.removeItem('user_email')
+  clearAuthSession()
   window.location.href = '/login'
 }
 

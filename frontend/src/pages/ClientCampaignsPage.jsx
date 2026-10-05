@@ -1,3 +1,4 @@
+import { getAuthItem } from '@/lib/authStorage'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, AlertCircle, Inbox, Search, Star } from 'lucide-react'
@@ -49,7 +50,7 @@ export default function ClientCampaignsPage() {
   const handleCampaignSubmitted = useCallback(
     (campaign) => {
       if (page !== 0 || (filters.estado && filters.estado !== 'pendiente_aprobacion')) return
-      const userEmail = localStorage.getItem('user_email')
+      const userEmail = getAuthItem('user_email')
       if (!userEmail || campaign.clienteEmail?.toLowerCase() !== userEmail.toLowerCase()) return
       setData((current) => {
         if (!current || current.content.some((c) => c.id === campaign.id)) return current

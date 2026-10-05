@@ -1,3 +1,4 @@
+import { getAuthItem } from '@/lib/authStorage'
 import { useEffect, useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { motion } from 'motion/react'
@@ -22,8 +23,8 @@ import { STATES } from '@/lib/campaignStates'
  * estado FSM, loading/error/retry, re-fetch por location.key.
  */
 export default function DashboardPage() {
-  const nombre = localStorage.getItem('user_nombre') || 'usuario'
-  const role = localStorage.getItem('user_role') || ''
+  const nombre = getAuthItem('user_nombre') || 'usuario'
+  const role = getAuthItem('user_role') || ''
 
   const [stats, setStats] = useState(null)
   const [tokens, setTokens] = useState(null)

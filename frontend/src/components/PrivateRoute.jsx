@@ -1,9 +1,10 @@
+import { getAuthItem, setAuthItem } from '@/lib/authStorage'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 
 export default function PrivateRoute() {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthItem('access_token')
   const [status, setStatus] = useState('loading')
   useEffect(() => {
     if (!token) return
@@ -14,7 +15,7 @@ export default function PrivateRoute() {
         if (!cancelled) setStatus('invalid')
         return
       }
-      localStorage.setItem('user_role', user.rol)
+      setAuthItem('user_role', user.rol)
       if (!cancelled) setStatus('ready')
     }).catch((error) => {
       if (!cancelled) setStatus(error.response?.status === 401 ? 'invalid' : 'error')

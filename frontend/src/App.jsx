@@ -1,3 +1,4 @@
+import { getAuthItem } from '@/lib/authStorage'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { MotionConfig } from 'motion/react'
 import LandingPage from './pages/LandingPage'
@@ -27,12 +28,12 @@ import AppLayout from './components/AppLayout'
  * así sus hooks viven aislados (sin violar las reglas de hooks de React).
  */
 function DashboardRouter() {
-  const role = localStorage.getItem('user_role') || ''
+  const role = getAuthItem('user_role') || ''
   return role === 'cliente' ? <ClientDashboardPage /> : <DashboardPage />
 }
 
 function PromptGuideRouter() {
-  const role = localStorage.getItem('user_role') || ''
+  const role = getAuthItem('user_role') || ''
   return role === 'cliente' ? <Navigate to="/client-help" replace /> : <PromptGuidePage />
 }
 

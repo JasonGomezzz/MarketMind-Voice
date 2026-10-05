@@ -1,3 +1,4 @@
+import { getAuthItem } from '@/lib/authStorage'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Megaphone, AlertCircle, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
@@ -12,7 +13,7 @@ import StatusBadge from '@/components/StatusBadge'
  * Usa StatusBadge (fuente única de estados FSM) para consistencia.
  */
 export default function CampaignListPage() {
-  const role = localStorage.getItem('user_role') || ''
+  const role = getAuthItem('user_role') || ''
   const navigate = useNavigate()
 
   const [campaigns, setCampaigns] = useState([])
