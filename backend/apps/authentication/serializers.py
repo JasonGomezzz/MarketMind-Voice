@@ -31,7 +31,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     Valida:
     - Email único en BD (HU1: email duplicado → HTTP 400)
     - Formato de email válido (HU1: formato inválido → HTTP 400)
-    - Rol dentro de los valores permitidos (HU1: rol inválido → HTTP 400)
+    - Registro público solo permite marketero y cliente (otros roles → HTTP 400)
     - Password mínimo 8 caracteres (HU1: password corto → HTTP 400)
     """
 
@@ -43,11 +43,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         },
     )
     rol = serializers.ChoiceField(
-        choices=UserRole.choices,
+        # Los roles administrativos se crean solo por mecanismos de confianza,
+        # nunca desde el registro público, aunque el cliente altere el JSON.
+        choices=[
+            (UserRole.MARKETERO.value, UserRole.MARKETERO.label),
+            (UserRole.CLIENTE.value, UserRole.CLIENTE.label),
+        ],
         error_messages={
             "invalid_choice": (
-                "Rol inválido. Valores permitidos: "
-                f"{', '.join(UserRole.values)}."
+                "El registro público solo permite los roles marketero y cliente."
             ),
         },
     )

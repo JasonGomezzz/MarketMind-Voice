@@ -14,6 +14,49 @@ BRAND_CONTENT_URL = "/api/auth/brand-content/"
 
 @pytest.mark.django_db
 class TestRegisterView:
+    @pytest.mark.parametrize('role', ['superadmin', 'SUPERADMIN', ' superadmin ', ['superadmin'], None])
+    def test_public_registration_rejects_privileged_or_malformed_roles(self, role):
+        before = User.objects.count()
+        response = APIClient().post(REGISTER_URL, {
+            'email': 'forbidden-admin@test.com',
+            'nombre': 'Registro no autorizado',
+            'password': 'Test1234!',
+            'rol': role,
+        }, format='json')
+        assert response.status_code == 400
+        assert response.data['success'] is False
+        assert 'rol' in response.data['data']
+        assert User.objects.count() == before
+        assert not User.objects.filter(email='forbidden-admin@test.com').exists()
+
+    @pytest.mark.parametrize('role', ['marketero', 'cliente'])
+    def test_public_registration_cannot_set_admin_flags(self, role):
+        response = APIClient().post(REGISTER_URL, {
+            'email': 'public-user@test.com',
+            'nombre': 'Usuario público',
+            'password': 'Test1234!',
+            'rol': role,
+            'is_staff': True,
+            'is_superuser': True,
+        }, format='json')
+        assert response.status_code == 201
+        user = User.objects.get(email='public-user@test.com')
+        assert user.rol == role
+        assert not user.is_staff
+        assert not user.is_superuser
+        assert user.check_password('Test1234!')
+
+    def test_existing_superadmin_can_still_login(self, superadmin):
+        response = APIClient().post(LOGIN_URL, {
+            'email': superadmin.email,
+            'password': 'Admin1234!',
+        }, format='json')
+        assert response.status_code == 200
+        assert response.data['role'] == UserRole.SUPERADMIN
+        superadmin.refresh_from_db()
+        assert superadmin.rol == UserRole.SUPERADMIN
+        assert superadmin.is_active
+
     def test_register_success(self):
         client = APIClient()
         response = client.post(REGISTER_URL, {
