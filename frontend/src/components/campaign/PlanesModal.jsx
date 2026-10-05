@@ -1,10 +1,11 @@
+import CreditRequestButton from '@/components/campaign/CreditRequestButton'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { AlertTriangle, ShieldCheck, X, Coins, Loader2, CircleCheck, CreditCard } from 'lucide-react'
+import { AlertTriangle, X, Coins, Loader2, CircleCheck, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import api from '../../services/api'
-import { MSG_RESET, PLANS } from '@/lib/credits'
+import { PLANS } from '@/lib/credits'
 
 /**
  * Modal de planes de créditos — réplica fiel de Stitch
@@ -141,13 +142,7 @@ export default function PlanesModal({ open, onClose }) {
 
             {/* Acciones secundarias */}
             <div className="mb-6 flex flex-col items-center justify-center gap-3 border-t border-outline-variant/50 pt-6 sm:flex-row sm:gap-8">
-              <button
-                onClick={() => toast.success(MSG_RESET)}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Solicitar reset al administrador
-              </button>
+              <CreditRequestButton />
               <button
                 onClick={() => {
                   handleClose()

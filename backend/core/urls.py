@@ -10,6 +10,7 @@ from apps.authentication.admin_views import (
     AdminUsersListView,
 )
 from apps.campaigns.views import AdminAnalyticsView
+from apps.authentication.credit_views import CreditRequestListView, AdminCreditRequestListView, AdminCreditRequestDetailView
 
 
 def health(request):
@@ -31,6 +32,9 @@ def health(request):
 
 
 urlpatterns = [
+    path('api/auth/credit-requests/', CreditRequestListView.as_view()),
+    path('api/admin/credit-requests/', AdminCreditRequestListView.as_view()),
+    path('api/admin/credit-requests/<int:pk>/', AdminCreditRequestDetailView.as_view()),
     path('api/health/', health, name='health'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.authentication.urls')),

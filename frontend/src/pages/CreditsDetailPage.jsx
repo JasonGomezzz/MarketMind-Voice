@@ -15,6 +15,7 @@ import {
 import api from '../services/api'
 import StatusBadge from '@/components/StatusBadge'
 import PlanesModal from '@/components/campaign/PlanesModal'
+import CreditRequestButton from '@/components/campaign/CreditRequestButton'
 
 /**
  * Detalle de créditos de IA (solo marketero/superadmin — ruta /credits).
@@ -137,15 +138,16 @@ export default function CreditsDetailPage() {
               </div>
               <p className="max-w-md text-sm text-on-surface-variant">
                 Cada crédito equivale a 1 generación o regeneración de IA exitosa. Al llegar a 0,
-                la creación se bloquea hasta que un SuperAdmin restablezca tu cuota.
+                la creación se bloquea hasta que se añadan créditos a tu cuenta.
               </p>
               <button
                 onClick={() => setShowPlanes(true)}
                 className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-6 py-3 text-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container active:scale-95"
               >
                 <ShoppingCart className="h-4 w-4" />
-                Solicitar más créditos
+                Ver planes
               </button>
+              <CreditRequestButton />
             </div>
 
             {/* Donut de uso (SVG puro, sin dependencias) */}
@@ -260,8 +262,8 @@ export default function CreditsDetailPage() {
 
       <p className="flex items-center gap-2 text-sm text-on-surface-variant">
         <ShieldQuestion className="h-4 w-4 text-primary" />
-        ¿Necesitas más créditos? Un SuperAdmin puede resetear tu cuota o cambiar tu plan desde el
-        panel de Usuarios — no hay renovación automática por ciclo de facturación.
+        ¿Necesitas más créditos? Envía una solicitud: el SuperAdmin puede revisarla desde el
+        panel de Usuarios. No hay renovación automática por ciclo de facturación.
       </p>
     </div>
   )

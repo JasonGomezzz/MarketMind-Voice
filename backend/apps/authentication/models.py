@@ -7,6 +7,20 @@ Criterios HU1: registro con roles, email único, password bcrypt.
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
+
+
+class CreditRequest(models.Model):
+    requester = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='credit_requests')
+    status = models.CharField(max_length=10, choices=[('pending', 'Pendiente'), ('approved', 'Aprobada'), ('rejected', 'Rechazada')], default='pending')
+    created_at = models.DateTimeField(default=timezone.now)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_credit_requests')
+    credits_granted = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        constraints = [models.UniqueConstraint(fields=['requester'], condition=models.Q(status='pending'), name='one_pending_credit_request')]
 
 
 class UserRole(models.TextChoices):

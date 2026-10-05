@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import CreditRequestsAdminPanel from '@/components/CreditRequestsAdminPanel'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
 import { Users, AlertCircle, RotateCcw, Ban, CircleCheck, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -130,6 +131,7 @@ export default function UsersAdminPage() {
   return (
     <div className="space-y-6">
       <AppToaster />
+      <CreditRequestsAdminPanel onResolved={() => fetchUsers(page)} />
 
       {/* Encabezado */}
       <div className="flex flex-wrap items-end justify-between gap-4">
