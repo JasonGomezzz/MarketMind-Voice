@@ -256,7 +256,7 @@ N8N_WEBHOOK_BASE_URL = config(
 )
 N8N_WEBHOOK_TIMEOUT = 5             # segundos — "Respond Immediately" debe responder < 500ms
 DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://host.docker.internal:8000")
-SPRINGBOOT_INTERNAL_URL = config("SPRINGBOOT_INTERNAL_URL", default="http://localhost:8080")
+SPRINGBOOT_INTERNAL_URL = config("SPRINGBOOT_INTERNAL_URL", default="http://localhost:8081")
 INTERNAL_EVENT_TOKEN = config("INTERNAL_EVENT_TOKEN", default="dev-internal-event-token")
 
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")

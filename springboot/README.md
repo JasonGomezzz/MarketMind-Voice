@@ -1,6 +1,7 @@
 ****# MarketMind — Spring Boot (Bloque Usuario)
 
-API REST de cara al cliente final. Puerto `8080`.
+API REST de cara al cliente final. Puerto local `8081` (8080 dentro de Docker).
+Usa una sola instancia; consulta [ejecución local](../LOCAL_DEVELOPMENT.md).
 Convive con Django (puerto `8000`) sobre la misma PostgreSQL.
 
 ## Regla de oro
@@ -22,7 +23,7 @@ Convive con Django (puerto `8000`) sobre la misma PostgreSQL.
 
 ```env
 DB_HOST=localhost          # postgres (Docker) o localhost (local)
-DB_PORT=5433               # 5433 fuera de Docker, 5432 dentro
+DB_PORT=5435               # 5435 fuera de Docker, 5432 dentro
 DB_NAME=marketmind_db
 DB_USER=marketmind_user
 DB_PASSWORD=localpass123
@@ -38,17 +39,17 @@ Prerequisito: Django debe tener aplicada la migración `0003_campaign_version`.
 cd springboot
 
 # Con Maven instalado:
-DB_HOST=localhost DB_PORT=5433 DB_NAME=marketmind_db \
+DB_HOST=localhost DB_PORT=5435 DB_NAME=marketmind_db \
 DB_USER=marketmind_user DB_PASSWORD=localpass123 \
 SECRET_KEY=<secret_key> \
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 # O exportando las variables primero:
-export DB_HOST=localhost DB_PORT=5433 ...
+export DB_HOST=localhost DB_PORT=5435 ...
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-El servidor arranca en `http://localhost:8080`.
+El servidor arranca en `http://localhost:8081`.
 Al iniciar verás el validate de Hibernate — si ves DDL (`CREATE TABLE`, `ALTER TABLE`) hay un error de configuración.
 
 ## Correr con Docker Compose

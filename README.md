@@ -3,6 +3,10 @@
 
 # NexoMark IA
 
+Guías actualizadas: [ejecución local y puertos](LOCAL_DEVELOPMENT.md) y
+[recuperación de contraseña por correo](RECOVERY_SETUP.md).
+Spring usa 8081 en el host y 8080 dentro de Docker. Ejecuta una sola instancia.
+
 SaaS de automatización de campañas publicitarias con IA para agencias de
 marketing digital. Genera copy + imagen de anuncios automáticamente y
 gestiona el flujo de aprobación entre marketero y cliente.
@@ -59,7 +63,7 @@ Arquitectura políglota distribuida sobre una misma base de datos PostgreSQL:
 |---|---|
 | Django API | `http://localhost:8000` |
 | React / Vite | `http://localhost:5173` |
-| Spring Boot API | `http://localhost:8080` |
+| Spring Boot API | `http://localhost:8081` |
 | n8n | `http://localhost:5678` |
 | PostgreSQL (desde tu máquina) | `localhost:5433` |
 | PostgreSQL (dentro de Docker) | `postgres:5432` |
@@ -110,7 +114,7 @@ GEMINI_API_KEY=tu-api-key-de-google-ai-studio
 RESEND_API_KEY=tu-api-key-de-resend
 RESEND_FROM_EMAIL=onboarding@resend.dev
 
-SPRINGBOOT_INTERNAL_URL=http://localhost:8080
+SPRINGBOOT_INTERNAL_URL=http://localhost:8081
 INTERNAL_EVENT_TOKEN=dev-internal-event-token
 ```
 
@@ -140,7 +144,7 @@ SECRET_KEY=django-insecure-dev-key-marketmind-2026-local
 DB_NAME=marketmind_db
 DB_USER=marketmind_user
 DB_PASSWORD=localpass123
-SPRINGBOOT_HOST_PORT=8080
+SPRINGBOOT_HOST_PORT=8081
 INTERNAL_EVENT_TOKEN=dev-internal-event-token
 GEMINI_API_KEY=tu-api-key-de-google-ai-studio
 RESEND_API_KEY=tu-api-key-de-resend
@@ -152,7 +156,7 @@ Reglas importantes:
 - `SECRET_KEY` debe ser **exactamente igual** en `backend/.env` y en este
   `.env` de la raíz. Si no coincide, Spring Boot rechaza los tokens de Django
   y el login del cliente falla silenciosamente en pantallas que consumen
-  `:8080`.
+  `:8081`.
 - `INTERNAL_EVENT_TOKEN` también debe coincidir en ambos archivos (lo usa
   Django para avisar a Spring Boot cuando se envía una campaña al cliente).
 - n8n lee `GEMINI_API_KEY` y `RESEND_API_KEY` desde `backend/.env` (ver
@@ -171,7 +175,7 @@ cp frontend/.env.example frontend/.env
 
 ```env
 VITE_API_URL=http://localhost:8000
-VITE_USER_API_URL=http://localhost:8080
+VITE_USER_API_URL=http://localhost:8081
 ```
 
 Vite no lee `.env.example` automáticamente — el archivo real debe llamarse
@@ -320,7 +324,7 @@ docker compose up -d --build springboot
 Verifica el health check:
 
 ```bash
-curl http://localhost:8080/actuator/health
+curl http://localhost:8081/actuator/health
 ```
 
 Respuesta esperada:
@@ -346,7 +350,7 @@ http://localhost:5173
 ```
 
 El dashboard del cliente se conecta por WebSocket a Spring Boot
-(`ws://localhost:8080/ws/client-campaigns`) para recibir campañas nuevas sin
+(`ws://localhost:8081/ws/client-campaigns`) para recibir campañas nuevas sin
 refrescar la página.
 
 ## 11. Correr la app móvil (Android/Kotlin)
@@ -361,7 +365,7 @@ tocar nada a mano**:
 
 | Variante | Django | Spring Boot |
 |---|---|---|
-| `debug` (emulador local) | `http://10.0.2.2:8000/` | `http://10.0.2.2:8080/` |
+| `debug` (emulador local) | `http://10.0.2.2:8000/` | `http://10.0.2.2:8081/` |
 | `release` (producción) | `https://marketmind-django.onrender.com/` | `https://marketmind-springboot.onrender.com/` |
 
 `10.0.2.2` es el alias que el emulador Android usa para referirse a
@@ -379,7 +383,7 @@ Requisitos para que el modo `debug` funcione:
   emulador, no un `usesCleartextTraffic` global).
 - Usa las mismas credenciales de [Usuarios de prueba](#usuarios-de-prueba-3-roles):
   el login móvil de marketero/cliente pega contra Django (`:8000`), y las
-  pantallas de campañas del cliente pegan contra Spring Boot (`:8080`).
+  pantallas de campañas del cliente pegan contra Spring Boot (`:8081`).
 
 ## 12. Correr la app móvil Flutter con voz
 
@@ -538,9 +542,9 @@ cd ..
 docker compose up -d springboot
 ```
 
-### Un puerto ya está ocupado (8000, 8080, 5173, 5433, 6379, 5678)
+### Un puerto ya está ocupado (8000, 8081, 5173, 5433, 6379, 5678)
 
-- **Spring Boot (`8080`):** cambia `SPRINGBOOT_HOST_PORT` en el `.env` de la
+- **Spring Boot (`8081`):** cambia `SPRINGBOOT_HOST_PORT` en el `.env` de la
   raíz, y actualiza también `VITE_USER_API_URL` en `frontend/.env` y
   `SPRINGBOOT_INTERNAL_URL` en `backend/.env` para que todos apunten al mismo
   puerto nuevo.
@@ -550,8 +554,8 @@ docker compose up -d springboot
   puertos en `docker-compose.yml` (ej. `"5434:5432"`) y actualiza
   `DB_PORT` en `backend/.env` si tocaste Postgres.
 - En Windows, si el puerto ocupado es por otro proceso, revisa con
-  `netstat -ano | findstr :8080` y cierra el proceso con
-  `taskkill /PID <pid> /F`. En Mac/Linux: `lsof -i :8080` y `kill -9 <pid>`.
+  `netstat -ano | findstr :8081` y cierra el proceso con
+  `taskkill /PID <pid> /F`. En Mac/Linux: `lsof -i :8081` y `kill -9 <pid>`.
 
 ### Login funciona en Django pero falla en pantallas del cliente (web o móvil)
 
@@ -562,7 +566,7 @@ Revisa que `SECRET_KEY` sea **exactamente igual** en:
 
 Spring Boot necesita validar el mismo JWT que genera Django; si no coincide,
 el login web/móvil parece funcionar (Django responde bien) pero cualquier
-pantalla que consuma `:8080` (revisión del cliente) devuelve 401/403.
+pantalla que consuma `:8081` (revisión del cliente) devuelve 401/403.
 
 ### El frontend no encuentra la API
 
@@ -570,7 +574,7 @@ Confirma que exista `frontend/.env` con:
 
 ```env
 VITE_API_URL=http://localhost:8000
-VITE_USER_API_URL=http://localhost:8080
+VITE_USER_API_URL=http://localhost:8081
 ```
 
 Reinicia `npm run dev` después de cualquier cambio a variables `VITE_*`.
@@ -600,7 +604,7 @@ viejo (de antes de este fix) o te lo pasó un compañero, actualízalo a mano.
 
 - Usa `10.0.2.2`, nunca `localhost` ni `127.0.0.1` — ya viene configurado así
   por defecto en la variante `debug`, no debería tocarse.
-- Confirma que Django (`:8000`) y Spring Boot (`:8080`) estén corriendo en tu
+- Confirma que Django (`:8000`) y Spring Boot (`:8081`) estén corriendo en tu
   Mac/PC antes de abrir la app.
 - Si ves errores de "cleartext traffic not permitted", revisa que no se haya
   modificado `network_security_config.xml` ni el manifiesto de la app.
