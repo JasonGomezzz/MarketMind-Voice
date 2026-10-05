@@ -17,6 +17,7 @@ import AccountSettingsPage from './pages/AccountSettingsPage'
 import PromptGuidePage from './pages/PromptGuidePage'
 import CreditsDetailPage from './pages/CreditsDetailPage'
 import PrivateRoute from './components/PrivateRoute'
+import RoleRoute from './components/RoleRoute'
 import AppLayout from './components/AppLayout'
 
 /**
@@ -46,17 +47,25 @@ export default function App() {
           <Route element={<PrivateRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardRouter />} />
+              <Route element={<RoleRoute roles={['marketero', 'superadmin']} />}>
               <Route path="/campaigns" element={<CampaignListPage />} />
-              <Route path="/campaigns/new" element={<NewCampaignPage />} />
               <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+              <Route path="/credits" element={<CreditsDetailPage />} />
+              </Route>
+              <Route element={<RoleRoute roles={['marketero']} />}>
+              <Route path="/campaigns/new" element={<NewCampaignPage />} />
+              </Route>
+              <Route element={<RoleRoute roles={['cliente']} />}>
               <Route path="/review/:id" element={<ClientReviewPage />} />
               <Route path="/client-campaigns" element={<ClientCampaignsPage />} />
               <Route path="/client-help" element={<ClientHelpPage />} />
+              </Route>
+              <Route element={<RoleRoute roles={['superadmin']} />}>
               <Route path="/admin" element={<UsersAdminPage />} />
               <Route path="/admin/analytics" element={<AnalyticsPage />} />
+              </Route>
               <Route path="/settings" element={<AccountSettingsPage />} />
               <Route path="/prompt-guide" element={<PromptGuideRouter />} />
-              <Route path="/credits" element={<CreditsDetailPage />} />
             </Route>
           </Route>
 
