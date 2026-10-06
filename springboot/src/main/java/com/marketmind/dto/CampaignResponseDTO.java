@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * DTO de respuesta para campañas.
@@ -41,4 +42,6 @@ public class CampaignResponseDTO {
     private OffsetDateTime fechaActualizacion;
     private OffsetDateTime enviadoClienteAt;
     private Integer version;
+    /** Cuentas donde se publicará al aprobar; vacío si el marketero no eligió ninguna. */
+    private List<DestinoDTO> destinos;
 }

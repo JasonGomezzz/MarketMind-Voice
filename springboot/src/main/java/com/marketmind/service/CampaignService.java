@@ -1,11 +1,13 @@
 package com.marketmind.service;
 
 import com.marketmind.dto.CampaignResponseDTO;
+import com.marketmind.dto.DestinoDTO;
 import com.marketmind.entity.CampaignEntity;
 import com.marketmind.entity.UserEntity;
 import com.marketmind.exception.CampaignNotFoundException;
 import com.marketmind.exception.InvalidStatusTransitionException;
 import com.marketmind.repository.CampaignRepository;
+import com.marketmind.repository.PublicationViewRepository;
 import com.marketmind.repository.UserRepository;
 import com.marketmind.security.AuthenticatedUser;
 import com.marketmind.websocket.ClientCampaignEvent;
@@ -21,6 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,6 +49,8 @@ public class CampaignService {
     private final UserRepository userRepository;
     private final N8nEmailClient n8nEmailClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final DjangoEventClient djangoEventClient;
+    private final PublicationViewRepository publicationViewRepository;
 
     /** HU12 — lista campañas pendientes de aprobación del cliente autenticado. */
     public Page<CampaignResponseDTO> findPending(AuthenticatedUser user, Pageable pageable) {
@@ -177,6 +182,10 @@ public class CampaignService {
                 } catch (RuntimeException ex) {
                     log.warn("No se pudo notificar la decisión confirmada de campaña {}", saved.getId());
                 }
+                // Aprobada: Django publica en las cuentas que eligió el marketero.
+                if ("aprobado".equals(committedStatus)) {
+                    djangoEventClient.notifyApprovedAsync(saved.getId());
+                }
             }
         });
 
@@ -189,7 +198,9 @@ public class CampaignService {
                         .map(campaign -> campaign.getMarketeroId())
                         .filter(Objects::nonNull)
                         .collect(Collectors.toSet()));
-        return page.map(e -> toDTO(e, nombres.get(e.getMarketeroId())));
+        Map<Long, List<DestinoDTO>> destinos = destinosPorCampana(
+                page.getContent().stream().map(campaign -> campaign.getId()).collect(Collectors.toSet()));
+        return page.map(e -> toDTO(e, nombres.get(e.getMarketeroId()), destinos.getOrDefault(e.getId(), List.of())));
     }
 
     private String authenticatedEmail(AuthenticatedUser user) {
@@ -254,10 +265,27 @@ public class CampaignService {
                 : userRepository.findById(marketeroId)
                         .map(entity -> entity.getNombre())
                         .orElse(null);
-        return toDTO(e, nombre);
+        List<DestinoDTO> destinos = destinosPorCampana(Set.of(e.getId())).getOrDefault(e.getId(), List.of());
+        return toDTO(e, nombre, destinos);
     }
 
-    private CampaignResponseDTO toDTO(CampaignEntity e, String marketeroNombre) {
+    /** Destinos de publicación de varias campañas en un solo query (lectura de tabla de Django). */
+    private Map<Long, List<DestinoDTO>> destinosPorCampana(Collection<Long> campaignIds) {
+        if (campaignIds.isEmpty()) {
+            return Map.of();
+        }
+        return publicationViewRepository.findByCampaignIdIn(campaignIds).stream()
+                .collect(Collectors.groupingBy(
+                        publication -> publication.getCampaignId(),
+                        Collectors.mapping(publication -> DestinoDTO.builder()
+                                .red(publication.getRed())
+                                .cuentaNombre(publication.getCuentaNombre())
+                                .estado(publication.getEstado())
+                                .permalink(publication.getPermalink())
+                                .build(), Collectors.toList())));
+    }
+
+    private CampaignResponseDTO toDTO(CampaignEntity e, String marketeroNombre, List<DestinoDTO> destinos) {
         return CampaignResponseDTO.builder()
                 .id(e.getId())
                 .titulo(e.getTitulo())
@@ -283,6 +311,7 @@ public class CampaignService {
                 .fechaActualizacion(e.getFechaActualizacion())
                 .enviadoClienteAt(e.getEnviadoClienteAt())
                 .version(e.getVersion())
+                .destinos(destinos)
                 .build();
     }
 }

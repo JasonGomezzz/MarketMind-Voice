@@ -79,6 +79,8 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-localpass123}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key-marketmind-2026-local}
       - INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN:-dev-internal-event-token}
+      # Django corre fuera de Docker en desarrollo; Spring le avisa las aprobaciones.
+      - DJANGO_INTERNAL_URL=${DJANGO_INTERNAL_URL:-http://host.docker.internal:8000}
     depends_on:
       postgres:
         condition: service_healthy

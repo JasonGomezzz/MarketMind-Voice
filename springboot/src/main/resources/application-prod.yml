@@ -14,8 +14,13 @@ spring:
     open-in-view: false
 
 app:
+  django:
+    internal-url: ${DJANGO_INTERNAL_URL}
   jwt:
     secret: ${SECRET_KEY}
+  # Sin valor por defecto en producción: el aviso interno debe usar un secreto propio.
+  internal:
+    event-token: ${INTERNAL_EVENT_TOKEN}
 
 # HU17 — n8n webhook (Railway URL en prod).
 n8n:

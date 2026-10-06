@@ -11,7 +11,9 @@ import com.marketmind.security.AuthenticatedUser;
 import com.marketmind.security.CurrentUserVerifier;
 import com.marketmind.security.CurrentUserSnapshot;
 import com.marketmind.security.JwtTokenValidator;
+import com.marketmind.repository.PublicationViewRepository;
 import com.marketmind.service.CampaignService;
+import com.marketmind.service.DjangoEventClient;
 import com.marketmind.service.N8nEmailClient;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -195,7 +197,9 @@ class ClientCampaignWebSocketHandlerTest {
         when(campaigns.findById(10L)).thenReturn(Optional.of(campaign));
         when(campaigns.save(matched(any(), new CampaignEntity()))).thenReturn(campaign);
         N8nEmailClient emailClient = mock(N8nEmailClient.class);
-        CampaignService service = new CampaignService(campaigns, users, emailClient, context);
+        DjangoEventClient djangoEvents = mock(DjangoEventClient.class);
+        CampaignService service = new CampaignService(
+                campaigns, users, emailClient, context, djangoEvents, mock(PublicationViewRepository.class));
         var transaction = new TransactionTemplate(new LocalTransactionManager());
         AuthenticatedUser principal = new AuthenticatedUser(1L, "cliente", "Alice", 0);
         transaction.executeWithoutResult(status -> {
@@ -206,6 +210,7 @@ class ClientCampaignWebSocketHandlerTest {
         });
         verify(session, times(1)).sendMessage(anyMessage());
         verifyNoInteractions(emailClient);
+        verifyNoInteractions(djangoEvents);
         ReflectionTestUtils.setField(campaign, "estado", "pendiente_aprobacion");
         transaction.executeWithoutResult(status -> {
             service.updateStatus(10L, "aprobado", null, 5, 0, principal);
@@ -215,6 +220,7 @@ class ClientCampaignWebSocketHandlerTest {
         });
         verify(session, times(2)).sendMessage(anyMessage());
         verify(emailClient).notify(campaign, "aprobado");
+        verify(djangoEvents).notifyApprovedAsync(10L);
     }
 
     @Test
