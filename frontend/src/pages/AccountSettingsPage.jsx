@@ -15,6 +15,7 @@ import {
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '../hooks/useTheme'
+import InstagramAccounts from '../components/InstagramAccounts'
 
 /**
  * Configuración de cuenta (portado de Stitch: account_settings, adaptado a los
@@ -213,6 +214,8 @@ export default function AccountSettingsPage() {
             </div>
           </form>
         </section>
+
+        {user.rol === 'marketero' && <InstagramAccounts />}
 
         {/* Seguridad */}
         <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
