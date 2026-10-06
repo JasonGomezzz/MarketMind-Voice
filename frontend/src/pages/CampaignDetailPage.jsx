@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import PublicationsPanel from '@/components/social/PublicationsPanel'
+import RedIcon from '@/components/social/RedIcon'
+import { socialApi } from '../services/socialApi'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
@@ -141,11 +144,11 @@ export default function CampaignDetailPage() {
     }
   }
 
-  async function handleSubmitConfirm() {
+  async function handleSubmitConfirm(destinos = []) {
     setSubmitting(true)
     setShowModal(false)
     try {
-      await api.post(`/api/campaigns/${id}/submit/`)
+      await api.post(`/api/campaigns/${id}/submit/`, { destinos })
       localStorage.removeItem(draftKey)
       toast.success('Enviada a aprobación del cliente')
       setTimeout(() => navigate('/dashboard'), 1200)
@@ -461,6 +464,9 @@ export default function CampaignDetailPage() {
             </div>
           </div>
 
+          {/* Publicación en redes: estado por cuenta y "Publicar ahora / Reintentar" */}
+          <PublicationsPanel campaignId={campaign.id} estadoCampana={campaign.estado} />
+
           {/* Imagen generada — HU22 */}
           <div className="mt-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
             <p className="mb-3 text-sm font-semibold text-on-surface">Imagen generada</p>
@@ -490,6 +496,7 @@ export default function CampaignDetailPage() {
       {showModal && (
         <SubmitModal
           preview={text}
+          clienteEmail={campaign.cliente_email}
           onConfirm={handleSubmitConfirm}
           onCancel={() => setShowModal(false)}
         />
@@ -522,7 +529,25 @@ function LoadingSkeleton() {
   )
 }
 
-function SubmitModal({ preview, onConfirm, onCancel }) {
+function SubmitModal({ preview, clienteEmail, onConfirm, onCancel }) {
+  const [destinos, setDestinos] = useState(null)
+  const [elegidos, setElegidos] = useState([])
+
+  useEffect(() => {
+    let vigente = true
+    socialApi
+      .destinos(clienteEmail)
+      .then((lista) => vigente && setDestinos(lista))
+      .catch(() => vigente && setDestinos([]))
+    return () => {
+      vigente = false
+    }
+  }, [clienteEmail])
+
+  function alternar(id) {
+    setElegidos((actuales) => (actuales.includes(id) ? actuales.filter((x) => x !== id) : [...actuales, id]))
+  }
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onCancel()
@@ -543,14 +568,50 @@ function SubmitModal({ preview, onConfirm, onCancel }) {
         <p className="mb-4 text-sm text-on-surface-variant">
           El cliente verá el siguiente copy para aprobación:
         </p>
-        <div className="mb-5 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm leading-relaxed text-on-surface">
+        <div className="mb-5 max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm leading-relaxed text-on-surface">
           {preview}
         </div>
+
+        <fieldset className="mb-5">
+          <legend className="mb-2 text-sm font-semibold text-on-surface">
+            Publicar automáticamente cuando el cliente apruebe en:
+          </legend>
+          {destinos === null ? (
+            <p className="text-xs text-on-surface-variant">Cargando cuentas…</p>
+          ) : destinos.length === 0 ? (
+            <p className="rounded-lg bg-surface-container-low px-3 py-2 text-xs text-on-surface-variant">
+              Ni el cliente ni tú tienen cuentas conectadas. Se enviará sin publicación automática; se
+              conectan en Configuración → Redes conectadas.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {destinos.map((d) => (
+                <label
+                  key={d.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg border border-outline-variant px-3 py-2 text-sm hover:bg-surface-container-low"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={elegidos.includes(d.id)}
+                    onChange={() => alternar(d.id)}
+                  />
+                  <RedIcon red={d.red} className="h-5 w-5" />
+                  <span className="flex-1 font-medium text-on-surface">{d.cuenta_nombre}</span>
+                  <span className="text-xs text-on-surface-variant">
+                    {d.propietario_rol === 'cliente' ? 'del cliente' : 'de la agencia'}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </fieldset>
+
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button className="flex-1" onClick={onConfirm}>
+          <Button className="flex-1" onClick={() => onConfirm(elegidos)} disabled={destinos === null}>
             Confirmar envío
           </Button>
         </div>

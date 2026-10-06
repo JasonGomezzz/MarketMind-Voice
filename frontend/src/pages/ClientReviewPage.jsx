@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import RejectModal from '@/components/campaign/RejectModal'
 import { useClientCampaignSocket } from '../hooks/useClientCampaignSocket'
+import RedIcon from '@/components/social/RedIcon'
+import { estadoPublicacion, etiquetaRed } from '../services/social'
 
 /**
  * Review de campaña del rol CLIENTE (HU14/HU15). Consume Spring Boot :8080
@@ -241,6 +243,39 @@ export default function ClientReviewPage() {
               />
             )}
           </div>
+
+          {campaign.destinos?.length > 0 && (
+            <div className="space-y-2 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-on-surface">
+                {puedeRevisar ? 'Al aprobar se publicará en' : 'Publicación'}
+              </p>
+              <ul className="space-y-2">
+                {campaign.destinos.map((d) => (
+                  <li key={`${d.red}-${d.cuentaNombre}`} className="flex items-center gap-2 text-sm">
+                    <RedIcon red={d.red} className="h-5 w-5" />
+                    <span className="font-medium text-on-surface">{d.cuentaNombre}</span>
+                    <span className="text-xs text-on-surface-variant">{etiquetaRed(d.red)}</span>
+                    {!puedeRevisar && (
+                      d.permalink ? (
+                        <a
+                          href={d.permalink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-auto text-xs font-semibold text-primary hover:underline"
+                        >
+                          Ver
+                        </a>
+                      ) : (
+                        <span className="ml-auto text-xs text-on-surface-variant">
+                          {estadoPublicacion(d.estado).texto}
+                        </span>
+                      )
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {puedeRevisar && (
             <div className="glass-soft space-y-3 rounded-xl p-5 shadow-sm">

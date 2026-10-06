@@ -14,6 +14,7 @@ import {
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '../hooks/useTheme'
+import SocialConnectionsCard from '@/components/social/SocialConnectionsCard'
 
 /**
  * Configuración de cuenta (portado de Stitch: account_settings, adaptado a los
@@ -274,6 +275,9 @@ export default function AccountSettingsPage() {
             </div>
           </form>
         </section>
+
+        {/* Redes conectadas — el dueño de la cuenta autoriza; el marketero elige destino al enviar */}
+        {(user.rol === 'marketero' || user.rol === 'cliente') && <SocialConnectionsCard />}
 
         {/* Apariencia */}
         <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
