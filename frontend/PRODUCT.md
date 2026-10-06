@@ -46,7 +46,7 @@ Todo el ciclo en un solo flujo: dictar la idea → la IA crea copy e imagen → 
 ## Evidence on Hand
 
 - Campañas, versiones e imágenes generadas reales en la base de desarrollo.
-- Todavía no hay publicaciones reales ni métricas reales: la cuenta de demostración tiene 0 publicaciones. No fabricar cifras, seguidores, testimonios ni casos de éxito; datos de ejemplo deben rotularse como tales.
+- Una publicación real en `@nexomarkia` (06/10/2026, hecha con el script de prueba, no todavía desde la app) con métricas en 0 al publicar. No fabricar cifras, seguidores, testimonios ni casos de éxito; datos de ejemplo deben rotularse como tales.
 - Logos de Instagram y Facebook en `src/assets/social/`.
 
 ## Product Principles
