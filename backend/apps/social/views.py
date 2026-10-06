@@ -6,8 +6,10 @@ MarketMind Voice — Endpoints de redes sociales.
     GET    /api/social/connections/                  cuentas que conectó el usuario
     GET    /api/social/connections/destinos/?cliente_email=   destinos posibles al enviar (marketero)
     DELETE /api/social/connections/{id}/             desconectar
-    GET    /api/social/publications/?campaign={id}   publicaciones de una campaña (marketero dueño)
+    GET    /api/social/publications/?campaign={id}&estado=   historial con la última foto de métricas
     POST   /api/social/publications/{id}/publish/    publicar ahora / reintentar
+    GET    /api/social/publications/{id}/stats/?refresh=1     métricas de una publicación (+ historial)
+    GET    /api/social/publications/summary/          totales por red y serie mensual (dashboard)
     GET    /api/public/media/{token}.jpg             imagen aprobada para Meta (firmada, caduca)
     POST   /api/internal/campaign-events/approved    aviso de Spring tras aprobar (token interno)
 """
@@ -32,6 +34,12 @@ from rest_framework.views import APIView
 from apps.authentication.models import UserRole
 from core.exceptions import api_response
 from services import meta_graph, public_media
+from services.metrics_service import (
+    MetricasNoDisponibles,
+    con_ultima_metrica,
+    refrescar_metricas,
+    resumen_por_red,
+)
 from services.publication_service import (
     PublicacionNoPermitida,
     conexiones_disponibles,
@@ -40,8 +48,8 @@ from services.publication_service import (
 )
 from services.social_tokens import cifrar
 
-from .models import ConexionEstado, Publication, RedSocial, SocialConnection
-from .serializers import PublicationSerializer, SocialConnectionSerializer
+from .models import ConexionEstado, PublicacionEstado, Publication, RedSocial, SocialConnection
+from .serializers import PublicationMetricSerializer, PublicationSerializer, SocialConnectionSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -181,9 +189,38 @@ class PublicationViewSet(viewsets.GenericViewSet):
         campaign_id = request.query_params.get("campaign")
         if campaign_id:
             qs = qs.filter(campaign_id=campaign_id)
+        estado = request.query_params.get("estado")
+        if estado in PublicacionEstado.values:
+            qs = qs.filter(estado=estado)
+        red = request.query_params.get("red")
+        if red in RedSocial.values:
+            qs = qs.filter(red=red)
+        qs = con_ultima_metrica(qs.order_by("-publicado_at", "-fecha_creacion"))[:100]
         return Response(api_response(True, "Publicaciones.", {
-            "publicaciones": PublicationSerializer(qs[:100], many=True).data,
+            "publicaciones": PublicationSerializer(qs, many=True).data,
         }))
+
+    @action(detail=True, methods=["get"], url_path="stats")
+    def stats(self, request: Request, pk: str | None = None) -> Response:
+        """Métricas de una publicación. ?refresh=1 consulta a Meta si la última foto tiene más de 10 min."""
+        publicacion = get_object_or_404(self.get_queryset().select_related("conexion"), pk=pk)
+        aviso = ""
+        if request.query_params.get("refresh") in ("1", "true"):
+            try:
+                refrescar_metricas(publicacion)
+            except MetricasNoDisponibles as exc:
+                aviso = str(exc)
+        historial = publicacion.metricas.order_by("-obtenida_at")[:20]
+        return Response(api_response(True, aviso or "Estadísticas de la publicación.", {
+            "publicacion": PublicationSerializer(publicacion).data,
+            "historial": PublicationMetricSerializer(historial, many=True).data,
+            "aviso": aviso,
+        }))
+
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request: Request) -> Response:
+        """Dashboard: publicaciones y totales por red con la última foto de cada publicación."""
+        return Response(api_response(True, "Resumen por red.", resumen_por_red(self.get_queryset())))
 
     @action(detail=True, methods=["post"], url_path="publish")
     def publish(self, request: Request, pk: str | None = None) -> Response:

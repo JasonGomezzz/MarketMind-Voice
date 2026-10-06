@@ -141,3 +141,34 @@ class Publication(models.Model):
 
     def __str__(self) -> str:
         return f"Publicación {self.pk} {self.red}:{self.cuenta_nombre} [{self.estado}]"
+
+
+class PublicationMetric(models.Model):
+    """
+    Foto de las métricas de una publicación en un momento dado.
+
+    Un valor que Meta no entrega (cuenta nueva, métrica no disponible o aún
+    sin procesar: puede tardar hasta 48 h) se guarda como null, nunca como 0.
+    """
+
+    publicacion = models.ForeignKey(Publication, on_delete=models.CASCADE, related_name="metricas")
+    me_gusta = models.IntegerField(null=True, blank=True, help_text="Likes en Instagram; reacciones en Facebook.")
+    comentarios = models.IntegerField(null=True, blank=True)
+    compartidos = models.IntegerField(null=True, blank=True)
+    guardados = models.IntegerField(null=True, blank=True, help_text="Solo Instagram.")
+    alcance = models.IntegerField(null=True, blank=True, help_text="Cuentas únicas que vieron la publicación.")
+    vistas = models.IntegerField(null=True, blank=True)
+    interacciones = models.IntegerField(null=True, blank=True, help_text="Total de interacciones (o clics en Facebook).")
+    crudo = models.JSONField(default=dict, blank=True, help_text="Respuesta de Meta, para auditar.")
+    error = models.TextField(blank=True, default="")
+    obtenida_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "social_publication_metrics"
+        ordering = ["-obtenida_at"]
+        indexes = [
+            models.Index(fields=["publicacion", "-obtenida_at"], name="idx_metrica_pub_fecha"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Métricas de publicación {self.publicacion_id} @ {self.obtenida_at:%Y-%m-%d %H:%M}"

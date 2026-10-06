@@ -165,3 +165,68 @@ def publicar_facebook(pagina_id: str, token_pagina: str, imagen_url: str, captio
     post_id = data.get("post_id") or data.get("id", "")
     detalle = _graph("GET", post_id, access_token=token_pagina, fields="permalink_url") if post_id else {}
     return ResultadoPublicacion(externo_id=post_id, permalink=detalle.get("permalink_url", ""))
+
+
+
+# ── Métricas ─────────────────────────────────────────────────────────────
+
+METRICAS_INSTAGRAM = "likes,comments,shares,saved,reach,views,total_interactions"
+METRICAS_FACEBOOK = "post_media_view,post_total_media_view_unique,post_clicks"
+
+
+def _valores_insights(data: dict[str, Any]) -> dict[str, Any]:
+    valores = {}
+    for metrica in data.get("data", []):
+        lista = metrica.get("values") or []
+        valor = lista[0].get("value") if lista else metrica.get("total_value", {}).get("value")
+        valores[metrica.get("name")] = valor
+    return valores
+
+
+def metricas_instagram(media_id: str, token_pagina: str) -> dict[str, Any]:
+    """Contadores básicos (inmediatos) + insights (pueden tardar o no existir aún)."""
+    basico = _graph("GET", media_id, access_token=token_pagina, fields="like_count,comments_count")
+    crudo: dict[str, Any] = {"basico": basico}
+    try:
+        insights = _valores_insights(_graph("GET", f"{media_id}/insights", access_token=token_pagina,
+                                            metric=METRICAS_INSTAGRAM))
+        crudo["insights"] = insights
+    except MetaError as exc:
+        insights = {}
+        crudo["insights_error"] = str(exc)
+    return {
+        "me_gusta": insights.get("likes", basico.get("like_count")),
+        "comentarios": insights.get("comments", basico.get("comments_count")),
+        "compartidos": insights.get("shares"),
+        "guardados": insights.get("saved"),
+        "alcance": insights.get("reach"),
+        "vistas": insights.get("views"),
+        "interacciones": insights.get("total_interactions"),
+        "crudo": crudo,
+    }
+
+
+def metricas_facebook(post_id: str, token_pagina: str) -> dict[str, Any]:
+    basico = _graph(
+        "GET", post_id, access_token=token_pagina,
+        fields="reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares",
+    )
+    crudo: dict[str, Any] = {"basico": basico}
+    try:
+        insights = _valores_insights(_graph("GET", f"{post_id}/insights", access_token=token_pagina,
+                                            metric=METRICAS_FACEBOOK))
+        crudo["insights"] = insights
+    except MetaError as exc:
+        insights = {}
+        crudo["insights_error"] = str(exc)
+    return {
+        "me_gusta": (basico.get("reactions") or {}).get("summary", {}).get("total_count"),
+        "comentarios": (basico.get("comments") or {}).get("summary", {}).get("total_count"),
+        # Si Meta no incluye "shares" se guarda null (sin dato), no 0.
+        "compartidos": (basico.get("shares") or {}).get("count"),
+        "guardados": None,
+        "alcance": insights.get("post_total_media_view_unique"),
+        "vistas": insights.get("post_media_view"),
+        "interacciones": insights.get("post_clicks"),
+        "crudo": crudo,
+    }

@@ -395,3 +395,134 @@ class TestEdicionYVersion:
         assert api_client.post(f"/api/campaigns/{campana.id}/improve-text/").status_code == 409
         campana.refresh_from_db()
         assert campana.texto_generado == "Copy aprobado por el cliente"
+
+
+# ── Fase 4: estadísticas ─────────────────────────────────────────────────
+
+from datetime import timedelta  # noqa: E402
+
+from django.utils import timezone  # noqa: E402
+
+from apps.social.models import PublicationMetric  # noqa: E402
+from services import metrics_service  # noqa: E402
+
+METRICAS_IG = {"me_gusta": 12, "comentarios": 3, "compartidos": 1, "guardados": 2, "alcance": 140,
+               "vistas": 210, "interacciones": 18, "crudo": {"fuente": "test"}}
+
+
+@pytest.mark.django_db
+class TestMetricas:
+    @pytest.fixture
+    def publicada(self, campana, cliente, user_marketero) -> Publication:
+        aprobar(campana)
+        return Publication.objects.create(
+            campaign=campana, conexion=conexion(cliente), red=RedSocial.INSTAGRAM, cuenta_nombre="@cafe.aurora",
+            estado=PublicacionEstado.PUBLICADO, externo_id="media-1", publicado_at=timezone.now(),
+            solicitada_por=user_marketero,
+        )
+
+    def test_refresca_y_respeta_el_intervalo_minimo(self, publicada):
+        with patch.object(meta_graph, "metricas_instagram", return_value=dict(METRICAS_IG)) as meta:
+            primera = metrics_service.refrescar_metricas(publicada)
+            segunda = metrics_service.refrescar_metricas(publicada)
+        assert meta.call_count == 1
+        assert primera.pk == segunda.pk
+        assert (primera.me_gusta, primera.alcance, primera.crudo) == (12, 140, {"fuente": "test"})
+
+    def test_pasado_el_intervalo_toma_otra_foto(self, publicada):
+        with patch.object(meta_graph, "metricas_instagram", return_value=dict(METRICAS_IG)):
+            primera = metrics_service.refrescar_metricas(publicada)
+        PublicationMetric.objects.filter(pk=primera.pk).update(obtenida_at=timezone.now() - timedelta(minutes=11))
+        with patch.object(meta_graph, "metricas_instagram", return_value={**METRICAS_IG, "me_gusta": 20}):
+            nueva = metrics_service.refrescar_metricas(publicada)
+        assert nueva.pk != primera.pk and nueva.me_gusta == 20
+
+    def test_publicacion_sin_publicar_no_tiene_metricas(self, campana):
+        p = Publication.objects.create(campaign=campana, red=RedSocial.INSTAGRAM, cuenta_nombre="@x")
+        with pytest.raises(metrics_service.MetricasNoDisponibles):
+            metrics_service.refrescar_metricas(p)
+
+    def test_error_de_meta_conserva_la_ultima_foto(self, publicada):
+        with patch.object(meta_graph, "metricas_instagram", return_value=dict(METRICAS_IG)):
+            primera = metrics_service.refrescar_metricas(publicada)
+        with patch.object(meta_graph, "metricas_instagram", side_effect=meta_graph.MetaError("límite")):
+            assert metrics_service.refrescar_metricas(publicada, forzar=True).pk == primera.pk
+
+    def test_endpoint_stats_refresca_y_devuelve_historial(self, publicada, api_client):
+        with patch.object(meta_graph, "metricas_instagram", return_value=dict(METRICAS_IG)):
+            data = api_client.get(f"/api/social/publications/{publicada.id}/stats/", {"refresh": "1"}).data["data"]
+        assert data["publicacion"]["ultima_metrica"]["me_gusta"] == 12
+        assert len(data["historial"]) == 1 and data["aviso"] == ""
+
+    def test_endpoint_stats_avisa_si_no_hay_datos(self, publicada, api_client):
+        with patch.object(meta_graph, "metricas_instagram", side_effect=meta_graph.MetaError("sin datos")):
+            data = api_client.get(f"/api/social/publications/{publicada.id}/stats/", {"refresh": "1"}).data["data"]
+        assert data["aviso"] == "sin datos" and data["historial"] == []
+
+    def test_resumen_por_red_suma_ignorando_lo_que_meta_no_informa(self, publicada, campana, cliente, api_client):
+        otra_ig = Publication.objects.create(
+            campaign=campana, conexion=conexion(cliente, cuenta_id="ig-2"), red=RedSocial.INSTAGRAM,
+            cuenta_nombre="@otra", estado=PublicacionEstado.PUBLICADO, externo_id="media-2",
+            publicado_at=timezone.now(),
+        )
+        Publication.objects.create(
+            campaign=campana, conexion=conexion(cliente, red=RedSocial.FACEBOOK, cuenta_id="page-1"),
+            red=RedSocial.FACEBOOK, cuenta_nombre="Café", estado=PublicacionEstado.PUBLICADO,
+            externo_id="p_1", publicado_at=timezone.now(),
+        )
+        PublicationMetric.objects.create(publicacion=publicada, me_gusta=10, compartidos=None)
+        PublicationMetric.objects.create(publicacion=otra_ig, me_gusta=5, compartidos=None)
+
+        data = api_client.get("/api/social/publications/summary/").data["data"]
+
+        instagram, facebook = data["redes"]["instagram"], data["redes"]["facebook"]
+        assert (instagram["publicaciones"], instagram["me_gusta"], instagram["compartidos"]) == (2, 15, None)
+        assert (facebook["publicaciones"], facebook["con_metricas"], facebook["me_gusta"]) == (1, 0, None)
+        assert data["total_publicaciones"] == 3
+        mes = timezone.now().strftime("%Y-%m")
+        assert data["por_mes"][-1] == {"mes": mes, "instagram": 2, "facebook": 1}
+
+    def test_resumen_solo_cuenta_las_campanas_del_marketero(self, publicada, db):
+        otro = User.objects.create_user(email="otro.mk@test.com", password="Test1234!", nombre="Otro",
+                                        rol=UserRole.MARKETERO)
+        data = cliente_api(otro).get("/api/social/publications/summary/").data["data"]
+        assert data["total_publicaciones"] == 0
+
+    def test_historial_incluye_titulo_y_ultima_metrica(self, publicada, api_client):
+        PublicationMetric.objects.create(publicacion=publicada, me_gusta=7)
+        data = api_client.get("/api/social/publications/", {"estado": "publicado"}).data["data"]["publicaciones"]
+        assert data[0]["campaign_titulo"] == "2x1 en capuchinos"
+        assert data[0]["ultima_metrica"]["me_gusta"] == 7
+
+
+class TestLecturaDeMetricasEnMeta:
+    def test_instagram_combina_contadores_e_insights(self):
+        respuestas = iter([
+            {"like_count": 9, "comments_count": 2},
+            {"data": [{"name": "likes", "values": [{"value": 11}]}, {"name": "reach", "values": [{"value": 80}]},
+                      {"name": "total_interactions", "total_value": {"value": 15}}]},
+        ])
+        with patch.object(meta_graph, "_graph", side_effect=lambda *a, **k: next(respuestas)):
+            datos = meta_graph.metricas_instagram("media-1", "tok")
+        assert (datos["me_gusta"], datos["comentarios"], datos["alcance"], datos["interacciones"]) == (11, 2, 80, 15)
+        assert datos["guardados"] is None
+
+    def test_instagram_sin_insights_usa_los_contadores_y_deja_null_el_resto(self):
+        def graph(metodo, ruta, **params):
+            if ruta.endswith("/insights"):
+                raise meta_graph.MetaError("Media posted before business account conversion")
+            return {"like_count": 4, "comments_count": 1}
+        with patch.object(meta_graph, "_graph", side_effect=graph):
+            datos = meta_graph.metricas_instagram("media-1", "tok")
+        assert (datos["me_gusta"], datos["comentarios"], datos["alcance"]) == (4, 1, None)
+        assert "insights_error" in datos["crudo"]
+
+    def test_facebook_lee_reacciones_y_no_inventa_compartidos(self):
+        respuestas = iter([
+            {"reactions": {"summary": {"total_count": 6}}, "comments": {"summary": {"total_count": 2}}},
+            {"data": [{"name": "post_media_view", "values": [{"value": 50}]}]},
+        ])
+        with patch.object(meta_graph, "_graph", side_effect=lambda *a, **k: next(respuestas)):
+            datos = meta_graph.metricas_facebook("page_1", "tok")
+        assert (datos["me_gusta"], datos["comentarios"], datos["vistas"]) == (6, 2, 50)
+        assert datos["compartidos"] is None
