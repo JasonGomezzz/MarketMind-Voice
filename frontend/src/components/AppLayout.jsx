@@ -106,7 +106,7 @@ export default function AppLayout() {
     <div className="app-shell liquid-app-shell flex h-screen bg-background p-3">
       <aside className="glass-sidebar liquid-panel flex w-64 flex-col overflow-hidden rounded-3xl border border-outline-variant">
         <div className="px-6 py-6">
-          <span className="text-xl font-bold tracking-tight text-primary">MarketMind IA</span>
+          <span className="text-xl font-bold tracking-tight text-primary">NexoMark IA</span>
         </div>
 
         <nav className="flex-1 space-y-1 px-3">

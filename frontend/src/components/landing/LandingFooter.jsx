@@ -35,7 +35,7 @@ export default function LandingFooter() {
       {/* Pie */}
       <div className="border-t border-outline-variant bg-surface-container-low">
         <div className="mx-auto flex max-w-[1440px] flex-col items-center gap-4 px-6 py-10 text-center md:px-10">
-          <span className="text-xl font-bold text-primary">MarketMind IA</span>
+          <span className="text-xl font-bold text-primary">NexoMark IA</span>
           <p className="max-w-md text-sm text-on-surface-variant">
             Automatización de campañas publicitarias con IA para agencias digitales.
           </p>
@@ -51,7 +51,7 @@ export default function LandingFooter() {
             </Link>
           </div>
           <p className="mt-2 text-xs text-outline">
-            © {new Date().getFullYear()} MarketMind IA. Todos los derechos reservados.
+            © {new Date().getFullYear()} NexoMark IA. Todos los derechos reservados.
           </p>
         </div>
       </div>

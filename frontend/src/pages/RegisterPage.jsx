@@ -43,7 +43,7 @@ export default function RegisterPage() {
         navigate('/login', { replace: true })
         return
       }
-      toast.success('Cuenta creada. Bienvenido a MarketMind.')
+      toast.success('Cuenta creada. Bienvenido a NexoMark IA.')
       navigate('/dashboard', { replace: true })
     } catch (err) {
       // El backend envuelve los errores por campo en {success, message, data: {campo: [...]}}
@@ -82,7 +82,7 @@ export default function RegisterPage() {
         <div className="glass-liquid w-full max-w-md rounded-[2rem] p-7 md:p-9">
           <div className="mb-10">
             <Link to="/" className="text-3xl font-bold tracking-tight text-primary">
-              MarketMind IA
+              NexoMark IA
             </Link>
             <p className="mt-2 text-base text-on-surface-variant">
               Impulsa tu marketing con inteligencia artificial de alto rendimiento.
@@ -173,7 +173,7 @@ export default function RegisterPage() {
               {/* Selector de rol */}
               <div className="space-y-2">
                 <span className="px-1 text-sm font-medium text-on-surface-variant">
-                  ¿Cómo usarás MarketMind?
+                  ¿Cómo usarás NexoMark IA?
                 </span>
                 <div className="grid grid-cols-2 gap-3">
                   {roles.map((r) => (

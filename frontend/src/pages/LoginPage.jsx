@@ -60,7 +60,7 @@ export default function LoginPage() {
         <div className="glass-liquid w-full max-w-md rounded-[2rem] p-7 md:p-9">
           <div className="mb-12">
             <Link to="/" className="text-3xl font-bold tracking-tight text-primary">
-              MarketMind IA
+              NexoMark IA
             </Link>
             <p className="mt-2 text-base text-on-surface-variant">
               Impulsa tu marketing con inteligencia artificial de alto rendimiento.
