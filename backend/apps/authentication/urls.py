@@ -9,8 +9,13 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import AuthBrandContentView, ChangePasswordView, LogoutView, MeView, RegisterView
 from .token_views import CustomTokenObtainPairView
 from .password_reset import PasswordResetRequestView, PasswordResetConfirmView
+from .instagram import InstagramAccountsView, InstagramConnectView, InstagramCompleteView, InstagramDisconnectView
 
 urlpatterns = [
+    path('instagram/accounts/', InstagramAccountsView.as_view()),
+    path('instagram/accounts/<int:pk>/', InstagramDisconnectView.as_view()),
+    path('instagram/connect/', InstagramConnectView.as_view()),
+    path('instagram/complete/', InstagramCompleteView.as_view()),
     path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     # HU1: Registro de usuarios

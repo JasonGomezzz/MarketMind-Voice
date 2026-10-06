@@ -257,3 +257,23 @@ class AuthBrandContent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.screen}: {self.person_name}"
+
+
+class InstagramAccount(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='instagram_accounts')
+    instagram_user_id = models.CharField(max_length=64)
+    username = models.CharField(max_length=150)
+    encrypted_token = models.TextField()
+    expires_at = models.DateTimeField()
+    connected_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['owner', 'instagram_user_id'], name='unique_owner_instagram_account')]
+
+
+class InstagramAuthorization(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    state_hash = models.CharField(max_length=64, unique=True)
+    token_version = models.IntegerField()
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
