@@ -91,6 +91,19 @@ def _sumar(valores: list[int | None]) -> int | None:
     return sum(presentes) if presentes else None
 
 
+def refrescar_recientes(qs: QuerySet[Publication], limite: int = 20) -> dict:
+    """Actualiza las publicaciones publicadas más recientes del alcance del usuario."""
+    actualizadas, sin_datos = 0, 0
+    recientes = qs.filter(estado=PublicacionEstado.PUBLICADO).select_related("conexion").order_by("-publicado_at")
+    for publicacion in recientes[:limite]:
+        try:
+            refrescar_metricas(publicacion)
+            actualizadas += 1
+        except MetricasNoDisponibles:
+            sin_datos += 1
+    return {"actualizadas": actualizadas, "sin_datos": sin_datos}
+
+
 def resumen_por_red(qs: QuerySet[Publication]) -> dict:
     """Totales por red para el dashboard, usando la última foto de cada publicación."""
     publicadas = con_ultima_metrica(qs.filter(estado=PublicacionEstado.PUBLICADO))
@@ -108,6 +121,7 @@ def resumen_por_red(qs: QuerySet[Publication]) -> dict:
             "publicaciones": len(lista),
             "publicaciones_mes": sum(1 for p in lista if p.publicado_at and p.publicado_at >= inicio_mes),
             "con_metricas": len(ultimas),
+            "metricas_al": max((m.obtenida_at for m in ultimas), default=None),
             **{campo: _sumar([getattr(m, campo) for m in ultimas]) for campo in CAMPOS},
         }
 

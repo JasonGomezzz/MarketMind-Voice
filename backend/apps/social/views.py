@@ -10,6 +10,7 @@ MarketMind Voice — Endpoints de redes sociales.
     POST   /api/social/publications/{id}/publish/    publicar ahora / reintentar
     GET    /api/social/publications/{id}/stats/?refresh=1     métricas de una publicación (+ historial)
     GET    /api/social/publications/summary/          totales por red y serie mensual (dashboard)
+    POST   /api/social/publications/refresh/          actualiza desde Meta las 20 publicadas más recientes
     GET    /api/public/media/{token}.jpg             imagen aprobada para Meta (firmada, caduca)
     POST   /api/internal/campaign-events/approved    aviso de Spring tras aprobar (token interno)
 """
@@ -38,6 +39,7 @@ from services.metrics_service import (
     MetricasNoDisponibles,
     con_ultima_metrica,
     refrescar_metricas,
+    refrescar_recientes,
     resumen_por_red,
 )
 from services.publication_service import (
@@ -49,7 +51,12 @@ from services.publication_service import (
 from services.social_tokens import cifrar
 
 from .models import ConexionEstado, PublicacionEstado, Publication, RedSocial, SocialConnection
-from .serializers import PublicationMetricSerializer, PublicationSerializer, SocialConnectionSerializer
+from .serializers import (
+    PublicationDetailSerializer,
+    PublicationMetricSerializer,
+    PublicationSerializer,
+    SocialConnectionSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +187,7 @@ class PublicationViewSet(viewsets.GenericViewSet):
 
     def get_queryset(self):
         """Cada rol ve lo suyo: superadmin todo, marketero sus campañas, cliente las dirigidas a su email."""
-        qs = Publication.objects.select_related("campaign")
+        qs = Publication.objects.select_related("campaign", "campaign__marketero")
         usuario = self.request.user
         if usuario.rol == UserRole.SUPERADMIN:
             return qs
@@ -216,7 +223,7 @@ class PublicationViewSet(viewsets.GenericViewSet):
                 aviso = str(exc)
         historial = publicacion.metricas.order_by("-obtenida_at")[:20]
         return Response(api_response(True, aviso or "Estadísticas de la publicación.", {
-            "publicacion": PublicationSerializer(publicacion).data,
+            "publicacion": PublicationDetailSerializer(publicacion).data,
             "historial": PublicationMetricSerializer(historial, many=True).data,
             "aviso": aviso,
         }))
@@ -225,6 +232,12 @@ class PublicationViewSet(viewsets.GenericViewSet):
     def summary(self, request: Request) -> Response:
         """Dashboard: publicaciones y totales por red con la última foto de cada publicación."""
         return Response(api_response(True, "Resumen por red.", resumen_por_red(self.get_queryset())))
+
+    @action(detail=False, methods=["post"], url_path="refresh")
+    def refresh(self, request: Request) -> Response:
+        """Botón "Actualizar métricas" del dashboard. Respeta el intervalo mínimo por publicación."""
+        resultado = refrescar_recientes(self.get_queryset())
+        return Response(api_response(True, "Métricas actualizadas.", resultado))
 
     @action(detail=True, methods=["post"], url_path="publish")
     def publish(self, request: Request, pk: str | None = None) -> Response:

@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from services import public_media
+
 from .models import Publication, PublicationMetric, SocialConnection
 
 
@@ -30,13 +32,16 @@ class PublicationMetricSerializer(serializers.ModelSerializer):
 
 class PublicationSerializer(serializers.ModelSerializer):
     campaign_titulo = serializers.CharField(source="campaign.titulo", read_only=True)
+    cliente_nombre = serializers.CharField(source="campaign.cliente_nombre", read_only=True)
+    marketero_nombre = serializers.CharField(source="campaign.marketero.nombre", read_only=True, default="")
     ultima_metrica = serializers.SerializerMethodField()
 
     class Meta:
         model = Publication
         fields = [
-            "id", "campaign", "campaign_titulo", "red", "cuenta_nombre", "estado", "permalink",
-            "error", "intentos", "version_aprobada", "publicado_at", "fecha_creacion", "ultima_metrica",
+            "id", "campaign", "campaign_titulo", "cliente_nombre", "marketero_nombre", "red",
+            "cuenta_nombre", "estado", "permalink", "error", "intentos", "version_aprobada",
+            "publicado_at", "fecha_creacion", "ultima_metrica",
         ]
         read_only_fields = fields
 
@@ -45,3 +50,16 @@ class PublicationSerializer(serializers.ModelSerializer):
         ordenadas = getattr(obj, "metricas_ordenadas", None)
         metrica = ordenadas[0] if ordenadas else (None if ordenadas is not None else obj.metricas.first())
         return PublicationMetricSerializer(metrica).data if metrica else None
+
+
+class PublicationDetailSerializer(PublicationSerializer):
+    """Detalle para el panel de estadísticas: además, lo que se publicó (copy e imagen aprobados)."""
+
+    imagen_url = serializers.SerializerMethodField()
+
+    class Meta(PublicationSerializer.Meta):
+        fields = PublicationSerializer.Meta.fields + ["copy_aprobado", "imagen_url"]
+        read_only_fields = fields
+
+    def get_imagen_url(self, obj: Publication) -> str | None:
+        return public_media.url_publica(obj.id) if obj.imagen_aprobada_b64 else None

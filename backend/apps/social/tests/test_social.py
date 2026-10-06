@@ -494,6 +494,45 @@ class TestMetricas:
         assert data[0]["campaign_titulo"] == "2x1 en capuchinos"
         assert data[0]["ultima_metrica"]["me_gusta"] == 7
 
+    def test_historial_incluye_cliente_y_marketero(self, publicada, api_client, user_marketero):
+        data = api_client.get("/api/social/publications/").data["data"]["publicaciones"]
+        assert data[0]["cliente_nombre"] == publicada.campaign.cliente_nombre
+        assert data[0]["marketero_nombre"] == user_marketero.nombre
+
+    def test_stats_muestra_lo_que_se_publico(self, publicada, api_client):
+        Publication.objects.filter(pk=publicada.pk).update(copy_aprobado="Copy aprobado", imagen_aprobada_b64="iVBOR")
+        with patch.object(meta_graph, "metricas_instagram", return_value=dict(METRICAS_IG)):
+            detalle = api_client.get(f"/api/social/publications/{publicada.id}/stats/").data["data"]["publicacion"]
+        assert detalle["copy_aprobado"] == "Copy aprobado"
+        assert detalle["imagen_url"].startswith("http://testserver/api/public/media/")
+
+    def test_stats_sin_imagen_aprobada_no_da_url(self, publicada, api_client):
+        detalle = api_client.get(f"/api/social/publications/{publicada.id}/stats/").data["data"]["publicacion"]
+        assert detalle["imagen_url"] is None
+
+    def test_actualizar_metricas_solo_toca_las_publicadas(self, publicada, campana, api_client):
+        Publication.objects.create(campaign=campana, red=RedSocial.INSTAGRAM, cuenta_nombre="@pendiente")
+        with patch.object(meta_graph, "metricas_instagram", return_value=dict(METRICAS_IG)) as meta:
+            data = api_client.post("/api/social/publications/refresh/").data["data"]
+        assert data == {"actualizadas": 1, "sin_datos": 0}
+        assert meta.call_count == 1
+        assert PublicationMetric.objects.filter(publicacion=publicada).count() == 1
+
+    def test_actualizar_metricas_no_toca_publicaciones_ajenas(self, publicada, db):
+        otro = User.objects.create_user(email="otro.mk2@test.com", password="Test1234!", nombre="Otro",
+                                        rol=UserRole.MARKETERO)
+        with patch.object(meta_graph, "metricas_instagram", return_value=dict(METRICAS_IG)) as meta:
+            data = cliente_api(otro).post("/api/social/publications/refresh/").data["data"]
+        assert data == {"actualizadas": 0, "sin_datos": 0}
+        assert meta.call_count == 0
+
+    def test_resumen_indica_la_fecha_de_las_metricas(self, publicada, api_client):
+        metrica = PublicationMetric.objects.create(publicacion=publicada, me_gusta=4)
+        instagram = api_client.get("/api/social/publications/summary/").data["data"]["redes"]["instagram"]
+        assert instagram["metricas_al"] == metrica.obtenida_at
+        facebook = api_client.get("/api/social/publications/summary/").data["data"]["redes"]["facebook"]
+        assert facebook["metricas_al"] is None
+
 
 class TestLecturaDeMetricasEnMeta:
     def test_instagram_combina_contadores_e_insights(self):
