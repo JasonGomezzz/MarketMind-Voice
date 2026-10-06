@@ -547,7 +547,7 @@ private fun HomeTopBar(nombre: String?, onAvatarClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "MarketMind IA",
+            text = "NexoMark IA",
             color = Color(0xFF252166),
             fontSize = 22.sp,
             fontWeight = FontWeight.ExtraBold,
