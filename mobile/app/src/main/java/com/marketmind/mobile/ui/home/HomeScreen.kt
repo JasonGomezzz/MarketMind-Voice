@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -315,7 +316,7 @@ private fun HomeDashboard(
 
                 MetricsGrid(stats = stats, modifier = Modifier.padding(top = 18.dp))
 
-                AiInsightCard(modifier = Modifier.padding(top = 18.dp))
+                ResumenCard(stats = stats, modifier = Modifier.padding(top = 18.dp))
 
                 Row(
                     modifier = Modifier
@@ -747,11 +748,12 @@ private fun MetricCard(
 }
 
 @Composable
-private fun AiInsightCard(modifier: Modifier = Modifier) {
+private fun ResumenCard(stats: CampaignStatsDto, modifier: Modifier = Modifier) {
+    val resumen = resumenInicio(stats)
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(146.dp),
+            .heightIn(min = 146.dp),
         shape = RoundedCornerShape(11.dp),
         colors = CardDefaults.cardColors(containerColor = BrandBlue),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
@@ -783,18 +785,25 @@ private fun AiInsightCard(modifier: Modifier = Modifier) {
                         modifier = Modifier.size(15.dp),
                     )
                     Text(
-                        text = "  AI INSIGHT",
+                        text = "  Tu resumen",
                         color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.ExtraBold,
                     )
                 }
                 Text(
-                    text = "Your 'Summer Glow'\ncampaign is trending 24%\nhigher.",
+                    text = resumen.titulo,
                     color = Color.White,
-                    fontSize = 21.sp,
+                    fontSize = 20.sp,
                     lineHeight = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 8.dp, end = 56.dp),
+                )
+                Text(
+                    text = resumen.detalle,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -1571,7 +1580,7 @@ private fun CampaignPreviewCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Updated ${campaign.updated}",
+                    text = "Actualizada el ${campaign.updated}",
                     color = TextMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1616,14 +1625,13 @@ private fun ErrorPanel(
 }
 
 private fun CampaignDto.toPreview(): CampaignPreview {
-    val status = if (estado == "aprobado") CampaignStatus.Approved else CampaignStatus.Pending
     return CampaignPreview(
         id = id,
         title = titulo.orEmpty().ifBlank { "Campaña sin título" },
         updated = fechaActualizacion?.let { formatShortDate(it) }
             ?: fechaCreacion?.let { formatShortDate(it) }
             ?: "sin fecha",
-        status = status,
+        status = estado,
         accent = when (plataforma?.lowercase()) {
             "facebook" -> Color(0xFF1877F2)
             "instagram" -> Color(0xFFE8409C)
@@ -1686,13 +1694,16 @@ private fun CampaignThumbnail(accent: Color) {
 }
 
 @Composable
-private fun StatusPill(status: CampaignStatus) {
-    val colors = when (status) {
-        CampaignStatus.Approved -> Color(0xFF716CF7) to Color(0xFFE7E6FF)
-        CampaignStatus.Pending -> Color(0xFF9B6933) to Color(0xFFF3E0C8)
+private fun StatusPill(estado: String) {
+    val colors = when (estado) {
+        "aprobado" -> Color(0xFF087A44) to Color(0xFFCFF8E4)
+        "rechazado", "fracaso" -> DangerRed to Color(0xFFFFE0E0)
+        "pendiente_aprobacion" -> Color(0xFF9B6933) to Color(0xFFF3E0C8)
+        "generado", "pendiente_ia" -> Color(0xFF4D4AF0) to Color(0xFFE7E6FF)
+        else -> TextMuted to Color(0xFFECEAF5)
     }
     Text(
-        text = status.label,
+        text = etiquetaEstadoCorta(estado).uppercase(),
         color = colors.first,
         fontSize = 9.sp,
         fontWeight = FontWeight.ExtraBold,
@@ -2236,12 +2247,9 @@ private data class CampaignPreview(
     val id: Long,
     val title: String,
     val updated: String,
-    val status: CampaignStatus,
+    /** Estado real de la campaña (borrador, generado, aprobado…). */
+    val status: String,
     val accent: Color,
 )
 
-private enum class CampaignStatus(val label: String) {
-    Approved("APPROVED"),
-    Pending("PENDING"),
-}
 
