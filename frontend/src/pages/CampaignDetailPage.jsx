@@ -5,6 +5,7 @@ import AppToaster from '@/components/ui/AppToaster'
 import { ArrowLeft, Copy, ExternalLink, FileText, ImageOff, RefreshCw, Send, Star, Trash2 } from 'lucide-react'
 import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
+import { getApprovedPublicationCopy } from '../services/campaignPublication'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
@@ -245,13 +246,18 @@ export default function CampaignDetailPage() {
   }
 
   async function handlePreparePublication(platform) {
-    const destination = PLATFORM_PUBLISH_URLS[platform]?.(text)
+    const approvedCopy = getApprovedPublicationCopy(campaign)
+    if (approvedCopy === null) {
+      toast.error('Disponible cuando el cliente apruebe la campaña.')
+      return
+    }
+    const destination = PLATFORM_PUBLISH_URLS[platform]?.(approvedCopy)
     if (!destination) return
 
     // Abrir durante el clic evita que el navegador bloquee la nueva pestaña.
     window.open(destination, '_blank', 'noopener,noreferrer')
     try {
-      await navigator.clipboard.writeText(text)
+      await navigator.clipboard.writeText(approvedCopy)
       toast.success(`Copy copiado. Completa la publicación en ${PLATFORM_LABELS[platform]}.`)
     } catch {
       toast.success(`Se abrió ${PLATFORM_LABELS[platform]}. Copia el texto desde esta campaña.`)
@@ -283,6 +289,7 @@ export default function CampaignDetailPage() {
 
   const isReadonly = READONLY_STATES.includes(campaign.estado)
   const canSubmit = campaign.estado === 'generado'
+  const canPreparePublication = getApprovedPublicationCopy(campaign) !== null
   // HU regenerar: borrador (fallo previo) o rechazado (vuelve a borrador en backend)
   const canRegenerate =
     ['borrador', 'rechazado'].includes(campaign.estado) &&
@@ -563,10 +570,15 @@ export default function CampaignDetailPage() {
           {campaign.texto_generado && (
             <div className="mt-4 rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
               <div className="mb-4">
-                <p className="text-sm font-semibold text-on-surface">Publicación rápida</p>
+                <p className="text-sm font-semibold text-on-surface">Preparar publicación</p>
+                {!canPreparePublication && (
+                  <p id="publication-approval-notice" className="mt-2 text-sm text-on-surface-variant">
+                    Disponible cuando el cliente apruebe la campaña.
+                  </p>
+                )}
                 <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-                  El botón copia el copy y abre el editor oficial de la plataforma. Por seguridad,
-                  la confirmación final de la publicación se realiza en tu cuenta de la red social.
+                  Después de la aprobación, el botón copia el texto aprobado y abre la plataforma.
+                  No publica automáticamente: debes completar la publicación en tu cuenta de la red social.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -577,6 +589,8 @@ export default function CampaignDetailPage() {
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={!canPreparePublication}
+                      aria-describedby={!canPreparePublication ? 'publication-approval-notice' : undefined}
                       onClick={() => handlePreparePublication(platform)}
                     >
                       {['instagram', 'google_ads', 'tiktok'].includes(platform) ? (
@@ -584,7 +598,7 @@ export default function CampaignDetailPage() {
                       ) : (
                         <ExternalLink className="h-4 w-4" />
                       )}
-                      Publicar en {PLATFORM_LABELS[platform] || platform}
+                      Preparar para {PLATFORM_LABELS[platform] || platform}
                     </Button>
                   ),
                 )}
