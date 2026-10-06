@@ -11,7 +11,11 @@ export const socialApi = {
   desconectar: (id) => api.delete(`/api/social/connections/${id}/`),
   publicaciones: (campaignId) =>
     api
-      .get('/api/social/publications/', { params: { campaign: campaignId } })
+      .get('/api/social/publications/', { params: campaignId ? { campaign: campaignId } : {} })
       .then((r) => r.data.data.publicaciones),
   publicar: (id) => api.post(`/api/social/publications/${id}/publish/`),
+  resumen: () => api.get('/api/social/publications/summary/').then((r) => r.data.data),
+  estadisticas: (id) =>
+    api.get(`/api/social/publications/${id}/stats/`, { params: { refresh: 1 } }).then((r) => r.data.data),
+  actualizarMetricas: () => api.post('/api/social/publications/refresh/').then((r) => r.data.data),
 }

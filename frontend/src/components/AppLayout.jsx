@@ -11,6 +11,7 @@ import {
   Settings,
   Lightbulb,
   ClipboardList,
+  ChartColumnIncreasing,
 } from 'lucide-react'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
@@ -23,6 +24,7 @@ const NAV_ITEMS = {
   marketero: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/campaigns', label: 'Campañas', icon: Megaphone },
+    { to: '/stats', label: 'Estadísticas', icon: ChartColumnIncreasing },
     { to: '/prompt-guide', label: 'Guía de prompts', icon: Lightbulb },
     { to: '/settings', label: 'Configuración', icon: Settings },
   ],
@@ -31,12 +33,14 @@ const NAV_ITEMS = {
     { to: '/campaigns', label: 'Campañas', icon: Megaphone },
     { to: '/admin', label: 'Usuarios', icon: Users },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/stats', label: 'Estadísticas', icon: ChartColumnIncreasing },
     { to: '/prompt-guide', label: 'Guía de prompts', icon: Lightbulb },
     { to: '/settings', label: 'Configuración', icon: Settings },
   ],
   cliente: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/client-campaigns', label: 'Pendientes', icon: ClipboardList },
+    { to: '/stats', label: 'Estadísticas', icon: ChartColumnIncreasing },
     { to: '/settings', label: 'Configuración', icon: Settings },
   ],
 }

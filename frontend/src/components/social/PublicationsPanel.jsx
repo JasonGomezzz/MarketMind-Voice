@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ExternalLink, Loader2, Send } from 'lucide-react'
+import { ChartColumnIncreasing, ExternalLink, Loader2, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import RedIcon from './RedIcon'
 import { estadoPublicacion, etiquetaRed, puedeReintentar } from '../../services/social'
@@ -62,7 +63,7 @@ export default function PublicationsPanel({ campaignId, estadoCampana }) {
                 </span>
               </div>
               {p.error && <p className="mt-2 text-xs text-error">{p.error}</p>}
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
                 {p.permalink && (
                   <a
                     href={p.permalink}
@@ -73,6 +74,15 @@ export default function PublicationsPanel({ campaignId, estadoCampana }) {
                     <ExternalLink className="h-4 w-4" />
                     Ver publicación
                   </a>
+                )}
+                {p.estado === 'publicado' && (
+                  <Link
+                    to={`/stats?publicacion=${p.id}`}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                  >
+                    <ChartColumnIncreasing className="h-4 w-4" />
+                    Ver estadísticas
+                  </Link>
                 )}
                 {puedeReintentar(p, estadoCampana) && (
                   <Button size="sm" variant="outline" onClick={() => publicar(p)} disabled={publicando === p.id}>

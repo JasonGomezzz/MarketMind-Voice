@@ -12,6 +12,7 @@ import CampaignListPage from './pages/CampaignListPage'
 import NewCampaignPage from './pages/NewCampaignPage'
 import CampaignDetailPage from './pages/CampaignDetailPage'
 import AnalyticsPage from './pages/AnalyticsPage'
+import PublicationsStatsPage from './pages/PublicationsStatsPage'
 import UsersAdminPage from './pages/UsersAdminPage'
 import AccountSettingsPage from './pages/AccountSettingsPage'
 import PromptGuidePage from './pages/PromptGuidePage'
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="/client-help" element={<ClientHelpPage />} />
               <Route path="/admin" element={<UsersAdminPage />} />
               <Route path="/admin/analytics" element={<AnalyticsPage />} />
+              <Route path="/stats" element={<PublicationsStatsPage />} />
               <Route path="/settings" element={<AccountSettingsPage />} />
               <Route path="/prompt-guide" element={<PromptGuideRouter />} />
               <Route path="/credits" element={<CreditsDetailPage />} />
