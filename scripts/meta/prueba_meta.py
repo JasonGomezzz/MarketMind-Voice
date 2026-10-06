@@ -37,9 +37,9 @@ ROOT = Path(__file__).resolve().parents[2]
 GRAPH = "https://graph.facebook.com/v25.0"
 IMAGEN_MUESTRA = (
     "https://raw.githubusercontent.com/JasonGomezzz/MarketMind-Voice/"
-    "remejora/scripts/meta/muestra-marketmind.jpg"
+    "remejora/scripts/meta/muestra-cafe-gemini.jpg"
 )
-TEXTO_MUESTRA = "Prueba de publicación automática desde MarketMind Voice."
+TEXTO_MUESTRA = "Prueba de publicación automática desde NexoMark IA: imagen generada con IA."
 PERMISOS_ESPERADOS = [
     "pages_show_list",
     "pages_read_engagement",
@@ -47,6 +47,7 @@ PERMISOS_ESPERADOS = [
     "instagram_basic",
     "instagram_content_publish",
     "instagram_manage_insights",
+    "business_management",
 ]
 METRICAS_IG = "likes,comments,shares,saved,reach,views,total_interactions"
 
