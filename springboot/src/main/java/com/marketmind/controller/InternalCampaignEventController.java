@@ -46,7 +46,7 @@ public class InternalCampaignEventController {
                 "type", "campaign_submitted",
                 "campaign", campaign
         ));
-        webSocketHandler.broadcast(payload);
+        webSocketHandler.sendToClient(campaign.getClienteEmail(), payload);
 
         return ResponseEntity.ok(ApiResponse.ok("Evento emitido.", Map.of("campaignId", request.getCampaignId())));
     }

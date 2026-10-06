@@ -181,7 +181,7 @@ public class CampaignService {
                     "type", "campaign_status_changed",
                     "campaign", toDTOConNombre(saved)
             ));
-            webSocketHandler.broadcast(payload);
+            webSocketHandler.sendToClient(saved.getClienteEmail(), payload);
         } catch (JsonProcessingException e) {
             log.warn("No se pudo serializar el evento campaign_status_changed para campaña {}", saved.getId(), e);
         }

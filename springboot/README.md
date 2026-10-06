@@ -95,3 +95,25 @@ Al hacer `PATCH /{id}/status`, si otra operación ya modificó la campaña, reci
   "data": null
 }
 ```
+# WebSocket seguro para clientes
+
+`/ws/client-campaigns` permite el handshake, pero no entrega campañas hasta
+recibir, en los primeros 5 segundos, el mensaje
+`{"type":"authenticate","token":"<access JWT>"}`. No pongas tokens en la URL.
+El servidor responde `{"type":"authenticated"}` antes de enviar eventos.
+
+Solo admite clientes activos con JWT de acceso firmado, vigente y con la
+versión actual de su cuenta. No admite refresh tokens. Los eventos se dirigen
+por el correo del dueño de la campaña, obtenido del dominio; nunca por un
+destinatario que el navegador elija. Antes de enviar se revalida la cuenta;
+las sesiones vencidas o revocadas no reciben datos.
+
+Configura `APP_WEBSOCKET_ALLOWED_ORIGINS` con los orígenes HTTPS exactos de la
+web al desplegar. No uses `*`; desarrollo conserva los orígenes locales.
+En producción la conexión debe ser WSS. El cierre 1008 indica rechazo de
+autenticación/permisos o vencimiento. La web comprueba su sesión HTTP antes de
+conectar y reconectar, para renovar el access token cuando corresponde.
+
+**Despliega React y Spring juntos:** este cambio reemplaza el canal anónimo
+por autenticación en el primer mensaje. Los clientes antiguos no reciben eventos.
+No cambia el contrato REST ni los registros de campañas/usuarios.

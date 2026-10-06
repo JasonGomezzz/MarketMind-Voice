@@ -74,7 +74,7 @@ class CampaignServiceTest {
         assertEquals("aprobado", result.getEstado());
         assertEquals(5, result.getClienteValoracion());
         verify(email).notify(campaign, "aprobado");
-        verify(websocket).broadcast(any());
+        verify(websocket).sendToClient(eq(campaign.getClienteEmail()), any());
     }
     @Test void secondRejectionEndsCampaignAsFailure() {
         ReflectionTestUtils.setField(campaign, "rechazosClienteCount", (short) 1);
