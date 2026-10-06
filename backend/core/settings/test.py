@@ -7,6 +7,7 @@ Uso: DJANGO_SETTINGS_MODULE=core.settings.test (configurado en pytest.ini)
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
+TESTING = True
 
 # ── DB in-memory para velocidad y aislamiento ──
 DATABASES = {
@@ -42,3 +43,8 @@ DJANGO_BASE_URL = "http://testserver"
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
+
+# ── Meta: valores ficticios; los tests simulan la Graph API ──
+META_APP_ID = "test-app"
+META_APP_SECRET = "test-secret"
+FRONTEND_URL = "http://frontend.test"

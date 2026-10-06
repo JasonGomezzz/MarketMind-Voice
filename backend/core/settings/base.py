@@ -45,6 +45,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.authentication",
     "apps.campaigns",
+    "apps.social",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -268,3 +269,29 @@ USE_MOCK_AI = config("USE_MOCK_AI", cast=bool, default=False)
 # Resend (activo en Sprint 4)
 RESEND_API_KEY = config("RESEND_API_KEY", default="")
 RESEND_FROM_EMAIL = config("RESEND_FROM_EMAIL", default="noreply@marketmind.ai")
+
+# ─────────────────────────────────────────────
+# META — publicación en Instagram y Facebook (Fase 3)
+# ─────────────────────────────────────────────
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
+META_APP_ID = config("META_APP_ID", default="")
+META_APP_SECRET = config("META_APP_SECRET", default="")
+META_GRAPH_VERSION = config("META_GRAPH_VERSION", default="v25.0")
+META_REDIRECT_URI = config(
+    "META_REDIRECT_URI",
+    default=f"{DJANGO_BASE_URL}/api/social/meta/callback/",
+)
+META_OAUTH_SCOPES = [
+    "pages_show_list",
+    "pages_read_engagement",
+    "pages_manage_posts",
+    "instagram_basic",
+    "instagram_content_publish",
+    "instagram_manage_insights",
+    "business_management",
+]
+# Clave Fernet para cifrar tokens de página. Obligatoria fuera de DEBUG;
+# en desarrollo y tests se deriva de SECRET_KEY.
+SOCIAL_TOKEN_KEY = config("SOCIAL_TOKEN_KEY", default="")
+# Meta descarga la imagen desde una URL pública firmada que caduca.
+PUBLIC_MEDIA_MAX_AGE = 3600

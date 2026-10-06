@@ -30,6 +30,7 @@ from core.exceptions import api_response
 from services.gemini_text_service import improve_copy
 from services.internal_event_service import notify_campaign_submitted
 from services.n8n_service import describir_resultado, trigger_ia_generation
+from services.publication_service import DestinoInvalido, programar_publicaciones
 from services.version_service import restore_campaign_version, save_campaign_version
 
 from .models import Campaign, CampaignStatus, CampaignVersion, CreditPurchase
@@ -374,6 +375,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save()
+        _subir_version(campaign)
         return Response(
             api_response(
                 success=True,
@@ -406,6 +408,16 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
         campaign = self.get_object()
 
+        if campaign.estado in [CampaignStatus.APROBADO, CampaignStatus.FRACASO]:
+            return Response(
+                api_response(
+                    success=False,
+                    message=f"No se puede modificar una campaña en estado '{campaign.estado}'.",
+                    data={},
+                ),
+                status=status.HTTP_409_CONFLICT,
+            )
+
         if not (campaign.texto_generado or "").strip():
             return Response(
                 api_response(
@@ -427,6 +439,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
         )
         campaign.texto_generado = mejorado
         campaign.save(update_fields=["texto_generado", "fecha_actualizacion"])
+        _subir_version(campaign)
 
         return Response(
             api_response(
@@ -457,6 +470,16 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
         campaign = self.get_object()
 
+        # Cuentas donde se publicará al aprobar (opcional; sin destinos no se publica).
+        destinos = request.data.get("destinos") or []
+        if not isinstance(destinos, list) or not all(
+            isinstance(d, int) and not isinstance(d, bool) for d in destinos
+        ):
+            return Response(
+                api_response(success=False, message="'destinos' debe ser una lista de ids.", data={}),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if campaign.estado != CampaignStatus.GENERADO:
             return Response(
                 api_response(
@@ -475,6 +498,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 campaign.transition_to(CampaignStatus.PENDIENTE_APROBACION)
                 campaign.enviado_cliente_at = timezone.now()
                 campaign.save(update_fields=["enviado_cliente_at", "fecha_actualizacion"])
+                publicaciones = programar_publicaciones(campaign, destinos, request.user)
                 transaction.on_commit(lambda: notify_campaign_submitted(campaign.id))
         except ValidationError as e:
             return Response(
@@ -485,12 +509,24 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 ),
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        except DestinoInvalido as e:
+            campaign.refresh_from_db()
+            return Response(
+                api_response(success=False, message=str(e), data={}),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             api_response(
                 success=True,
                 message="Campaña enviada al cliente para aprobación.",
-                data={"campaign": CampaignSerializer(campaign).data},
+                data={
+                    "campaign": CampaignSerializer(campaign).data,
+                    "destinos": [
+                        {"id": p.id, "red": p.red, "cuenta_nombre": p.cuenta_nombre, "estado": p.estado}
+                        for p in publicaciones
+                    ],
+                },
             ),
             status=status.HTTP_200_OK,
         )
@@ -984,6 +1020,7 @@ class CampaignVersionRestoreView(APIView):
 
         version = get_object_or_404(CampaignVersion, pk=version_id, campaign=campaign)
         campaign = restore_campaign_version(campaign, version)
+        _subir_version(campaign)
 
         return Response(
             api_response(
@@ -1064,3 +1101,15 @@ class CampaignExportPDFView(APIView):
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="campana_{safe_title}.pdf"'
         return response
+
+
+def _subir_version(campaign: Campaign) -> None:
+    """
+    Incrementa Campaign.version al cambiar el contenido.
+
+    Spring usa este campo como bloqueo optimista al aprobar: si el cliente
+    aprueba lo que vio antes de una edición, su aprobación se rechaza y debe
+    recargar. Así lo aprobado es lo que se publica.
+    """
+    Campaign.objects.filter(pk=campaign.pk).update(version=F("version") + 1)
+    campaign.refresh_from_db(fields=["version"])
