@@ -29,6 +29,7 @@ from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
 from services.gemini_text_service import improve_copy
 from services.internal_event_service import notify_campaign_submitted
+from services.credit_service import agregar_creditos
 from services.n8n_service import describir_resultado, trigger_ia_generation
 from services.publication_service import DestinoInvalido, programar_publicaciones
 from services.version_service import restore_campaign_version, save_campaign_version
@@ -690,8 +691,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 monto=plan["precio"],
                 creditos=plan["creditos"],
             )
-            request.user.tokens_disponibles += plan["creditos"]
-            request.user.save(update_fields=["tokens_disponibles"])
+            agregar_creditos(request.user, plan["creditos"])
 
         return Response(
             api_response(
@@ -772,9 +772,7 @@ class IaResultCallbackView(APIView):
                 campaign.ia_error_message = error_msg
                 campaign.save(update_fields=["ia_error_message", "fecha_actualizacion"])
 
-                user = campaign.marketero
-                user.tokens_disponibles += 1
-                user.save(update_fields=["tokens_disponibles"])
+                agregar_creditos(campaign.marketero, 1)
 
                 campaign.transition_to(CampaignStatus.BORRADOR)
 

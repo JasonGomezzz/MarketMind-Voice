@@ -3,7 +3,8 @@ MarketMind IA — n8n Service (Orquestador Asíncrono)
 
 Flujo producción (USE_MOCK_AI=False):
   1. Valida tokens_disponibles > 0 (defensa en profundidad).
-  2. En transaction.atomic(): descuenta 1 token, incrementa intentos,
+  2. En transaction.atomic(): descuenta 1 token con un UPDATE condicional
+     (credit_service; no se gasta dos veces el último), incrementa intentos y
      transiciona campaña → PENDIENTE_IA.
   3. Dispara webhook a n8n con callback_token + callback_url.
      Timeout de 5s: n8n responde inmediatamente (modo "Respond Immediately").
@@ -22,6 +23,7 @@ import requests
 from django.conf import settings
 from django.db import transaction
 
+from services.credit_service import agregar_creditos, consumir_credito
 from services.mock_assets import MOCK_IMAGE_B64
 from services.version_service import save_campaign_version
 
@@ -74,8 +76,9 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
 
     # ── Descontar token + incrementar intentos + transicionar ──────────
     with transaction.atomic():
-        user.tokens_disponibles -= 1
-        user.save(update_fields=["tokens_disponibles"])
+        if not consumir_credito(user):
+            # Otra petición gastó el último crédito entre la validación y el cobro.
+            return {"dispatched": False, "error": "Sin tokens disponibles."}
 
         campaign.intentos_generacion += 1
         campaign.tokens_consumidos += 1
@@ -157,8 +160,7 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
         )
         # Rollback: devolver token + marcar error + estado → BORRADOR
         with transaction.atomic():
-            user.tokens_disponibles += 1
-            user.save(update_fields=["tokens_disponibles"])
+            agregar_creditos(user, 1)
 
             campaign.ia_error_message = f"n8n no disponible: {error_msg}"
             campaign.save(update_fields=["ia_error_message", "fecha_actualizacion"])
