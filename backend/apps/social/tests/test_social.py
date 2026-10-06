@@ -316,7 +316,7 @@ class TestPublicarAlAprobar:
         assert programada.estado == PublicacionEstado.PUBLICADO
 
     def test_reintento_requiere_aprobacion_y_ser_el_dueno(self, programada, cliente):
-        assert cliente_api(cliente).post(f"/api/social/publications/{programada.id}/publish/").status_code == 404
+        assert cliente_api(cliente).post(f"/api/social/publications/{programada.id}/publish/").status_code == 403
         with patch.object(meta_graph, "publicar_instagram") as publicar:
             response = cliente_api(programada.campaign.marketero).post(
                 f"/api/social/publications/{programada.id}/publish/"
@@ -526,3 +526,42 @@ class TestLecturaDeMetricasEnMeta:
             datos = meta_graph.metricas_facebook("page_1", "tok")
         assert (datos["me_gusta"], datos["comentarios"], datos["vistas"]) == (6, 2, 50)
         assert datos["compartidos"] is None
+
+
+@pytest.mark.django_db
+class TestVistasPorRol:
+    """Dashboard en tres niveles: cliente lo suyo, marketero sus clientes, superadmin todo."""
+
+    @pytest.fixture
+    def dos_clientes(self, campana, cliente, user_marketero):
+        otro = User.objects.create_user(email="otro.cliente@test.com", password="Test1234!", nombre="Otro",
+                                        rol=UserRole.CLIENTE)
+        otra_campana = Campaign.objects.create(
+            titulo="Campaña de otro cliente", cliente_nombre="Otro", cliente_email=otro.email, industria="moda",
+            tono="casual", plataforma="instagram", prompt="prompt suficientemente largo",
+            estado=CampaignStatus.APROBADO, marketero=user_marketero,
+        )
+        for camp, nombre in [(campana, "@cafe"), (otra_campana, "@otro")]:
+            Publication.objects.create(campaign=camp, red=RedSocial.INSTAGRAM, cuenta_nombre=nombre,
+                                       estado=PublicacionEstado.PUBLICADO, publicado_at=timezone.now())
+        return otro
+
+    def _nombres(self, user):
+        data = cliente_api(user).get("/api/social/publications/").data["data"]["publicaciones"]
+        return sorted(p["cuenta_nombre"] for p in data)
+
+    def test_cliente_ve_solo_sus_publicaciones(self, dos_clientes, cliente):
+        assert self._nombres(cliente) == ["@cafe"]
+        assert self._nombres(dos_clientes) == ["@otro"]
+
+    def test_marketero_ve_las_de_todos_sus_clientes(self, dos_clientes, user_marketero):
+        assert self._nombres(user_marketero) == ["@cafe", "@otro"]
+
+    def test_superadmin_ve_todo_y_el_resumen_lo_refleja(self, dos_clientes, superadmin):
+        assert self._nombres(superadmin) == ["@cafe", "@otro"]
+        resumen = cliente_api(superadmin).get("/api/social/publications/summary/").data["data"]
+        assert resumen["total_publicaciones"] == 2
+
+    def test_resumen_del_cliente_solo_cuenta_lo_suyo(self, dos_clientes, cliente):
+        resumen = cliente_api(cliente).get("/api/social/publications/summary/").data["data"]
+        assert resumen["total_publicaciones"] == 1

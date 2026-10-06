@@ -179,10 +179,14 @@ class PublicationViewSet(viewsets.GenericViewSet):
     serializer_class = PublicationSerializer
 
     def get_queryset(self):
+        """Cada rol ve lo suyo: superadmin todo, marketero sus campañas, cliente las dirigidas a su email."""
         qs = Publication.objects.select_related("campaign")
-        if self.request.user.rol == UserRole.SUPERADMIN:
+        usuario = self.request.user
+        if usuario.rol == UserRole.SUPERADMIN:
             return qs
-        return qs.filter(campaign__marketero=self.request.user)
+        if usuario.rol == UserRole.CLIENTE:
+            return qs.filter(campaign__cliente_email__iexact=usuario.email)
+        return qs.filter(campaign__marketero=usuario)
 
     def list(self, request: Request) -> Response:
         qs = self.get_queryset()
@@ -224,6 +228,11 @@ class PublicationViewSet(viewsets.GenericViewSet):
 
     @action(detail=True, methods=["post"], url_path="publish")
     def publish(self, request: Request, pk: str | None = None) -> Response:
+        if request.user.rol != UserRole.MARKETERO:
+            return Response(
+                api_response(False, "Solo el marketero de la campaña puede publicarla.", {}),
+                status=status.HTTP_403_FORBIDDEN,
+            )
         publicacion = get_object_or_404(self.get_queryset(), pk=pk)
         try:
             publicacion = reintentar_publicacion(publicacion, request.user)
