@@ -494,7 +494,7 @@
       "continueOnFail": true,
       "parameters": {
         "method": "POST",
-        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/' + ($env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image') + ':generateContent?key=' + $env.GEMINI_API_KEY }}",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/' + ($env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image') + ':generateContent?key=' + $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
