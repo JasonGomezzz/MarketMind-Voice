@@ -124,8 +124,10 @@ def reintentar_publicacion(publication: Publication, usuario: User) -> Publicati
 def _publicar(publication_id: int, desde: tuple[str, ...]) -> str:
     """Reclama la publicación con bloqueo, publica fuera de la transacción y guarda el resultado."""
     with transaction.atomic():
+        # of=("self",): PostgreSQL no permite FOR UPDATE sobre el lado nulo del
+        # LEFT JOIN de conexion; basta con bloquear la fila de la publicación.
         publicacion = (
-            Publication.objects.select_for_update()
+            Publication.objects.select_for_update(of=("self",))
             .select_related("campaign", "conexion")
             .filter(pk=publication_id)
             .first()
