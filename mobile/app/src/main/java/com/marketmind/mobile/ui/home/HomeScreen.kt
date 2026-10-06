@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -90,6 +91,7 @@ import com.marketmind.mobile.data.remote.dto.CampaignIntentDto
 import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
 import com.marketmind.mobile.data.repository.UserSession
 import com.marketmind.mobile.R
+import com.marketmind.mobile.ui.social.StatsContent
 import com.marketmind.mobile.ui.voice.IntentFormMapper
 import com.marketmind.mobile.ui.voice.VoiceBriefCard
 import com.marketmind.mobile.ui.voice.VoiceResumen
@@ -242,6 +244,10 @@ fun HomeScreen(
                         selectedProject = it
                         selectedTab = AppTab.ProjectDetail
                     },
+                    modifier = Modifier.padding(innerPadding),
+                )
+                AppTab.Stats -> StatsContent(
+                    alcance = "Las publicaciones de todos tus clientes.",
                     modifier = Modifier.padding(innerPadding),
                 )
                 AppTab.Account -> AccountScreen(
@@ -2207,6 +2213,7 @@ private enum class AppTab {
     Home,
     AiLab,
     Projects,
+    Stats,
     Account,
     ProjectDetail,
 }
@@ -2221,6 +2228,7 @@ private val navItems = listOf(
     NavItemSpec(AppTab.Home, "Inicio", Icons.Filled.Home),
     NavItemSpec(AppTab.AiLab, "IA", Icons.Filled.Science),
     NavItemSpec(AppTab.Projects, "Proyectos", Icons.Filled.WorkOutline),
+    NavItemSpec(AppTab.Stats, "Métricas", Icons.Filled.BarChart),
     NavItemSpec(AppTab.Account, "Cuenta", Icons.Filled.AccountCircle),
 )
 

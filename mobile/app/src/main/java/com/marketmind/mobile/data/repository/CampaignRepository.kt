@@ -8,6 +8,7 @@ import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
 import com.marketmind.mobile.data.remote.dto.ConfirmIntentRequest
 import com.marketmind.mobile.data.remote.dto.EditTextRequest
 import com.marketmind.mobile.data.remote.dto.InterpretRequest
+import com.marketmind.mobile.data.remote.dto.SubmitRequest
 import com.google.gson.JsonSyntaxException
 import retrofit2.HttpException
 import java.io.IOException
@@ -104,9 +105,10 @@ class CampaignRepository @Inject constructor(
         }
     }
 
-    suspend fun submitToClient(id: Long): Result<CampaignDto> {
+    /** Envía al cliente; [destinos] son las cuentas donde se publicará al aprobar (puede ir vacío). */
+    suspend fun submitToClient(id: Long, destinos: List<Long> = emptyList()): Result<CampaignDto> {
         return try {
-            val envelope = api.submitCampaign(id)
+            val envelope = api.submitCampaign(id, SubmitRequest(destinos))
             val data = envelope.data?.campaign
             if (envelope.success && data != null) {
                 Result.success(data)

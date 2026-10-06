@@ -55,6 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.marketmind.mobile.data.remote.dto.CampaignDto
+import com.marketmind.mobile.data.remote.dto.PublicationDto
+import com.marketmind.mobile.ui.social.DestinosSheet
+import com.marketmind.mobile.ui.social.PublicationsSection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,13 +107,27 @@ fun CampaignDetailScreen(
         ) {
             when (val s = state) {
                 CampaignDetailUiState.Loading -> LoadingState()
-                is CampaignDetailUiState.Success -> CampaignDetailBody(campaign = s.campaign)
+                is CampaignDetailUiState.Success -> CampaignDetailBody(
+                    state = s,
+                    onPublish = viewModel::publish,
+                )
                 is CampaignDetailUiState.Error -> ErrorState(
                     message = s.message,
                     onRetry = viewModel::retry,
                 )
             }
         }
+    }
+
+    (state as? CampaignDetailUiState.Success)?.takeIf { it.eligiendoDestinos }?.let { s ->
+        DestinosSheet(
+            destinos = s.destinos,
+            elegidos = s.elegidos,
+            enviando = s.submitting,
+            onAlternar = viewModel::toggleDestino,
+            onConfirmar = viewModel::confirmSend,
+            onCancelar = viewModel::cancelSend,
+        )
     }
 
     if (showDeleteDialog) {
@@ -135,6 +152,11 @@ private fun DetailActionsBar(
     val submitting = successState?.submitting == true
     val deleting = successState?.deleting == true
     val canAct = successState != null && !submitting && !deleting
+    val estado = successState?.campaign?.estado
+    // Django solo deja enviar una campaña generada y eliminar en borrador o generado.
+    val canSend = estado == "generado"
+    val canDelete = estado == "borrador" || estado == "generado"
+    if (successState != null && !canSend && !canDelete) return
 
     Row(
         modifier = Modifier
@@ -142,7 +164,7 @@ private fun DetailActionsBar(
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconButton(
+        if (canDelete || successState == null) IconButton(
             onClick = onDeleteClick,
             enabled = canAct,
             modifier = Modifier.size(52.dp),
@@ -162,7 +184,7 @@ private fun DetailActionsBar(
             }
         }
 
-        Button(
+        if (canSend || successState == null) Button(
             onClick = onSendClick,
             enabled = canAct,
             modifier = Modifier.weight(1f),
@@ -248,7 +270,11 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun CampaignDetailBody(campaign: CampaignDto) {
+private fun CampaignDetailBody(
+    state: CampaignDetailUiState.Success,
+    onPublish: (PublicationDto) -> Unit,
+) {
+    val campaign = state.campaign
     val scroll = rememberScrollState()
     Column(
         modifier = Modifier
@@ -258,6 +284,12 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         MetadataCard(campaign)
+        PublicationsSection(
+            publicaciones = state.publicaciones,
+            estadoCampana = campaign.estado,
+            publicando = state.publicando,
+            onPublicar = onPublish,
+        )
         HorizontalDivider()
         Text(
             text = campaign.textoGenerado

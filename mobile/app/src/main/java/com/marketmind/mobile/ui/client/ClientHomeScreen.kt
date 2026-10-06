@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -64,6 +65,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.marketmind.mobile.data.remote.dto.CampaignDto
 import com.marketmind.mobile.ui.campaigns.formatEstado
 import com.marketmind.mobile.ui.campaigns.formatFecha
+import com.marketmind.mobile.ui.social.StatsContent
 
 private val BrandBlue = Color(0xFF4D4AF0)
 private val PageBackground = Color(0xFFFCF9FF)
@@ -71,7 +73,7 @@ private val TextDark = Color(0xFF12132A)
 private val TextMuted = Color(0xFF74778A)
 
 @OptIn(ExperimentalMaterial3Api::class)
-private enum class ClientTab { Inicio, Cuenta }
+private enum class ClientTab { Inicio, Estadisticas, Cuenta }
 
 @Composable
 fun ClientHomeScreen(
@@ -92,7 +94,11 @@ fun ClientHomeScreen(
         containerColor = PageBackground,
         topBar = {
             ClientTopBar(
-                titulo = if (selectedTab == ClientTab.Inicio) "Campañas para revisar" else "Mi cuenta",
+                titulo = when (selectedTab) {
+                    ClientTab.Inicio -> "Campañas para revisar"
+                    ClientTab.Estadisticas -> "Estadísticas"
+                    ClientTab.Cuenta -> "Mi cuenta"
+                },
                 nombre = viewModel.nombre,
             )
         },
@@ -119,6 +125,7 @@ fun ClientHomeScreen(
                         onCampaignClick = onCampaignClick,
                     )
                 }
+                ClientTab.Estadisticas -> StatsContent(alcance = "Solo tus publicaciones aprobadas.")
                 ClientTab.Cuenta -> ClientAccountScreen(
                     nombre = viewModel.nombre,
                     email = email,
@@ -181,6 +188,19 @@ private fun ClientBottomBar(selected: ClientTab, onSelected: (ClientTab) -> Unit
             onClick = { onSelected(ClientTab.Inicio) },
             icon = { Icon(Icons.Filled.Home, contentDescription = "Inicio") },
             label = { Text("Inicio") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = BrandBlue,
+                selectedTextColor = BrandBlue,
+                indicatorColor = Color(0xFFE7E6FF),
+                unselectedIconColor = TextMuted,
+                unselectedTextColor = TextMuted,
+            ),
+        )
+        NavigationBarItem(
+            selected = selected == ClientTab.Estadisticas,
+            onClick = { onSelected(ClientTab.Estadisticas) },
+            icon = { Icon(Icons.Filled.BarChart, contentDescription = "Estadísticas") },
+            label = { Text("Estadísticas") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = BrandBlue,
                 selectedTextColor = BrandBlue,

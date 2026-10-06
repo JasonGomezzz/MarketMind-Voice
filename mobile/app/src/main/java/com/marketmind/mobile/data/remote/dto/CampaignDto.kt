@@ -7,6 +7,8 @@ data class CampaignDto(
     val titulo: String?,
     @SerializedName(value = "clienteNombre", alternate = ["cliente_nombre"])
     val clienteNombre: String?,
+    @SerializedName(value = "clienteEmail", alternate = ["cliente_email"])
+    val clienteEmail: String? = null,
     val industria: String?,
     val tono: String?,
     val plataforma: String?,
@@ -31,4 +33,6 @@ data class CampaignDto(
     @SerializedName(value = "fechaActualizacion", alternate = ["fecha_actualizacion"])
     val fechaActualizacion: String?,
     val version: Int = 1,
+    /** Solo Spring: cuentas donde se publicará (o se publicó) al aprobar. */
+    val destinos: List<DestinoDto>? = null,
 )

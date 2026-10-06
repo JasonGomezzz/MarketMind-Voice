@@ -2,6 +2,10 @@ package com.marketmind.mobile.data.remote
 
 import com.google.gson.Gson
 import com.marketmind.mobile.data.remote.dto.ApiEnvelope
+import com.marketmind.mobile.data.remote.dto.CampaignDto
+import com.marketmind.mobile.data.remote.dto.PublicacionesEnvelopeDto
+import com.marketmind.mobile.data.remote.dto.ResumenRedesDto
+import com.marketmind.mobile.data.remote.dto.SubmitRequest
 import com.marketmind.mobile.data.remote.dto.ConfirmIntentRequest
 import com.marketmind.mobile.data.remote.dto.IntentEnvelopeDto
 import com.marketmind.mobile.data.remote.dto.InterpretRequest
@@ -96,5 +100,63 @@ class ApiContractTest {
         assertEquals(listOf("cliente_email"), intent.camposFaltantes)
         assertEquals(1, intent.advertencias!!.size)
         assertNull(envelope.data!!.campaign)
+    }
+
+    @Test
+    fun submitSendsTheChosenDestinationIds() {
+        val payload = gson.toJsonTree(SubmitRequest(destinos = listOf(3L, 8L))).asJsonObject
+
+        assertEquals(listOf(3L, 8L), payload["destinos"].asJsonArray.map { it.asLong })
+        assertEquals(0, gson.toJsonTree(SubmitRequest(emptyList())).asJsonObject["destinos"].asJsonArray.size())
+    }
+
+    @Test
+    fun parsesPublicationsWithNullMetricsFromDjango() {
+        val json = """
+            {"success": true, "message": "ok", "data": {"publicaciones": [{
+              "id": 4, "campaign": 11, "campaign_titulo": "2x1 en capuchinos", "red": "facebook",
+              "cuenta_nombre": "NexoMark IA", "estado": "publicado", "permalink": "https://facebook.com/p/1",
+              "intentos": 1, "version_aprobada": 3, "publicado_at": "2026-10-06T18:58:29Z",
+              "ultima_metrica": {"me_gusta": 6, "comentarios": 1, "compartidos": null, "obtenida_at": "2026-10-06T19:10:00Z"}
+            }]}}
+        """.trimIndent()
+        val type = object : TypeToken<ApiEnvelope<PublicacionesEnvelopeDto>>() {}.type
+        val envelope: ApiEnvelope<PublicacionesEnvelopeDto> = gson.fromJson(json, type)
+        val publicacion = envelope.data!!.publicaciones!!.single()
+
+        assertEquals("NexoMark IA", publicacion.cuentaNombre)
+        assertEquals(3, publicacion.versionAprobada)
+        assertEquals(6, publicacion.ultimaMetrica!!.meGusta)
+        assertNull(publicacion.ultimaMetrica!!.compartidos)
+    }
+
+    @Test
+    fun parsesTheNetworkSummaryKeepingMissingTotalsAsNull() {
+        val json = """
+            {"success": true, "message": "ok", "data": {"redes": {
+              "instagram": {"publicaciones": 2, "publicaciones_mes": 1, "con_metricas": 2, "me_gusta": 15, "compartidos": null},
+              "facebook": {"publicaciones": 0, "publicaciones_mes": 0, "con_metricas": 0}
+            }, "total_publicaciones": 2, "fallidas": 1, "pendientes": 0}}
+        """.trimIndent()
+        val type = object : TypeToken<ApiEnvelope<ResumenRedesDto>>() {}.type
+        val resumen: ResumenRedesDto = gson.fromJson<ApiEnvelope<ResumenRedesDto>>(json, type).data!!
+
+        assertEquals(15, resumen.redes!!["instagram"]!!.meGusta)
+        assertNull(resumen.redes!!["instagram"]!!.compartidos)
+        assertNull(resumen.redes!!["facebook"]!!.meGusta)
+        assertEquals(1, resumen.fallidas)
+    }
+
+    @Test
+    fun clientCampaignFromSpringCarriesItsDestinations() {
+        val json = """
+            {"id": 11, "titulo": "2x1", "clienteNombre": "Café Aurora", "clienteEmail": "cliente@test.com",
+             "estado": "pendiente_aprobacion", "version": 2,
+             "destinos": [{"red": "instagram", "cuentaNombre": "@nexomarkia", "estado": "esperando_aprobacion", "permalink": null}]}
+        """.trimIndent()
+        val campaign = gson.fromJson(json, CampaignDto::class.java)
+
+        assertEquals("cliente@test.com", campaign.clienteEmail)
+        assertEquals("@nexomarkia", campaign.destinos!!.single().cuentaNombre)
     }
 }

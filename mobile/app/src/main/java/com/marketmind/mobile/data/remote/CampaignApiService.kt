@@ -10,6 +10,7 @@ import com.marketmind.mobile.data.remote.dto.DjangoPageDto
 import com.marketmind.mobile.data.remote.dto.EditTextRequest
 import com.marketmind.mobile.data.remote.dto.IntentEnvelopeDto
 import com.marketmind.mobile.data.remote.dto.InterpretRequest
+import com.marketmind.mobile.data.remote.dto.SubmitRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -38,6 +39,7 @@ interface CampaignApiService {
     @POST("api/campaigns/{id}/submit/")
     suspend fun submitCampaign(
         @Path("id") id: Long,
+        @Body body: SubmitRequest,
     ): ApiEnvelope<CampaignEnvelopeDto>
 
     @POST("api/campaigns/{id}/improve-text/")

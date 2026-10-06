@@ -4,6 +4,7 @@ import com.marketmind.mobile.BuildConfig
 import com.marketmind.mobile.data.remote.AuthApiService
 import com.marketmind.mobile.data.remote.AuthInterceptor
 import com.marketmind.mobile.data.remote.CampaignApiService
+import com.marketmind.mobile.data.remote.SocialApiService
 import com.marketmind.mobile.data.remote.ClientCampaignApiService
 import com.marketmind.mobile.data.remote.TokenAuthenticator
 import dagger.Module
@@ -102,6 +103,19 @@ object NetworkModule {
     fun provideCampaignApiService(
         @ApiHttp retrofit: Retrofit,
     ): CampaignApiService = retrofit.create(CampaignApiService::class.java)
+
+    // Redes sociales: publicar espera a que Meta procese la imagen (hasta ~1 min),
+    // así que usa el mismo cliente autenticado con un tiempo de lectura mayor.
+    @Provides
+    @Singleton
+    fun provideSocialApiService(
+        @ApiHttp client: OkHttpClient,
+    ): SocialApiService = Retrofit.Builder()
+        .baseUrl(BuildConfig.BASE_URL_DJANGO)
+        .client(client.newBuilder().readTimeout(90, TimeUnit.SECONDS).build())
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(SocialApiService::class.java)
 
     // ──────────────── Cliente "spring" (reusa OkHttp de @ApiHttp) ────────────────
     // Apunta a Spring Boot :8080 (BASE_URL_SPRING). Comparte AuthInterceptor +

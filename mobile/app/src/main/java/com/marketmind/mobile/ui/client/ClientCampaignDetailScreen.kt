@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.marketmind.mobile.data.remote.dto.CampaignDto
 import com.marketmind.mobile.ui.campaigns.formatEstado
 import com.marketmind.mobile.ui.campaigns.formatFecha
+import com.marketmind.mobile.ui.social.DestinosCampanaCard
 
 private val BrandBlue = Color(0xFF4D4AF0)
 private val PageBackground = Color(0xFFFCF9FF)
@@ -315,6 +316,8 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         MetadataCard(campaign)
+
+        DestinosCampanaCard(destinos = campaign.destinos, estadoCampana = campaign.estado)
 
         CampaignImage(campaign)
 
