@@ -80,9 +80,14 @@ def url_autorizacion(state: str) -> str:
         "client_id": settings.META_APP_ID,
         "redirect_uri": settings.META_REDIRECT_URI,
         "state": state,
-        "scope": ",".join(settings.META_OAUTH_SCOPES),
         "response_type": "code",
     }
+    # Facebook Login for Business: los permisos los define la configuración
+    # creada en la app (config_id); Meta recomienda no enviar scope con ella.
+    if settings.META_LOGIN_CONFIG_ID:
+        params["config_id"] = settings.META_LOGIN_CONFIG_ID
+    else:
+        params["scope"] = ",".join(settings.META_OAUTH_SCOPES)
     return f"https://www.facebook.com/{settings.META_GRAPH_VERSION}/dialog/oauth?{urlencode(params)}"
 
 

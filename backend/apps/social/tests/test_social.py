@@ -93,6 +93,13 @@ class TestOAuth:
         assert "instagram_content_publish" in params["scope"][0]
         assert signing.loads(params["state"][0], salt="marketmind.meta-oauth")["u"]
 
+    def test_con_configuracion_de_login_para_empresas_usa_config_id(self, api_client, settings):
+        settings.META_LOGIN_CONFIG_ID = "cfg-123"
+        url = urlparse(api_client.get("/api/social/meta/connect/").data["data"]["url"])
+        params = parse_qs(url.query)
+        assert params["config_id"] == ["cfg-123"]
+        assert "scope" not in params
+
     def test_superadmin_no_conecta(self, superadmin_client):
         assert superadmin_client.get("/api/social/meta/connect/").status_code == 403
 

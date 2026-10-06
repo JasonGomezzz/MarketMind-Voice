@@ -277,6 +277,8 @@ FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 META_APP_ID = config("META_APP_ID", default="")
 META_APP_SECRET = config("META_APP_SECRET", default="")
 META_GRAPH_VERSION = config("META_GRAPH_VERSION", default="v25.0")
+# Solo con Facebook Login for Business: ID de la configuración creada en la app.
+META_LOGIN_CONFIG_ID = config("META_LOGIN_CONFIG_ID", default="")
 META_REDIRECT_URI = config(
     "META_REDIRECT_URI",
     default=f"{DJANGO_BASE_URL}/api/social/meta/callback/",
