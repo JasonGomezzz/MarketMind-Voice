@@ -97,7 +97,7 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             f"[MOCK] Copy publicitario para «{campaign.titulo}». "
             f"Industria: {campaign.industria} | Tono: {campaign.tono} | "
             f"Plataforma: {campaign.plataforma}. "
-            "Transforma tu marca hoy con MarketMind IA."
+            "Transforma tu marca hoy con NexoMark IA."
         )
         campaign.texto_generado = mock_copy
         # El mock no llama a Gemini Imagen 3, pero devuelve un PNG placeholder
