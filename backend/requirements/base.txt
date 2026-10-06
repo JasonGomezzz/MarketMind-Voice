@@ -18,6 +18,7 @@ PyJWT==2.8.0
 django-cors-headers==4.3.1
 django-ratelimit==4.1.0
 bcrypt==4.1.3
+cryptography==50.0.2            # Cifrado de tokens de Meta (Fernet)
 
 # --- Environment ---
 python-decouple==3.8            # Reads .env variables
