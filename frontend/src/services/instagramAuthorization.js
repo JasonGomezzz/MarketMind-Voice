@@ -13,6 +13,7 @@ export function rememberInstagramAuthorization(url, storage = sessionStorage) {
 export function takeInstagramAuthorization(search, hash, storage = sessionStorage, now = Date.now()) {
   const query = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : '')
   const values = query.has('code') || query.has('error') ? query : new URLSearchParams(search)
+  if (values.get('provider') && values.get('provider') !== 'instagram') return null
   if (!values.has('code') && !values.has('error')) return null
   const pending = storage.getItem(PENDING_KEY)
   storage.removeItem(PENDING_KEY)

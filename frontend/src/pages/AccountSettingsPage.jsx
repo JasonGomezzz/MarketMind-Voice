@@ -16,6 +16,7 @@ import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '../hooks/useTheme'
 import InstagramAccounts from '../components/InstagramAccounts'
+import FacebookPages from '../components/FacebookPages'
 
 /**
  * Configuración de cuenta (portado de Stitch: account_settings, adaptado a los
@@ -154,7 +155,7 @@ export default function AccountSettingsPage() {
       <div className="max-w-3xl space-y-6">
         <header>
           {import.meta.env.VITE_INSTAGRAM_PREVIEW === 'true' && (
-            <p className="mb-3 text-sm text-on-surface-variant">Vista temporal para conectar Instagram. Las campañas y el resto del proyecto siguen en tu web local.</p>
+            <p className="mb-3 text-sm text-on-surface-variant">Vista temporal para conectar tus redes sociales. Las campañas y el resto del proyecto siguen en tu web local.</p>
           )}
           <h1 className="text-4xl font-bold tracking-tight text-on-surface">Configuración</h1>
           <p className="mt-2 text-base text-on-surface-variant">
@@ -219,6 +220,7 @@ export default function AccountSettingsPage() {
         </section>
 
         {user.rol === 'marketero' && <InstagramAccounts />}
+        {user.rol === 'marketero' && <FacebookPages />}
 
         {/* Seguridad */}
         <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">

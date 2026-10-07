@@ -18,7 +18,8 @@ export default function InstagramAccounts() {
       try {
         const query = new URLSearchParams(window.location.search)
         const fragment = new URLSearchParams(window.location.hash.slice(1))
-        if ((query.has('code') || query.has('error') || fragment.has('code') || fragment.has('error')) && !completion.current) {
+        const values = fragment.has('code') || fragment.has('error') ? fragment : query
+        if ((!values.get('provider') || values.get('provider') === 'instagram') && (values.has('code') || values.has('error')) && !completion.current) {
           const search = window.location.search, hash = window.location.hash
           // Remove authorization values before loading anything else or showing errors.
           window.history.replaceState(null, '', window.location.pathname)
