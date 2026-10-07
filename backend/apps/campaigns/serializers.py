@@ -44,6 +44,7 @@ class CampaignSerializer(serializers.ModelSerializer):
         model = Campaign
         fields = [
             "id",
+            "version",
             "titulo",
             "cliente_nombre",
             "cliente_email",
@@ -68,6 +69,7 @@ class CampaignSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "version",
             "estado",
             "texto_generado",
             "imagen_url",

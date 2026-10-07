@@ -44,6 +44,24 @@ def publish(client, setup, **extra):
 
 
 @patch('apps.campaigns.facebook_publication.send_photo')
+def test_browser_detail_provides_read_only_version_for_publication(send, api_client, fb_publication):
+    from apps.campaigns.serializers import CampaignSerializer
+    campaign, page = fb_publication
+    campaign.version = 2
+    campaign.save()
+    detail = api_client.get(f'/api/campaigns/{campaign.pk}/')
+    assert detail.status_code == 200
+    serialized = detail.data['data']['campaign']
+    assert serialized['version'] == 2 and isinstance(serialized['version'], int)
+    assert CampaignSerializer().fields['version'].read_only
+    send.return_value = ('987654', '')
+    response = api_client.post(f'/api/campaigns/{campaign.pk}/publish-facebook/',
+        {'page_id': page.pk, 'version': serialized['version'], 'confirm': True}, format='json')
+    assert response.status_code == 200 and response.data['data']['status'] == 'published'
+    send.assert_called_once()
+
+
+@patch('apps.campaigns.facebook_publication.send_photo')
 def test_saved_approved_content_only_and_duplicate_protection(send, api_client, fb_publication):
     def once(publication, token):
         assert FacebookPublication.objects.get(pk=publication.pk).status == 'publishing'
