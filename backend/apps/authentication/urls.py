@@ -10,8 +10,14 @@ from .views import AuthBrandContentView, ChangePasswordView, LogoutView, MeView,
 from .token_views import CustomTokenObtainPairView
 from .password_reset import PasswordResetRequestView, PasswordResetConfirmView
 from .instagram import InstagramAccountsView, InstagramConnectView, InstagramCompleteView, InstagramDisconnectView
+from .facebook import FacebookPagesView, FacebookConnectView, FacebookCompleteView, FacebookDisconnectView, FacebookCallbackRelayView
 
 urlpatterns = [
+    path('facebook/pages/', FacebookPagesView.as_view()),
+    path('facebook/pages/<int:pk>/', FacebookDisconnectView.as_view()),
+    path('facebook/connect/', FacebookConnectView.as_view()),
+    path('facebook/complete/', FacebookCompleteView.as_view()),
+    path('facebook/callback/', FacebookCallbackRelayView.as_view()),
     path('instagram/accounts/', InstagramAccountsView.as_view()),
     path('instagram/accounts/<int:pk>/', InstagramDisconnectView.as_view()),
     path('instagram/connect/', InstagramConnectView.as_view()),

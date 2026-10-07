@@ -278,3 +278,24 @@ class InstagramAuthorization(models.Model):
     expires_at = models.DateTimeField()
     used = models.BooleanField(default=False)
     return_origin = models.CharField(max_length=255, blank=True, default='')
+
+
+class FacebookPage(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='facebook_pages')
+    facebook_page_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=255)
+    encrypted_token = models.TextField()
+    expires_at = models.DateTimeField()
+    connected_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['owner', 'facebook_page_id'], name='unique_owner_facebook_page')]
+
+
+class FacebookAuthorization(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    state_hash = models.CharField(max_length=64, unique=True)
+    token_version = models.IntegerField()
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    return_origin = models.CharField(max_length=255)
