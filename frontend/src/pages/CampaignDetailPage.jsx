@@ -7,6 +7,7 @@ import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
 import { getApprovedPublicationCopy } from '../services/campaignPublication'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
+import InstagramPublicationDialog from '../components/InstagramPublicationDialog'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import CampaignStepper from '@/components/CampaignStepper'
@@ -56,6 +57,7 @@ export default function CampaignDetailPage() {
   const [regenerating, setRegenerating] = useState(false)
   const [autoSavedAt, setAutoSavedAt] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [showInstagram, setShowInstagram] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [versionsRefreshKey, setVersionsRefreshKey] = useState(0)
 
@@ -249,6 +251,10 @@ export default function CampaignDetailPage() {
     const approvedCopy = getApprovedPublicationCopy(campaign)
     if (approvedCopy === null) {
       toast.error('Disponible cuando el cliente apruebe la campaña.')
+      return
+    }
+    if (platform === 'instagram') {
+      setShowInstagram(true)
       return
     }
     const destination = PLATFORM_PUBLISH_URLS[platform]?.(approvedCopy)
@@ -577,8 +583,8 @@ export default function CampaignDetailPage() {
                   </p>
                 )}
                 <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-                  Después de la aprobación, el botón copia el texto aprobado y abre la plataforma.
-                  No publica automáticamente: debes completar la publicación en tu cuenta de la red social.
+                  Instagram muestra la imagen y el texto aprobado para elegir tu cuenta y confirmar la publicación.
+                  Las demás plataformas todavía requieren completar la publicación manualmente.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -608,6 +614,7 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
+      {showInstagram && <InstagramPublicationDialog campaign={campaign} onClose={() => setShowInstagram(false)} />}
       {showModal && (
         <SubmitModal
           preview={text}

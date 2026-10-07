@@ -86,7 +86,7 @@ export default function InstagramAccounts() {
         </ul>
         {accounts.length === 0 && <p className="mb-3 text-sm text-on-surface-variant">Todavía no tienes cuentas conectadas.</p>}
         <Button disabled={!configured || busy} onClick={connect}>{busy ? 'Procesando…' : 'Conectar Instagram'}</Button>
-        <p className="mt-3 text-xs text-on-surface-variant">Esta conexión aún no publica campañas. Desconectar elimina la credencial local; puedes revocar también el acceso desde Instagram.</p>
+        <p className="mt-3 text-xs text-on-surface-variant">Conectar no publica automáticamente. Puedes publicar desde una campaña aprobada, revisando su imagen y texto. Desconectar elimina la credencial local; puedes revocar también el acceso desde Instagram.</p>
       </>}
     </section>
   )
