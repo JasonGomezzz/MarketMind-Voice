@@ -53,6 +53,65 @@ def test_wrong_browser_origin_cannot_start_connection(api_client, instagram_sett
     assert api_client.post('/api/auth/instagram/connect/', HTTP_ORIGIN='https://demo.example').status_code == 200
 
 
+def test_local_origin_can_connect_but_arbitrary_origin_cannot(api_client, instagram_settings):
+    instagram_settings.FRONTEND_BASE_URL = 'http://localhost:5173'
+    instagram_settings.INSTAGRAM_FRONTEND_ORIGIN = 'https://demo.example'
+    response = api_client.post('/api/auth/instagram/connect/', HTTP_ORIGIN='http://localhost:5173')
+    assert response.status_code == 200
+    assert InstagramAuthorization.objects.get().return_origin == 'http://localhost:5173'
+    query = parse_qs(urlsplit(response.data['data']['authorization_url']).query)
+    assert query['redirect_uri'] == ['https://demo.example/settings']
+    assert api_client.post('/api/auth/instagram/connect/', HTTP_ORIGIN='https://evil.example').status_code == 403
+
+
+@patch('apps.authentication.instagram.exchange_code')
+def test_https_relay_returns_local_without_jwt_and_completes_only_with_owner_session(exchange, api_client, instagram_settings, settings, user_marketero):
+    instagram_settings.FRONTEND_BASE_URL = 'http://localhost:5173'
+    instagram_settings.INSTAGRAM_FRONTEND_ORIGIN = 'https://demo.example'
+    response = api_client.post('/api/auth/instagram/connect/', HTTP_ORIGIN='http://localhost:5173')
+    state = parse_qs(urlsplit(response.data['data']['authorization_url']).query)['state'][0]
+    settings.ROOT_URLCONF = 'core.instagram_preview_urls'
+    callback = APIClient().get('/settings', {'code': 'short-code', 'state': state})
+    assert callback.status_code == 302
+    target = urlsplit(callback['Location'])
+    assert target.scheme == 'http' and target.netloc == 'localhost:5173'
+    assert target.path == '/settings' and not target.query
+    assert parse_qs(target.fragment) == {'code': ['short-code'], 'state': [state]}
+    assert callback['Referrer-Policy'] == 'no-referrer'
+    assert not InstagramAuthorization.objects.get().used
+    assert APIClient().post('/api/auth/instagram/complete/', {'code': 'short-code', 'state': state}).status_code == 401
+    settings.ROOT_URLCONF = 'core.urls'
+    exchange.return_value = ({'user_id': 'ig-test', 'username': 'demo'}, 'private-token', 3600)
+    assert complete(api_client, state).status_code == 200
+    assert InstagramAccount.objects.get().owner == user_marketero
+
+
+def test_relay_rejects_expired_revoked_and_unconfigured_return_origins(api_client, instagram_settings, settings, user_marketero):
+    state = begin(api_client)
+    settings.ROOT_URLCONF = 'core.instagram_preview_urls'
+    client = APIClient()
+    assert client.get('/settings', {'code': 'code', 'state': 'wrong'}).status_code == 400
+    InstagramAuthorization.objects.update(return_origin='https://evil.example')
+    assert client.get('/settings', {'code': 'code', 'state': state}).status_code == 400
+    InstagramAuthorization.objects.update(return_origin='https://demo.example')
+    user_marketero.token_version += 1
+    user_marketero.save()
+    assert client.get('/settings', {'code': 'code', 'state': state}).status_code == 400
+    user_marketero.token_version -= 1
+    user_marketero.save()
+    InstagramAuthorization.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
+    assert client.get('/settings', {'code': 'code', 'state': state}).status_code == 400
+
+
+def test_relay_denial_does_not_forward_untrusted_error_details(api_client, instagram_settings, settings):
+    state = begin(api_client)
+    settings.ROOT_URLCONF = 'core.instagram_preview_urls'
+    response = APIClient().get('/settings', {'state': state, 'error': 'untrusted-content', 'error_description': 'private'})
+    assert response.status_code == 302
+    assert parse_qs(urlsplit(response['Location']).fragment)['error'] == ['access_denied']
+    assert 'private' not in response['Location']
+
+
 def test_client_and_anonymous_cannot_manage_connections(cliente, instagram_settings):
     client = APIClient()
     assert client.get('/api/auth/instagram/accounts/').status_code == 401

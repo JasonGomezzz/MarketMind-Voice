@@ -277,3 +277,4 @@ class InstagramAuthorization(models.Model):
     token_version = models.IntegerField()
     expires_at = models.DateTimeField()
     used = models.BooleanField(default=False)
+    return_origin = models.CharField(max_length=255, blank=True, default='')

@@ -9,8 +9,9 @@ import requests
 from cryptography.fernet import Fernet
 from django.conf import settings
 from django.db import transaction
+from django.http import HttpResponse, HttpResponseRedirect
 from django.utils import timezone
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -53,6 +54,50 @@ def configured():
                 and redirect.scheme == 'https' and redirect.netloc
                 and (redirect.scheme, redirect.netloc) == (frontend.scheme, frontend.netloc)
                 and redirect.path == '/settings' and not redirect.query and not redirect.fragment)
+
+
+def allowed_return_origins():
+    """Only configured origins, never arbitrary browser-supplied return URLs."""
+    origins = set()
+    for value in (settings.INSTAGRAM_FRONTEND_ORIGIN, settings.FRONTEND_BASE_URL):
+        parsed = urlsplit(value)
+        if (parsed.netloc and not parsed.username and not parsed.password
+                and not parsed.query and not parsed.fragment and parsed.path in ('', '/')
+                and (parsed.scheme == 'https' or
+                     parsed.scheme == 'http' and parsed.hostname in ('localhost', '127.0.0.1'))):
+            origins.add(f'{parsed.scheme}://{parsed.netloc}')
+    redirect = urlsplit(settings.INSTAGRAM_REDIRECT_URI)
+    if redirect.scheme == 'https' and redirect.netloc:
+        origins.add(f'{redirect.scheme}://{redirect.netloc}')
+    return origins
+
+
+class InstagramCallbackRelayView(APIView):
+    """Bridge an HTTPS callback to the initiating origin without moving its JWT."""
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        state = request.query_params.get('state', '')
+        code = request.query_params.get('code', '')
+        denied = 'error' in request.query_params
+        if not state or len(state) > 128 or (not denied and (not code or len(code) > 4096)):
+            response = HttpResponse('Autorización inválida. Vuelve a Configuración y conecta Instagram.', status=400)
+        else:
+            ticket = InstagramAuthorization.objects.select_related('owner').filter(
+                state_hash=hashlib.sha256(state.encode()).hexdigest(),
+                expires_at__gt=timezone.now(), used=False).first()
+            if (not ticket or ticket.return_origin not in allowed_return_origins()
+                    or not ticket.owner.is_active or ticket.owner.rol != 'marketero'
+                    or ticket.owner.token_version != ticket.token_version):
+                response = HttpResponse('La autorización venció. Vuelve a Configuración y conecta Instagram.', status=400)
+            else:
+                # Fragment values are not sent to the local HTTP server or referrers.
+                values = {'state': state, 'error': 'access_denied'} if denied else {'state': state, 'code': code}
+                response = HttpResponseRedirect(ticket.return_origin + '/settings#' + urlencode(values))
+        response['Cache-Control'] = 'no-store'
+        response['Referrer-Policy'] = 'no-referrer'
+        return response
 
 
 def exchange_code(code):
@@ -146,15 +191,15 @@ class InstagramConnectView(APIView):
         if not configured():
             return Response(api_response(False, 'Falta configurar la conexión segura de Instagram en el servidor.'), status=503)
         origin = request.headers.get('Origin')
-        expected = urlsplit(settings.INSTAGRAM_REDIRECT_URI)
-        if origin and origin != f'{expected.scheme}://{expected.netloc}':
-            return Response(api_response(False, 'Inicia sesión desde la dirección HTTPS de prueba para conectar Instagram.'), status=403)
+        if origin and origin not in allowed_return_origins():
+            return Response(api_response(False, 'Inicia la conexión desde la web configurada de NexoMark.'), status=403)
         # Remove stale tickets for this owner; never delete tickets of other users.
         InstagramAuthorization.objects.filter(owner=request.user, expires_at__lt=timezone.now()).delete()
         state = secrets.token_urlsafe(32)
         InstagramAuthorization.objects.create(owner=request.user,
             state_hash=hashlib.sha256(state.encode()).hexdigest(),
             token_version=request.user.token_version,
+            return_origin=origin or (settings.INSTAGRAM_FRONTEND_ORIGIN or settings.FRONTEND_BASE_URL).rstrip('/'),
             expires_at=timezone.now() + timedelta(minutes=10))
         query = urlencode({'client_id': settings.INSTAGRAM_APP_ID,
             'redirect_uri': settings.INSTAGRAM_REDIRECT_URI, 'response_type': 'code',
