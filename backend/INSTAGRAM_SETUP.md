@@ -1,7 +1,8 @@
 # Instagram — conexión por marketero (primera etapa)
 
 Esta etapa permite conectar varias cuentas mediante Instagram Login, listar solo
-las del usuario actual y desconectarlas localmente. **No publica campañas todavía**.
+las del usuario actual y desconectarlas localmente. Permite publicar imagen y texto
+de una campaña aprobada tras seleccionar cuenta y confirmar en la vista previa.
 No se utiliza un token global de la cuenta de prueba.
 
 ## Configuración pendiente
@@ -28,7 +29,8 @@ de forma explícita; no se crean túneles ni se expone Django automáticamente.
 
 Para no cambiar el origen de los correos de recuperación, usar el origen dedicado
 `INSTAGRAM_FRONTEND_ORIGIN` durante la prueba. El perfil `core.settings.instagram_preview`
-deshabilita debug y solo expone login, perfil y conexiones de Instagram; no incluye
+deshabilita debug y solo expone login, perfil, conexiones de Instagram y descarga
+de imágenes mediante una capacidad opaca que vence a los treinta minutos; no incluye
 admin ni campañas. Se ejecuta en 127.0.0.1:8002. La vista Vite opt-in usa
 `INSTAGRAM_PREVIEW_HOST` con el dominio exacto y el puerto 5176; debe compilarse con
 `VITE_API_URL=/`, `VITE_INSTAGRAM_PREVIEW=true` y salida `dist-instagram`.
@@ -48,10 +50,26 @@ un token distinto por autorización. Reiniciar Django después de configurar.
   error. Solo se solicitan acceso básico y publicación de contenido.
 - La interfaz muestra vencimiento; por ahora se requiere reconectar cuando expire.
 - Desconectar borra la credencial local, no revoca por sí mismo el permiso en Meta.
-- Pruebas de HTTP usan respuestas simuladas; todavía falta validar la autorización
-  real con la app y cuenta tester. Meta puede cambiar detalles del contrato.
+- Pruebas automatizadas usan respuestas simuladas: nunca publican contenido real.
 - Para empresas externas sigue pendiente revisión de permisos/acceso por Meta.
-- El siguiente paso será selección de cuenta, vista previa y publicación de una
-  campaña aprobada con control de propiedad y prevención de duplicados.
+- Publicar requiere JWT, rol marketero, campaña propia aprobada, Instagram
+  seleccionado y cuenta propia no vencida. Se usa el contenido guardado, nunca
+  texto o imágenes arbitrarios enviados por el navegador.
+- Se convierte la imagen base64 a JPEG sin recortar y se valida su proporción.
+  Solo se expone esa imagen mediante una URL aleatoria temporal; el túnel debe
+  permanecer activo para que Meta pueda descargarla. La web principal sigue local.
+- El intento se guarda por campaña, versión e identificador de cuenta Instagram.
+  Doble clic, recarga y reconexión no crean otra publicación del mismo contenido.
+- Un resultado incierto bloquea el reenvío: comprobar el perfil antes de cualquier
+  intervención. Un fallo de preparación requiere revisión del administrador;
+  aún no hay interfaz para reiniciar intentos fallidos.
+- El identificador de publicación confirmado se guarda para integrar estadísticas
+  después. Facebook y X siguen siendo preparación manual, no publicación por API.
+
+Prueba local: abrir una campaña aprobada en localhost:5173, seleccionar
+«Preparar para Instagram», revisar imagen/texto, elegir cuenta y pulsar «Publicar».
+El diálogo muestra el resultado persistido al volver a abrirlo.
+
+Contrato de publicación: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/
 
 Referencia: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/
