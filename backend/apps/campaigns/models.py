@@ -351,6 +351,26 @@ class InstagramPublication(models.Model):
             fields=['campaign', 'instagram_user_id', 'campaign_version'], name='unique_instagram_publication')]
 
 
+class FacebookPublication(models.Model):
+    """Immutable approved content and one durable attempt per Page/version."""
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
+    page = models.ForeignKey('authentication.FacebookPage', on_delete=models.SET_NULL, null=True)
+    facebook_page_id = models.CharField(max_length=64)
+    page_name = models.CharField(max_length=255)
+    campaign_version = models.IntegerField()
+    caption = models.TextField()
+    image_jpeg = models.TextField()
+    status = models.CharField(max_length=20, default='publishing')
+    photo_id = models.CharField(max_length=64, blank=True)
+    post_id = models.CharField(max_length=140, blank=True)
+    message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['campaign', 'facebook_page_id', 'campaign_version'],
+                                              name='unique_facebook_publication')]
+
+
 class CreditPurchase(models.Model):
     """
     Registro append-only de compras de créditos de IA. Pasarela de pago

@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 from .instagram_publication import InstagramPublishView
+from .facebook_publication import FacebookPublishView
 
 from .views import (
     CampaignExportPDFView,
@@ -17,6 +18,7 @@ router = SimpleRouter()
 router.register(r"", CampaignViewSet, basename="campaign")
 
 urlpatterns = [
+    path('<int:campaign_id>/publish-facebook/', FacebookPublishView.as_view(), name='publish-facebook'),
     path('<int:campaign_id>/publish-instagram/', InstagramPublishView.as_view(), name='publish-instagram'),
     path("voice/synthesize/", GeminiVoiceView.as_view(), name="gemini-voice"),
     path("voice/transcribe/", GeminiTranscriptionView.as_view(), name="gemini-transcription"),
