@@ -119,7 +119,7 @@ def test_failed_exchange_returns_safe_message_and_requires_new_ticket(exchange, 
 @patch('apps.authentication.instagram.requests.get')
 def test_exchange_http_contract(get, post, instagram_settings):
     post.return_value = Mock(json=lambda: {'data': [{'access_token': 'short', 'user_id': '123', 'permissions': ['instagram_business_basic', 'instagram_business_content_publish']}]})
-    get.side_effect = [Mock(json=lambda: {'access_token': 'long', 'expires_in': 3600}), Mock(json=lambda: {'user_id': '123', 'username': 'demo'})]
+    get.side_effect = [Mock(json=lambda: {'user_id': '123', 'username': 'demo'}), Mock(json=lambda: {'access_token': 'long', 'expires_in': 3600}), Mock(json=lambda: {'user_id': '123', 'username': 'demo'})]
     assert exchange_code('code') == ({'user_id': '123', 'username': 'demo'}, 'long', 3600)
     assert post.call_args.kwargs['data']['redirect_uri'] == instagram_settings.INSTAGRAM_REDIRECT_URI
     assert get.call_args.kwargs['headers'] == {'Authorization': 'Bearer long'}
@@ -129,10 +129,29 @@ def test_exchange_http_contract(get, post, instagram_settings):
 @patch('apps.authentication.instagram.requests.get')
 def test_exchange_rejects_profile_identity_mismatch(get, post, instagram_settings):
     post.return_value = Mock(json=lambda: {'access_token': 'short', 'user_id': '123', 'permissions': 'instagram_business_basic,instagram_business_content_publish'})
-    get.side_effect = [Mock(json=lambda: {'access_token': 'long', 'expires_in': 3600}), Mock(json=lambda: {'user_id': 'other', 'username': 'demo'})]
+    get.side_effect = [Mock(json=lambda: {'user_id': '123', 'username': 'demo'}), Mock(json=lambda: {'access_token': 'long', 'expires_in': 3600}), Mock(json=lambda: {'user_id': 'other', 'username': 'demo'})]
     with pytest.raises(InstagramError) as error:
         exchange_code('code')
     assert error.value.stage == 'identity'
+
+
+@patch('apps.authentication.instagram.requests.post')
+@patch('apps.authentication.instagram.requests.get')
+def test_oauth_identifier_may_differ_from_graph_profile_without_false_rejection(get, post, instagram_settings):
+    post.return_value = Mock(json=lambda: {'access_token': 'short', 'user_id': 'oauth-id', 'permissions': 'instagram_business_basic,instagram_business_content_publish'})
+    get.side_effect = [Mock(json=lambda: {'id': 'graph-id', 'username': 'demo'}), Mock(json=lambda: {'access_token': 'long', 'expires_in': 3600}), Mock(json=lambda: {'id': 'graph-id', 'username': 'demo'})]
+    assert exchange_code('code') == ({'user_id': 'graph-id', 'username': 'demo'}, 'long', 3600)
+    assert get.call_args_list[0].kwargs['headers'] == {'Authorization': 'Bearer short'}
+
+
+@patch('apps.authentication.instagram.requests.post')
+@patch('apps.authentication.instagram.requests.get')
+def test_unusable_graph_profile_does_not_create_connection(get, post, instagram_settings):
+    post.return_value = Mock(json=lambda: {'access_token': 'short', 'user_id': '123', 'permissions': 'instagram_business_basic,instagram_business_content_publish'})
+    get.return_value = Mock(json=lambda: {'username': 'demo'})
+    with pytest.raises(InstagramError) as error:
+        exchange_code('code')
+    assert error.value.stage == 'profile'
 
 
 @patch('apps.authentication.instagram.requests.post')

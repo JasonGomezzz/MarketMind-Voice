@@ -73,6 +73,10 @@ def exchange_code(code):
             permissions = permissions.split(',')
         if not SCOPES.issubset(set(permissions)):
             raise InstagramError(stage)
+        # Verify the actual token owner through /me, not by comparing identifiers
+        # from two different OAuth/Graph response schemas.
+        stage = 'profile'
+        authorized_profile = fetch_profile(short['access_token'])
         stage = 'extend_token'
         response = requests.get('https://graph.instagram.com/access_token', params={
             'grant_type': 'ig_exchange_token', 'client_secret': settings.INSTAGRAM_APP_SECRET,
@@ -81,15 +85,9 @@ def exchange_code(code):
         response.raise_for_status()
         token = response.json()
         stage = 'profile'
-        response = requests.get('https://graph.instagram.com/me', params={
-            'fields': 'user_id,username',
-        }, headers={'Authorization': f"Bearer {token['access_token']}"}, timeout=20)
-        response.raise_for_status()
-        profile = response.json()
+        profile = fetch_profile(token['access_token'])
         stage = 'identity'
-        if (str(profile['user_id']) != str(short['user_id'])
-                or not isinstance(profile['username'], str) or not profile['username']
-                or len(profile['username']) > 150 or len(str(profile['user_id'])) > 64):
+        if profile['user_id'] != authorized_profile['user_id']:
             raise InstagramError(stage)
         stage = 'expiry'
         lifetime = int(token['expires_in'])
@@ -98,6 +96,23 @@ def exchange_code(code):
         return profile, token['access_token'], lifetime
     except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
         raise InstagramError(stage) from None
+
+
+def fetch_profile(token):
+    response = requests.get('https://graph.instagram.com/me', params={
+        'fields': 'user_id,username',
+    }, headers={'Authorization': f'Bearer {token}'}, timeout=20)
+    response.raise_for_status()
+    profile = response.json()
+    if not isinstance(profile, dict):
+        raise InstagramError('profile')
+    account_id = profile.get('user_id') or profile.get('id')
+    username = profile.get('username')
+    if (not isinstance(account_id, (str, int)) or isinstance(account_id, bool)
+            or not str(account_id).strip() or len(str(account_id)) > 64
+            or not isinstance(username, str) or not username.strip() or len(username) > 150):
+        raise InstagramError('profile')
+    return {'user_id': str(account_id), 'username': username}
 
 
 class InstagramAccountsView(APIView):
