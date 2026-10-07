@@ -28,8 +28,8 @@ export default function InstagramAccounts() {
         }
         // Reuse the same completion during React StrictMode's effect replay.
         if (completion.current) await completion.current
-      } catch {
-        if (!cancelled) setError('No se pudo completar la autorización. Vuelve a conectar Instagram.')
+      } catch (err) {
+        if (!cancelled) setError(err.response?.data?.message || 'No se pudo completar la autorización. Vuelve a conectar Instagram.')
       }
       try {
         const { data } = await api.get('/api/auth/instagram/accounts/')

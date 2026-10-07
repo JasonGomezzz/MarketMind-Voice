@@ -130,8 +130,9 @@ def test_exchange_http_contract(get, post, instagram_settings):
 def test_exchange_rejects_profile_identity_mismatch(get, post, instagram_settings):
     post.return_value = Mock(json=lambda: {'access_token': 'short', 'user_id': '123', 'permissions': 'instagram_business_basic,instagram_business_content_publish'})
     get.side_effect = [Mock(json=lambda: {'access_token': 'long', 'expires_in': 3600}), Mock(json=lambda: {'user_id': 'other', 'username': 'demo'})]
-    with pytest.raises(InstagramError):
+    with pytest.raises(InstagramError) as error:
         exchange_code('code')
+    assert error.value.stage == 'identity'
 
 
 @patch('apps.authentication.instagram.requests.post')
@@ -140,7 +141,9 @@ def test_upstream_failure_and_missing_publish_permission_are_sanitized(post, ins
     with pytest.raises(InstagramError) as error:
         exchange_code('code')
     assert 'private-token-url' not in str(error.value)
+    assert error.value.stage == 'code_exchange'
     post.side_effect = None
     post.return_value = Mock(json=lambda: {'access_token': 'short', 'permissions': ['instagram_business_basic']})
-    with pytest.raises(InstagramError):
+    with pytest.raises(InstagramError) as error:
         exchange_code('code')
+    assert error.value.stage == 'permissions'

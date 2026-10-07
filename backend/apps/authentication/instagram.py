@@ -1,5 +1,6 @@
 """Instagram Login: per-user authorization; never return or log credentials."""
 import hashlib
+import logging
 import secrets
 from datetime import timedelta
 from urllib.parse import urlencode, urlsplit
@@ -18,10 +19,23 @@ from .models import InstagramAccount, InstagramAuthorization
 from .permissions import IsMarketero
 
 SCOPES = {'instagram_business_basic', 'instagram_business_content_publish'}
+logger = logging.getLogger(__name__)
+FAILURE_MESSAGES = {
+    'code_exchange': 'Instagram no aceptó el código de autorización. Comprueba la clave de la app y la URL de retorno en Meta, y vuelve a conectar.',
+    'permissions': 'Instagram no concedió los permisos de acceso básico y publicación. Vuelve a conectar y autoriza ambos.',
+    'extend_token': 'No se pudo ampliar la autorización de Instagram. Comprueba la clave secreta de la app de Instagram.',
+    'profile': 'No se pudo verificar el perfil de Instagram con la autorización recibida.',
+    'identity': 'El perfil recibido no coincide con la cuenta que autorizó Instagram.',
+    'expiry': 'Instagram devolvió una autorización con vencimiento inválido.',
+}
 
 
 class InstagramError(Exception):
     """Safe boundary: upstream exceptions must never expose token-bearing URLs."""
+
+    def __init__(self, stage='unknown'):
+        self.stage = stage if stage in FAILURE_MESSAGES else 'unknown'
+        super().__init__('Instagram authorization failed')
 
 
 def cipher():
@@ -42,6 +56,7 @@ def configured():
 
 
 def exchange_code(code):
+    stage = 'code_exchange'
     try:
         response = requests.post('https://api.instagram.com/oauth/access_token', data={
             'client_id': settings.INSTAGRAM_APP_ID, 'client_secret': settings.INSTAGRAM_APP_SECRET,
@@ -52,32 +67,37 @@ def exchange_code(code):
         short = response.json()
         if 'data' in short:
             short = short['data'][0]
+        stage = 'permissions'
         permissions = short.get('permissions', [])
         if isinstance(permissions, str):
             permissions = permissions.split(',')
         if not SCOPES.issubset(set(permissions)):
-            raise InstagramError()
+            raise InstagramError(stage)
+        stage = 'extend_token'
         response = requests.get('https://graph.instagram.com/access_token', params={
             'grant_type': 'ig_exchange_token', 'client_secret': settings.INSTAGRAM_APP_SECRET,
             'access_token': short['access_token'],
         }, timeout=20)
         response.raise_for_status()
         token = response.json()
+        stage = 'profile'
         response = requests.get('https://graph.instagram.com/me', params={
             'fields': 'user_id,username',
         }, headers={'Authorization': f"Bearer {token['access_token']}"}, timeout=20)
         response.raise_for_status()
         profile = response.json()
+        stage = 'identity'
         if (str(profile['user_id']) != str(short['user_id'])
                 or not isinstance(profile['username'], str) or not profile['username']
                 or len(profile['username']) > 150 or len(str(profile['user_id'])) > 64):
-            raise InstagramError()
+            raise InstagramError(stage)
+        stage = 'expiry'
         lifetime = int(token['expires_in'])
         if lifetime <= 0 or lifetime > 90 * 86400:
-            raise InstagramError()
+            raise InstagramError(stage)
         return profile, token['access_token'], lifetime
     except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
-        raise InstagramError() from None
+        raise InstagramError(stage) from None
 
 
 class InstagramAccountsView(APIView):
@@ -148,8 +168,11 @@ class InstagramCompleteView(APIView):
         try:
             profile, token, lifetime = exchange_code(code)
             encrypted = cipher().encrypt(token.encode()).decode()
-        except InstagramError:
-            return Response(api_response(False, 'No se pudo autorizar Instagram. Revisa los permisos y vuelve a conectar.'), status=502)
+        except InstagramError as error:
+            # Only a static stage label is logged; never the exception/response/URL.
+            logger.warning('Instagram authorization failed at stage=%s', error.stage)
+            return Response(api_response(False, FAILURE_MESSAGES.get(error.stage,
+                'No se pudo autorizar Instagram. Revisa los permisos y vuelve a conectar.')), status=502)
         # Serialize completion against account suspension/token revocation.
         with transaction.atomic():
             owner = type(request.user).objects.select_for_update().get(pk=request.user.pk)
