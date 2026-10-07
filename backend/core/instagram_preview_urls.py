@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.campaigns.instagram_publication import InstagramMediaView
 from apps.authentication.views import AuthBrandContentView, MeView
 from apps.authentication.token_views import CustomTokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -8,6 +9,7 @@ from apps.authentication.instagram import (
 
 # Only the endpoints needed to sign in and authorize Instagram are exposed.
 urlpatterns = [
+    path('api/instagram/media/<uuid:ticket>/', InstagramMediaView.as_view()),
     path('api/auth/token/', CustomTokenObtainPairView.as_view()),
     path('api/auth/token/refresh/', TokenRefreshView.as_view()),
     path('api/auth/brand-content/', AuthBrandContentView.as_view()),
