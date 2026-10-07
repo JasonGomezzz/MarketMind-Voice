@@ -1,8 +1,7 @@
 # Facebook: conexión de Páginas por marketero
 
-Esta etapa conecta Páginas; no publica campañas ni modifica Instagram. El botón
-de Facebook en una campaña conserva su comportamiento anterior hasta implementar
-la publicación con vista previa y confirmación.
+Conecta Páginas por marketero y publica imagen con texto aprobado mediante una
+confirmación explícita dentro de NexoMark. Instagram conserva su flujo propio.
 
 ## Meta y entorno local
 
@@ -56,7 +55,34 @@ La lista y desconexión están limitadas al marketero autenticado. Desconectar b
 la credencial local, no revoca automáticamente los permisos en Meta. Eliminar o
 reducir permisos en Meta puede invalidar antes una credencial; reconectar entonces.
 
-Prueba real pendiente: autorizar en el navegador y verificar que Aroma Andino aparece
-conectada. Los tests automatizados simulan Meta y no realizan publicaciones.
+## Publicación de campañas aprobadas
+
+En localhost, abrir una campaña aprobada con Facebook seleccionado, pulsar
+Preparar para Facebook y revisar la imagen, el texto guardado y la Página de
+destino. Solo el botón final Publicar hace un POST externo real. La conexión
+exitosa de Aroma Andino fue confirmada por el usuario; la prueba de publicación
+real queda pendiente de su confirmación en la interfaz. Los tests simulan Meta.
+
+`POST /api/campaigns/<id>/publish-facebook/` exige JWT de marketero, propiedad
+de campaña y Página, aprobación, plataforma y versión actuales, `confirm: true`,
+texto e imagen válidos y credencial vigente. No admite copy/imagen de un borrador
+en el request: toma una instantánea de la campaña guardada. El JPEG se envía por
+multipart directamente a `/{page_id}/photos`, con `caption` y `published=true`.
+No se necesita que Facebook descargue una imagen desde el túnel.
+Límites conservadores de esta integración: texto de 60000 caracteres, JPEG de
+4 MB, 20 millones de píxeles de entrada; se reduce sin recortar a 1800×1800.
+
+Se persiste un intento `publishing` antes de la solicitud externa. La restricción
+única campaña/Página/versión sobrevive a desconectar y reconectar la Página. Un
+doble clic o reintento solo devuelve ese intento. Éxito almacena photo_id y, cuando
+Meta lo devuelve, post_id; el frontend ofrece un enlace a la foto en Facebook.
+Una respuesta ambigua, timeout o error se marca `uncertain` y no se reenvía:
+revisar primero la Página y permisos; no borrar el registro para volver a probar.
+Un proceso que muere con estado publishing también requiere revisión manual.
+Esto prioriza evitar duplicados, sin prometer exactamente-una-vez en Meta.
+GET del mismo endpoint con page_id consulta el estado sin publicar. Los endpoints
+de campaña/publicación siguen excluidos del puente público. Desconectar no borra
+el historial de publicación ni elimina publicaciones en Facebook.
 
 Referencia oficial: [Tokens de Páginas administradas, colección de Meta](https://www.postman.com/meta/facebook/request/bqfxwbp/get-access-tokens-of-pages-you-manage).
+Parámetros de fotos: [SDK oficial de Meta, Page.create_photo](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/page.py).
