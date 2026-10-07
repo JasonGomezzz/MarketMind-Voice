@@ -54,8 +54,8 @@ export default function InstagramAccounts() {
       const destination = new URL(data.data.authorization_url)
       if (destination.origin !== 'https://www.instagram.com' || destination.pathname !== '/oauth/authorize') throw new Error('Invalid destination')
       window.location.assign(destination.href)
-    } catch {
-      toast.error('No se pudo iniciar la conexión con Instagram.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo iniciar la conexión con Instagram.')
       setBusy(false)
     }
   }

@@ -42,7 +42,7 @@ export default function LoginPage() {
     }
 
     // Todos los roles van a /dashboard por ahora (HU8 diferenciará)
-    navigate('/dashboard', { replace: true })
+    navigate(import.meta.env.VITE_INSTAGRAM_PREVIEW === 'true' ? '/settings' : '/dashboard', { replace: true })
   }
 
   return (

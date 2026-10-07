@@ -20,10 +20,20 @@ de seguridad: perderla impide descifrar las conexiones guardadas.
 
 `INSTAGRAM_REDIRECT_URI` debe apuntar a `https://<frontend>/settings` y coincidir
 exactamente con la URI registrada en el inicio de sesión empresarial de Instagram.
-`FRONTEND_BASE_URL` debe tener ese mismo origen HTTPS. El marketero debe iniciar
+`INSTAGRAM_FRONTEND_ORIGIN` debe tener ese mismo origen HTTPS (si está vacío,
+se utiliza `FRONTEND_BASE_URL`). El marketero debe iniciar
 sesión desde ese origen, no desde otro dominio/puerto, para conservar su sesión al
 volver de Meta. En local, falta definir ese acceso HTTPS y configurar CORS y hosts
 de forma explícita; no se crean túneles ni se expone Django automáticamente.
+
+Para no cambiar el origen de los correos de recuperación, usar el origen dedicado
+`INSTAGRAM_FRONTEND_ORIGIN` durante la prueba. El perfil `core.settings.instagram_preview`
+deshabilita debug y solo expone login, perfil y conexiones de Instagram; no incluye
+admin ni campañas. Se ejecuta en 127.0.0.1:8002. La vista Vite opt-in usa
+`INSTAGRAM_PREVIEW_HOST` con el dominio exacto y el puerto 5176; debe compilarse con
+`VITE_API_URL=/`, `VITE_INSTAGRAM_PREVIEW=true` y salida `dist-instagram`.
+El login de esa compilación lleva directamente a Configuración. No es un despliegue de producción.
+El resto del proyecto sigue en sus puertos habituales.
 
 Mientras falte configuración, la interfaz muestra el motivo y bloquea conectar.
 No rellenar estas variables con el token generado manualmente: el flujo obtiene

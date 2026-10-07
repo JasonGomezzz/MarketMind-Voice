@@ -153,6 +153,9 @@ export default function AccountSettingsPage() {
       <AppToaster />
       <div className="max-w-3xl space-y-6">
         <header>
+          {import.meta.env.VITE_INSTAGRAM_PREVIEW === 'true' && (
+            <p className="mb-3 text-sm text-on-surface-variant">Vista temporal para conectar Instagram. Las campañas y el resto del proyecto siguen en tu web local.</p>
+          )}
           <h1 className="text-4xl font-bold tracking-tight text-on-surface">Configuración</h1>
           <p className="mt-2 text-base text-on-surface-variant">
             Gestiona tu perfil, tu contraseña y el estado de tu cuenta.

@@ -30,7 +30,7 @@ def cipher():
 
 def configured():
     redirect = urlsplit(settings.INSTAGRAM_REDIRECT_URI)
-    frontend = urlsplit(settings.FRONTEND_BASE_URL)
+    frontend = urlsplit(settings.INSTAGRAM_FRONTEND_ORIGIN or settings.FRONTEND_BASE_URL)
     try:
         cipher()
     except (ValueError, TypeError):
@@ -110,6 +110,10 @@ class InstagramConnectView(APIView):
     def post(self, request):
         if not configured():
             return Response(api_response(False, 'Falta configurar la conexión segura de Instagram en el servidor.'), status=503)
+        origin = request.headers.get('Origin')
+        expected = urlsplit(settings.INSTAGRAM_REDIRECT_URI)
+        if origin and origin != f'{expected.scheme}://{expected.netloc}':
+            return Response(api_response(False, 'Inicia sesión desde la dirección HTTPS de prueba para conectar Instagram.'), status=403)
         # Remove stale tickets for this owner; never delete tickets of other users.
         InstagramAuthorization.objects.filter(owner=request.user, expires_at__lt=timezone.now()).delete()
         state = secrets.token_urlsafe(32)

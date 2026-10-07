@@ -20,6 +20,7 @@ def instagram_settings(settings):
     settings.INSTAGRAM_APP_SECRET = 'test-secret'
     settings.INSTAGRAM_REDIRECT_URI = 'https://demo.example/settings'
     settings.FRONTEND_BASE_URL = 'https://demo.example'
+    settings.INSTAGRAM_FRONTEND_ORIGIN = ''
     settings.SOCIAL_TOKEN_ENCRYPTION_KEY = Fernet.generate_key().decode()
     return settings
 
@@ -45,6 +46,11 @@ def test_https_same_origin_required(api_client, instagram_settings):
     assert api_client.post('/api/auth/instagram/connect/').status_code == 503
     instagram_settings.INSTAGRAM_REDIRECT_URI = 'http://localhost:5173/settings'
     assert api_client.post('/api/auth/instagram/connect/').status_code == 503
+
+
+def test_wrong_browser_origin_cannot_start_connection(api_client, instagram_settings):
+    assert api_client.post('/api/auth/instagram/connect/', HTTP_ORIGIN='http://localhost:5173').status_code == 403
+    assert api_client.post('/api/auth/instagram/connect/', HTTP_ORIGIN='https://demo.example').status_code == 200
 
 
 def test_client_and_anonymous_cannot_manage_connections(cliente, instagram_settings):
