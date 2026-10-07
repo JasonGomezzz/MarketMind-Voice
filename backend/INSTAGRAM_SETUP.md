@@ -22,10 +22,14 @@ de seguridad: perderla impide descifrar las conexiones guardadas.
 `INSTAGRAM_REDIRECT_URI` debe apuntar a `https://<frontend>/settings` y coincidir
 exactamente con la URI registrada en el inicio de sesión empresarial de Instagram.
 `INSTAGRAM_FRONTEND_ORIGIN` debe tener ese mismo origen HTTPS (si está vacío,
-se utiliza `FRONTEND_BASE_URL`). El marketero debe iniciar
-sesión desde ese origen, no desde otro dominio/puerto, para conservar su sesión al
-volver de Meta. En local, falta definir ese acceso HTTPS y configurar CORS y hosts
-de forma explícita; no se crean túneles ni se expone Django automáticamente.
+se utiliza `FRONTEND_BASE_URL`). El marketero puede iniciar la conexión desde
+`FRONTEND_BASE_URL` (por ejemplo, localhost:5173) o desde el origen HTTPS.
+El retorno HTTPS valida el estado temporal y redirige a `/settings` del origen
+que inició la conexión. Código y estado viajan en el fragmento, no en la consulta
+del servidor local. El navegador verifica además el estado guardado en su propia
+pestaña y completa el intercambio usando su sesión local original. Ningún JWT
+se transfiere al túnel. Solo se permiten los orígenes configurados; HTTP se admite
+únicamente para localhost o 127.0.0.1.
 
 Para no cambiar el origen de los correos de recuperación, usar el origen dedicado
 `INSTAGRAM_FRONTEND_ORIGIN` durante la prueba. El perfil `core.settings.instagram_preview`
@@ -34,7 +38,10 @@ de imágenes mediante una capacidad opaca que vence a los treinta minutos; no in
 admin ni campañas. Se ejecuta en 127.0.0.1:8002. La vista Vite opt-in usa
 `INSTAGRAM_PREVIEW_HOST` con el dominio exacto y el puerto 5176; debe compilarse con
 `VITE_API_URL=/`, `VITE_INSTAGRAM_PREVIEW=true` y salida `dist-instagram`.
-El login de esa compilación lleva directamente a Configuración. No es un despliegue de producción.
+El retorno `/settings?code=...&state=...` se reenvía al puente Django, sin requerir
+iniciar sesión en el túnel. El registro de solicitudes del puente oculta la
+consulta de autorización. El login de esa compilación lleva directamente a
+Configuración si se usa la web HTTPS manualmente. No es un despliegue de producción.
 El resto del proyecto sigue en sus puertos habituales.
 
 Mientras falte configuración, la interfaz muestra el motivo y bloquea conectar.
@@ -69,6 +76,11 @@ un token distinto por autorización. Reiniciar Django después de configurar.
 Prueba local: abrir una campaña aprobada en localhost:5173, seleccionar
 «Preparar para Instagram», revisar imagen/texto, elegir cuenta y pulsar «Publicar».
 El diálogo muestra el resultado persistido al volver a abrirlo.
+
+Prueba de conexión: desde Configuración en localhost:5173, pulsar «Conectar
+Instagram», autorizar en Instagram y comprobar el regreso automático a la misma
+Configuración local. Mantener activos ngrok, la vista previa de Vite y el backend
+del puente. No es necesario cambiar la URI HTTPS ya registrada en Meta.
 
 Contrato de publicación: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/
 
