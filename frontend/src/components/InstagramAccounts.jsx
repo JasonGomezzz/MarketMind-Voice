@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
+import { rememberInstagramAuthorization, takeInstagramAuthorization } from '../services/instagramAuthorization'
 import { Button } from './ui/button'
 
 export default function InstagramAccounts() {
@@ -16,12 +17,12 @@ export default function InstagramAccounts() {
     async function load() {
       try {
         const query = new URLSearchParams(window.location.search)
-        if ((query.has('code') || query.has('error')) && !completion.current) {
-          const code = query.get('code')
-          const state = query.get('state')
-          const denied = query.has('error')
+        const fragment = new URLSearchParams(window.location.hash.slice(1))
+        if ((query.has('code') || query.has('error') || fragment.has('code') || fragment.has('error')) && !completion.current) {
+          const search = window.location.search, hash = window.location.hash
           // Remove authorization values before loading anything else or showing errors.
           window.history.replaceState(null, '', window.location.pathname)
+          const { code, state, denied } = takeInstagramAuthorization(search, hash)
           completion.current = denied
             ? Promise.resolve().then(() => toast.error('No autorizaste la conexión con Instagram.'))
             : api.post('/api/auth/instagram/complete/', { code, state }).then(() => toast.success('Instagram conectado'))
@@ -29,7 +30,7 @@ export default function InstagramAccounts() {
         // Reuse the same completion during React StrictMode's effect replay.
         if (completion.current) await completion.current
       } catch (err) {
-        if (!cancelled) setError(err.response?.data?.message || 'No se pudo completar la autorización. Vuelve a conectar Instagram.')
+        if (!cancelled) setError(err.response?.data?.message || err.message || 'No se pudo completar la autorización. Vuelve a conectar Instagram.')
       }
       try {
         const { data } = await api.get('/api/auth/instagram/accounts/')
@@ -51,9 +52,7 @@ export default function InstagramAccounts() {
     setBusy(true)
     try {
       const { data } = await api.post('/api/auth/instagram/connect/')
-      const destination = new URL(data.data.authorization_url)
-      if (destination.origin !== 'https://www.instagram.com' || destination.pathname !== '/oauth/authorize') throw new Error('Invalid destination')
-      window.location.assign(destination.href)
+      window.location.assign(rememberInstagramAuthorization(data.data.authorization_url))
     } catch (err) {
       toast.error(err.response?.data?.message || 'No se pudo iniciar la conexión con Instagram.')
       setBusy(false)

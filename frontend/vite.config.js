@@ -16,6 +16,9 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: [process.env.INSTAGRAM_PREVIEW_HOST],
     headers: { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' },
-    proxy: { '/api/': { target: 'http://127.0.0.1:8002', changeOrigin: true } },
+    proxy: {
+      '/api/': { target: 'http://127.0.0.1:8002', changeOrigin: true },
+      '^/settings\\?': { target: 'http://127.0.0.1:8002', changeOrigin: true },
+    },
   } : {},
 })
