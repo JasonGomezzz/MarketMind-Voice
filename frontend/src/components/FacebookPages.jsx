@@ -86,7 +86,7 @@ export default function FacebookPages() {
         {pages.length === 0 && <p className="mb-3 text-sm text-on-surface-variant">Todavía no tienes Páginas conectadas.</p>}
         <Button disabled={busy || !configured} onClick={connect}>{busy ? 'Procesando…' : 'Conectar Facebook'}</Button>
       </>}
-      <p className="mt-3 text-xs text-on-surface-variant">Conectar no publica campañas. La publicación de imagen y texto en Facebook se implementará después de comprobar esta conexión. Desconectar elimina la credencial local; también puedes revocar el acceso desde Facebook.</p>
+      <p className="mt-3 text-xs text-on-surface-variant">Conectar no publica automáticamente. Puedes publicar en tu Página desde una campaña aprobada, revisando su imagen y texto. Desconectar elimina la credencial local; también puedes revocar el acceso desde Facebook.</p>
     </section>
   )
 }
