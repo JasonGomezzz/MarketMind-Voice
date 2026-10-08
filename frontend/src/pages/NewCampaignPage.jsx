@@ -9,6 +9,7 @@ import StatusBadge from '@/components/StatusBadge'
 import GeneratingState from '@/components/campaign/GeneratingState'
 import ErrorState from '@/components/campaign/ErrorState'
 import CreditsExhausted from '@/components/campaign/CreditsExhausted'
+import PlatformIcon from '@/components/campaign/PlatformIcon'
 import { VoiceDictationButton } from '@/components/voice/GeminiVoiceControls'
 
 const INDUSTRIAS = [
@@ -365,7 +366,8 @@ export default function NewCampaignPage() {
                           values?.length > 0 || 'Selecciona al menos una plataforma.',
                       })}
                     />
-                    {label}
+                    <PlatformIcon platform={value} />
+                    <span>{label}</span>
                   </label>
                 ))}
               </div>
