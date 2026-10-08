@@ -299,3 +299,26 @@ class FacebookAuthorization(models.Model):
     expires_at = models.DateTimeField()
     used = models.BooleanField(default=False)
     return_origin = models.CharField(max_length=255)
+
+
+class XAccount(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='x_accounts')
+    x_user_id = models.CharField(max_length=64)
+    username = models.CharField(max_length=150)
+    encrypted_access_token = models.TextField()
+    encrypted_refresh_token = models.TextField()
+    expires_at = models.DateTimeField()
+    connected_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['owner', 'x_user_id'], name='unique_owner_x_account')]
+
+
+class XAuthorization(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    state_hash = models.CharField(max_length=64, unique=True)
+    encrypted_verifier = models.TextField()
+    token_version = models.IntegerField()
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    return_origin = models.CharField(max_length=255)

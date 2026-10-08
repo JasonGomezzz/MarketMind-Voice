@@ -9,9 +9,14 @@ from apps.authentication.instagram import (
 from apps.authentication.facebook import (
     FacebookPagesView, FacebookConnectView, FacebookCompleteView, FacebookDisconnectView, FacebookCallbackRelayView,
 )
+from apps.authentication.x_oauth import XAccountsView, XConnectView, XDisconnectView, XCallbackView
 
 # Only sign-in, social authorization and short-lived Instagram images are exposed.
 urlpatterns = [
+    path('api/auth/x/accounts/', XAccountsView.as_view()),
+    path('api/auth/x/accounts/<int:pk>/', XDisconnectView.as_view()),
+    path('api/auth/x/connect/', XConnectView.as_view()),
+    path('api/auth/x/callback/', XCallbackView.as_view()),
     path('api/auth/facebook/pages/', FacebookPagesView.as_view()),
     path('api/auth/facebook/pages/<int:pk>/', FacebookDisconnectView.as_view()),
     path('api/auth/facebook/connect/', FacebookConnectView.as_view()),

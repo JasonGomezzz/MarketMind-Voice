@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { useTheme } from '../hooks/useTheme'
 import InstagramAccounts from '../components/InstagramAccounts'
 import FacebookPages from '../components/FacebookPages'
+import XAccounts from '../components/XAccounts'
 
 /**
  * Configuración de cuenta (portado de Stitch: account_settings, adaptado a los
@@ -221,6 +222,7 @@ export default function AccountSettingsPage() {
 
         {user.rol === 'marketero' && <InstagramAccounts />}
         {user.rol === 'marketero' && <FacebookPages />}
+        {user.rol === 'marketero' && <XAccounts />}
 
         {/* Seguridad */}
         <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">

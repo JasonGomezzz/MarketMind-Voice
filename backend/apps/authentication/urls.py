@@ -11,8 +11,13 @@ from .token_views import CustomTokenObtainPairView
 from .password_reset import PasswordResetRequestView, PasswordResetConfirmView
 from .instagram import InstagramAccountsView, InstagramConnectView, InstagramCompleteView, InstagramDisconnectView
 from .facebook import FacebookPagesView, FacebookConnectView, FacebookCompleteView, FacebookDisconnectView, FacebookCallbackRelayView
+from .x_oauth import XAccountsView, XConnectView, XDisconnectView, XCallbackView
 
 urlpatterns = [
+    path('x/accounts/', XAccountsView.as_view()),
+    path('x/accounts/<int:pk>/', XDisconnectView.as_view()),
+    path('x/connect/', XConnectView.as_view()),
+    path('x/callback/', XCallbackView.as_view()),
     path('facebook/pages/', FacebookPagesView.as_view()),
     path('facebook/pages/<int:pk>/', FacebookDisconnectView.as_view()),
     path('facebook/connect/', FacebookConnectView.as_view()),
