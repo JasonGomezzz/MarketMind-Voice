@@ -371,6 +371,26 @@ class FacebookPublication(models.Model):
                                               name='unique_facebook_publication')]
 
 
+class XPublication(models.Model):
+    """Approved snapshot and durable attempt, surviving account disconnection."""
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
+    account = models.ForeignKey('authentication.XAccount', on_delete=models.SET_NULL, null=True)
+    x_user_id = models.CharField(max_length=64)
+    username = models.CharField(max_length=150)
+    campaign_version = models.IntegerField()
+    caption = models.TextField()
+    image_jpeg = models.TextField()
+    status = models.CharField(max_length=20, default='preparing')
+    media_id = models.CharField(max_length=64, blank=True)
+    post_id = models.CharField(max_length=64, blank=True)
+    message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['campaign', 'x_user_id', 'campaign_version'],
+                                              name='unique_x_publication')]
+
+
 class CreditPurchase(models.Model):
     """
     Registro append-only de compras de créditos de IA. Pasarela de pago

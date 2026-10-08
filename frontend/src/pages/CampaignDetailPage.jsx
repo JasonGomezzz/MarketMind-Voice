@@ -11,6 +11,7 @@ import { getApprovedPublicationCopy } from '../services/campaignPublication'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import InstagramPublicationDialog from '../components/InstagramPublicationDialog'
 import FacebookPublicationDialog from '../components/FacebookPublicationDialog'
+import XPublicationDialog from '../components/XPublicationDialog'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import CampaignStepper from '@/components/CampaignStepper'
@@ -29,7 +30,6 @@ const PLATFORM_LABELS = {
 
 const PLATFORM_PUBLISH_URLS = {
   instagram: () => 'https://www.instagram.com/',
-  twitter: (copy) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(copy.slice(0, 280))}`,
   linkedin: (copy) => `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(copy)}`,
   google_ads: () => 'https://ads.google.com/aw/campaigns/new',
   tiktok: () => 'https://www.tiktok.com/upload',
@@ -61,6 +61,7 @@ export default function CampaignDetailPage() {
   const [showModal, setShowModal] = useState(false)
   const [showInstagram, setShowInstagram] = useState(false)
   const [showFacebook, setShowFacebook] = useState(false)
+  const [showX, setShowX] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [versionsRefreshKey, setVersionsRefreshKey] = useState(0)
 
@@ -262,6 +263,10 @@ export default function CampaignDetailPage() {
     }
     if (platform === 'facebook') {
       setShowFacebook(true)
+      return
+    }
+    if (platform === 'twitter') {
+      setShowX(true)
       return
     }
     const destination = PLATFORM_PUBLISH_URLS[platform]?.(approvedCopy)
@@ -588,7 +593,7 @@ export default function CampaignDetailPage() {
                   </p>
                 )}
                 <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-                  Instagram y Facebook muestran la imagen y el texto aprobado para elegir el destino y confirmar la publicación.
+                  Instagram, Facebook y X muestran la imagen y el texto aprobado para elegir el destino y confirmar la publicación.
                   Las demás plataformas todavía requieren completar la publicación manualmente.
                 </p>
               </div>
@@ -617,6 +622,7 @@ export default function CampaignDetailPage() {
 
       {showInstagram && <InstagramPublicationDialog campaign={campaign} onClose={() => setShowInstagram(false)} />}
       {showFacebook && <FacebookPublicationDialog campaign={campaign} onClose={() => setShowFacebook(false)} />}
+      {showX && <XPublicationDialog campaign={campaign} onClose={() => setShowX(false)} />}
       {showModal && (
         <SubmitModal
           preview={text}

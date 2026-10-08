@@ -87,12 +87,40 @@ def exchange(code, verifier):
         return None
 
 
+def access_token_for(account):
+    """Refresh under an account lock so rotating refresh tokens aren't reused."""
+    with transaction.atomic():
+        account = XAccount.objects.select_for_update().get(pk=account.pk, owner_id=account.owner_id)
+        if account.expires_at > timezone.now() + timedelta(seconds=30):
+            return cipher().decrypt(account.encrypted_access_token.encode()).decode()
+        refresh = cipher().decrypt(account.encrypted_refresh_token.encode()).decode()
+        response = requests.post('https://api.x.com/2/oauth2/token',
+            data={'grant_type': 'refresh_token', 'refresh_token': refresh},
+            auth=(settings.X_CLIENT_ID, settings.X_CLIENT_SECRET), timeout=20, allow_redirects=False)
+        if response.status_code != 200:
+            raise ValueError('Reconecta X para renovar la autorización.')
+        values = response.json()
+        access = values.get('access_token')
+        renewed_refresh = values.get('refresh_token', refresh)
+        lifetime = values.get('expires_in')
+        if (not isinstance(access, str) or not access or not isinstance(renewed_refresh, str)
+                or not renewed_refresh or type(lifetime) is not int or not 0 < lifetime <= 86400
+                or 'scope' in values and not set(SCOPES.split()).issubset(values['scope'].split())):
+            raise ValueError('Reconecta X para renovar la autorización.')
+        account.encrypted_access_token = cipher().encrypt(access.encode()).decode()
+        account.encrypted_refresh_token = cipher().encrypt(renewed_refresh.encode()).decode()
+        account.expires_at = timezone.now() + timedelta(seconds=lifetime)
+        account.save(update_fields=['encrypted_access_token', 'encrypted_refresh_token', 'expires_at'])
+        return access
+
+
 class XAccountsView(APIView):
     permission_classes = [IsAuthenticated, IsMarketero]
 
     def get(self, request):
         accounts = [{'id': account.pk, 'username': account.username,
-                     'expired': account.expires_at <= timezone.now()}
+                     'expired': account.expires_at <= timezone.now(),
+                     'can_refresh': bool(account.encrypted_refresh_token)}
                     for account in XAccount.objects.filter(owner=request.user).order_by('username')]
         return Response(api_response(True, 'Cuentas de X.', {'accounts': accounts, 'configured': configured()}))
 

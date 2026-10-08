@@ -63,17 +63,17 @@ export default function XAccounts() {
 
   return <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
     <h2 className="text-xl font-semibold text-on-surface">Redes sociales · X</h2>
-    <p className="mt-2 text-sm text-on-surface-variant">Conecta tu cuenta de X para preparar la publicación de campañas aprobadas.</p>
+    <p className="mt-2 text-sm text-on-surface-variant">Conecta tu cuenta de X para publicar campañas aprobadas con imagen y texto.</p>
     {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
     {loading ? <p className="mt-3 text-sm">Cargando conexiones…</p> : <>
       {!configured && <p className="mt-3 text-sm text-on-surface-variant">Falta configurar X en el servidor.</p>}
       <ul className="my-4 space-y-3">{accounts.map(account => <li key={account.id} className="flex items-center justify-between gap-3">
-        <span>@{account.username}{account.expired ? ' · Vuelve a conectar' : ' · Conectada'}</span>
+        <span>@{account.username}{account.expired && !account.can_refresh ? ' · Vuelve a conectar' : ' · Conectada'}</span>
         <Button variant="outline" size="sm" disabled={busy} onClick={() => disconnect(account)}>Desconectar</Button>
       </li>)}</ul>
       {accounts.length === 0 && <p className="mb-3 text-sm text-on-surface-variant">Todavía no tienes cuentas de X conectadas.</p>}
       <Button disabled={busy || !configured} onClick={connect}>{busy ? 'Procesando…' : 'Conectar X'}</Button>
     </>}
-    <p className="mt-3 text-xs text-on-surface-variant">Conectar no publica campañas. Puedes revocar el acceso desde X.</p>
+    <p className="mt-3 text-xs text-on-surface-variant">Publica desde una campaña aprobada, revisando la imagen, el texto y la cuenta de destino. Puedes revocar el acceso desde X.</p>
   </section>
 }

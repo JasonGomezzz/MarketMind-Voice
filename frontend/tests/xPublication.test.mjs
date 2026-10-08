@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { canConfirmXPublication } from '../src/services/xPublication.js'
+
+const campaign = { estado: 'aprobado', texto_generado: 'Texto aprobado', imagen_b64: 'image', plataformas: ['twitter'] }
+const outcome = { status: 'not_published', accountId: '7', text_validation: { valid: true } }
+
+test('X requires approval, image, selected destination and completed validation', () => {
+  assert.equal(canConfirmXPublication(campaign, '7', { outcome }), true)
+  for (const key of ['loading', 'checking', 'busy', 'error']) {
+    assert.equal(canConfirmXPublication(campaign, '7', { outcome, [key]: true }), false)
+  }
+  assert.equal(canConfirmXPublication({ ...campaign, estado: 'generado' }, '7', { outcome }), false)
+  assert.equal(canConfirmXPublication({ ...campaign, imagen_b64: null }, '7', { outcome }), false)
+  assert.equal(canConfirmXPublication({ ...campaign, plataformas: ['facebook'] }, '7', { outcome }), false)
+  assert.equal(canConfirmXPublication(campaign, '', { outcome }), false)
+  assert.equal(canConfirmXPublication(campaign, '7', {}), false)
+  assert.equal(canConfirmXPublication(campaign, '8', { outcome }), false)
+  assert.equal(canConfirmXPublication(campaign, '7', { outcome: { ...outcome, text_validation: { valid: false } } }), false)
+})
+
+test('X cannot resend a successful or uncertain post; confirmed rejections allow explicit retry', () => {
+  for (const status of ['published', 'preparing', 'publishing', 'uncertain']) {
+    assert.equal(canConfirmXPublication(campaign, '7', { outcome: { ...outcome, status } }), false)
+  }
+  assert.equal(canConfirmXPublication(campaign, '7', { outcome: { ...outcome, status: 'failed' } }), true)
+})
