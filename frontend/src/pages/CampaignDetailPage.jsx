@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, Copy, ExternalLink, FileText, ImageOff, RefreshCw, Send, Star, Trash2 } from 'lucide-react'
+import { ArrowLeft, FileText, ImageOff, RefreshCw, Send, Star, Trash2 } from 'lucide-react'
+import CampaignPlatforms from '@/components/campaign/CampaignPlatforms'
+import PlatformIcon from '@/components/campaign/PlatformIcon'
 import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
 import { getApprovedPublicationCopy } from '../services/campaignPublication'
@@ -344,9 +346,7 @@ export default function CampaignDetailPage() {
             <MetaRow label="Industria" capitalize>{campaign.industria}</MetaRow>
             <MetaRow label="Tono" capitalize>{campaign.tono}</MetaRow>
             <MetaRow label="Plataformas">
-              {(campaign.plataformas?.length ? campaign.plataformas : [campaign.plataforma])
-                .map((platform) => PLATFORM_LABELS[platform] || platform)
-                .join(', ')}
+              <CampaignPlatforms campaign={campaign} />
             </MetaRow>
             <MetaRow label="Creada">
               {new Date(campaign.fecha_creacion).toLocaleDateString('es-PE')}
@@ -604,11 +604,7 @@ export default function CampaignDetailPage() {
                       aria-describedby={!canPreparePublication ? 'publication-approval-notice' : undefined}
                       onClick={() => handlePreparePublication(platform)}
                     >
-                      {['instagram', 'facebook', 'google_ads', 'tiktok'].includes(platform) ? (
-                        <Copy className="h-4 w-4" />
-                      ) : (
-                        <ExternalLink className="h-4 w-4" />
-                      )}
+                      <PlatformIcon platform={platform} className="h-4 w-4" />
                       Preparar para {PLATFORM_LABELS[platform] || platform}
                     </Button>
                   ),
