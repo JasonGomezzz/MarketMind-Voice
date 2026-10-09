@@ -17,6 +17,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .platform_content import platform_copy
 
 from apps.authentication.instagram import cipher
 from apps.authentication.models import InstagramAccount
@@ -109,7 +110,8 @@ class InstagramPublishView(APIView):
             if origin.scheme != 'https' or not origin.netloc or origin.path not in ('', '/'):
                 return Response(api_response(False, 'Falta la dirección HTTPS pública para la imagen.'), status=503)
             if not publication:
-                if not campaign.texto_generado.strip() or len(campaign.texto_generado) > 2200:
+                caption = platform_copy(campaign, 'instagram')
+                if not caption.strip() or len(caption) > 2200:
                     return Response(api_response(False, 'El texto debe tener entre 1 y 2200 caracteres.'), status=400)
                 try:
                     jpeg = jpeg_image(campaign.imagen_b64)
@@ -117,7 +119,7 @@ class InstagramPublishView(APIView):
                     return Response(api_response(False, str(error)), status=400)
                 publication = InstagramPublication.objects.create(campaign=campaign, account=account,
                     instagram_user_id=account.instagram_user_id, username=account.username,
-                    campaign_version=campaign.version, caption=campaign.texto_generado, image_jpeg=jpeg,
+                    campaign_version=campaign.version, caption=caption, image_jpeg=jpeg,
                     image_expires_at=timezone.now() + timedelta(minutes=30))
             try:
                 token = cipher().decrypt(account.encrypted_token.encode()).decode()

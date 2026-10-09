@@ -506,7 +506,11 @@ function ResultPanel({ result, onReset, onNavigate }) {
             Copy publicitario
           </p>
           <div className="whitespace-pre-wrap rounded-lg bg-surface-container-low p-4 text-sm leading-relaxed text-on-surface">
-            {campaign?.texto_generado || '—'}
+            {Object.keys(campaign?.textos_por_plataforma || {}).length
+              ? Object.entries(campaign.textos_por_plataforma).map(([platform, copy]) => <section key={platform} className="mb-4">
+                <h3 className="font-semibold">{platform === 'twitter' ? 'Twitter / X' : platform}</h3><p>{copy}</p>
+              </section>)
+              : campaign?.texto_generado || '—'}
           </div>
         </div>
 

@@ -139,6 +139,7 @@ class Campaign(models.Model):
         verbose_name="Copy generado",
         help_text="Texto publicitario devuelto por Gemini.",
     )
+    textos_por_plataforma = models.JSONField(default=dict, blank=True)
     imagen_url = models.URLField(
         blank=True,
         null=True,
@@ -313,6 +314,7 @@ class CampaignVersion(models.Model):
     )
     version_number = models.PositiveIntegerField()
     texto_generado = models.TextField()
+    textos_por_plataforma = models.JSONField(default=dict, blank=True)
     imagen_b64 = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -371,6 +373,16 @@ class FacebookPublication(models.Model):
                                               name='unique_facebook_publication')]
 
 
+class XSummary(models.Model):
+    """Marketer-reviewed adaptation, separate from client-approved content."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
+    campaign_version = models.IntegerField()
+    source_digest = models.CharField(max_length=64)
+    caption = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class XPublication(models.Model):
     """Approved snapshot and durable attempt, surviving account disconnection."""
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
@@ -378,6 +390,9 @@ class XPublication(models.Model):
     x_user_id = models.CharField(max_length=64)
     username = models.CharField(max_length=150)
     campaign_version = models.IntegerField()
+    summary = models.ForeignKey(XSummary, on_delete=models.SET_NULL, null=True, blank=True)
+    confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
     caption = models.TextField()
     image_jpeg = models.TextField()
     status = models.CharField(max_length=20, default='preparing')

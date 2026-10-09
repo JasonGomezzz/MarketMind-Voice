@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../services/api'
+import { getPlatformCopy } from '../services/campaignPublication'
 import { canConfirmFacebookPublication } from '../services/facebookPublication'
 import { Button } from '@/components/ui/button'
 
@@ -84,7 +85,7 @@ export default function FacebookPublicationDialog({ campaign, onClose }) {
         <p className="my-3 text-sm">Se enviarán esta imagen y el texto aprobado a la Página que elijas. Será una publicación real, no en tu perfil personal.</p>
         {campaign.imagen_b64 ? <img src={`data:image/png;base64,${campaign.imagen_b64}`} alt="Imagen aprobada para Facebook"
           className="mx-auto max-h-72 rounded-xl object-contain" /> : <p role="alert">Esta campaña no tiene imagen. No se puede publicar en Facebook.</p>}
-        <div className="my-4 whitespace-pre-wrap rounded-xl border border-outline-variant p-4 text-sm">{campaign.texto_generado}</div>
+        <div className="my-4 whitespace-pre-wrap rounded-xl border border-outline-variant p-4 text-sm">{getPlatformCopy(campaign, 'facebook')}</div>
         <label htmlFor="facebook-destination" className="text-sm font-semibold">Página de destino</label>
         <select id="facebook-destination" value={pageId} disabled={loading || busy || checking}
           onChange={(event) => {
@@ -97,7 +98,7 @@ export default function FacebookPublicationDialog({ campaign, onClose }) {
           {pages.map((page) => <option key={page.id} value={page.id}>{page.name}</option>)}
         </select>
         {!loading && !pages.length && <p className="my-2 text-sm">Conecta o renueva tu Página en Configuración antes de publicar.</p>}
-        {campaign.texto_generado.length > 60000 && <p role="alert">El texto supera los 60000 caracteres de esta integración.</p>}
+        {getPlatformCopy(campaign, 'facebook').length > 60000 && <p role="alert">El texto supera los 60000 caracteres de esta integración.</p>}
         {error && <p role="alert" className="my-3 text-error">{error}</p>}
         {outcome && outcome.status !== 'not_published' && <p role="status" className="my-3">{outcome.message}{outcome.status === 'published' && ` Página: ${outcome.page_name}.`}</p>}
         {outcome?.status === 'published' && outcome.publication_url && <a href={outcome.publication_url}

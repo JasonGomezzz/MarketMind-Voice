@@ -2,6 +2,16 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { canConfirmXPublication } from '../src/services/xPublication.js'
 
+test('a summary requires explicit marketer review and the validated draft identity', () => {
+  const campaign = { estado: 'aprobado', plataforma: 'twitter', texto_generado: 'Copy largo', imagen_b64: 'png' }
+  const state = { summaryId: 'draft-1', summaryConfirmed: false,
+    outcome: { status: 'not_published', accountId: '1', summaryId: 'draft-1', text_validation: { valid: true } } }
+  assert.equal(canConfirmXPublication(campaign, '1', state), false)
+  assert.equal(canConfirmXPublication(campaign, '1', { ...state, summaryConfirmed: true }), true)
+  assert.equal(canConfirmXPublication(campaign, '1', { ...state, summaryConfirmed: true, summaryId: 'different' }), false)
+  assert.equal(canConfirmXPublication(campaign, '1', { ...state, summaryConfirmed: true, busy: true }), false)
+})
+
 const campaign = { estado: 'aprobado', texto_generado: 'Texto aprobado', imagen_b64: 'image', plataformas: ['twitter'] }
 const outcome = { status: 'not_published', accountId: '7', text_validation: { valid: true } }
 

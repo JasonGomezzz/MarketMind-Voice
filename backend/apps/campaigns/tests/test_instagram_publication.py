@@ -41,6 +41,16 @@ def publish(client, setup, **kwargs):
 
 
 @patch('apps.campaigns.instagram_publication.graph')
+def test_instagram_uses_platform_copy(graph, api_client, publication_setup):
+    campaign, account = publication_setup
+    campaign.textos_por_plataforma = {'instagram': 'Versión aprobada para Instagram'}
+    campaign.save()
+    graph.side_effect = [{'id': 'container'}, {'status_code': 'FINISHED'}, {'id': '67890'}]
+    assert publish(api_client, publication_setup).status_code == 200
+    assert InstagramPublication.objects.get().caption == 'Versión aprobada para Instagram'
+
+
+@patch('apps.campaigns.instagram_publication.graph')
 def test_publishes_approved_snapshot_once(graph, api_client, publication_setup):
     graph.side_effect = [{'id': 'container'}, {'status_code': 'FINISHED'}, {'id': '67890'}]
     response = publish(api_client, publication_setup)

@@ -46,6 +46,14 @@ class CampaignServiceTest {
         ReflectionTestUtils.setField(campaign, "clienteEmail", "other@example.com");
         assertThrows(AccessDeniedException.class, () -> service.findById(10L, client));
     }
+    @Test void customerSeesAllPlatformCopiesBeforeApproving() {
+        var copies = java.util.Map.of("twitter", "Texto breve", "facebook", "Texto amplio");
+        ReflectionTestUtils.setField(campaign, "textosPorPlataforma", copies);
+        var result = service.findById(10L, client);
+        assertEquals(copies, result.getTextosPorPlataforma());
+        assertEquals(3, result.getVersion());
+        verify(campaigns, never()).save(any());
+    }
     @Test void unrelatedClientCannotApproveCampaign() {
         ReflectionTestUtils.setField(campaign, "clienteEmail", "other@example.com");
         assertThrows(AccessDeniedException.class, () -> service.updateStatus(10L, "aprobado", null, 5, 3, client));

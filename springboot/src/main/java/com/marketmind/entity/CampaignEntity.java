@@ -50,6 +50,10 @@ public class CampaignEntity {
     @Column(name = "texto_generado", updatable = false)
     private String textoGenerado;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "textos_por_plataforma", updatable = false, columnDefinition = "jsonb")
+    private java.util.Map<String, String> textosPorPlataforma;
+
     @Column(name = "imagen_url", updatable = false)
     private String imagenUrl;
 

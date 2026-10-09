@@ -15,6 +15,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .platform_content import platform_copy
 
 from apps.authentication.facebook import configured
 from apps.authentication.instagram import cipher
@@ -110,7 +111,8 @@ class FacebookPublishView(APIView):
                 return Response(api_response(False, 'La autorización venció. Reconecta Facebook.'), status=400)
             if not configured():
                 return Response(api_response(False, 'Falta configurar Facebook en el servidor.'), status=503)
-            if not campaign.texto_generado.strip() or len(campaign.texto_generado) > 60000:
+            caption = platform_copy(campaign, 'facebook')
+            if not caption.strip() or len(caption) > 60000:
                 return Response(api_response(False, 'El texto debe tener entre 1 y 60000 caracteres para esta integración.'), status=400)
             try:
                 jpeg = jpeg_image(campaign.imagen_b64)
@@ -124,7 +126,7 @@ class FacebookPublishView(APIView):
             # click/worker returns this record, even after a crash or disconnection.
             publication = FacebookPublication.objects.create(campaign=campaign, page=page,
                 facebook_page_id=page.facebook_page_id, page_name=page.name,
-                campaign_version=campaign.version, caption=campaign.texto_generado, image_jpeg=jpeg)
+                campaign_version=campaign.version, caption=caption, image_jpeg=jpeg)
         try:
             publication.photo_id, publication.post_id = send_photo(publication, token)
             publication.status = 'published'

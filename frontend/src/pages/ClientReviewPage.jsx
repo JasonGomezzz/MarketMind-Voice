@@ -180,8 +180,15 @@ export default function ClientReviewPage() {
               Copy propuesto
             </p>
             <p className="whitespace-pre-wrap text-base leading-relaxed text-on-surface">
-              {campaign.textoGenerado || 'Sin copy generado.'}
+              {!Object.keys(campaign.textosPorPlataforma || {}).length && (campaign.textoGenerado || 'Sin copy generado.')}
             </p>
+            {Object.entries(campaign.textosPorPlataforma || {}).map(([platform, copy]) => (
+              <section key={platform} className="mb-4 rounded-lg border border-outline-variant p-4">
+                <h3 className="mb-2 font-semibold">{platform === 'twitter' ? 'Twitter / X' : platform}</h3>
+                <p className="whitespace-pre-wrap">{copy}</p>
+              </section>
+            ))}
+            <p className="mt-2 text-sm text-on-surface-variant">La aprobación incluye todas las versiones y la imagen compartida.</p>
           </div>
 
           <div className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">

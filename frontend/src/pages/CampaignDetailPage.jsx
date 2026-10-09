@@ -12,6 +12,7 @@ import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import InstagramPublicationDialog from '../components/InstagramPublicationDialog'
 import FacebookPublicationDialog from '../components/FacebookPublicationDialog'
 import XPublicationDialog from '../components/XPublicationDialog'
+import PlatformContentEditor from '../components/campaign/PlatformContentEditor'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import CampaignStepper from '@/components/CampaignStepper'
@@ -62,6 +63,7 @@ export default function CampaignDetailPage() {
   const [showInstagram, setShowInstagram] = useState(false)
   const [showFacebook, setShowFacebook] = useState(false)
   const [showX, setShowX] = useState(false)
+  const [platformDirty, setPlatformDirty] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [versionsRefreshKey, setVersionsRefreshKey] = useState(0)
 
@@ -90,7 +92,7 @@ export default function CampaignDetailPage() {
       const { data } = await api.get(`/api/campaigns/${id}/`)
       const c = data.data.campaign
       setCampaign(c)
-      const draft = useDraft ? localStorage.getItem(draftKey) : null
+      const draft = useDraft && ['borrador', 'generado', 'rechazado'].includes(c.estado) ? localStorage.getItem(draftKey) : null
       setText(draft !== null ? draft : c.texto_generado || '')
       setPromptText(c.prompt || '')
       return c
@@ -170,6 +172,7 @@ export default function CampaignDetailPage() {
       const { data } = await api.patch(`/api/campaigns/${id}/`, {
         prompt: promptText,
         texto_generado: text,
+        version: campaign.version,
       })
       setCampaign(data.data.campaign)
       setPromptText(data.data.campaign.prompt || '')
@@ -187,7 +190,7 @@ export default function CampaignDetailPage() {
     setSubmitting(true)
     setShowModal(false)
     try {
-      await api.post(`/api/campaigns/${id}/submit/`)
+      await api.post(`/api/campaigns/${id}/submit/`, { version: campaign.version })
       localStorage.removeItem(draftKey)
       toast.success('Enviada a aprobación del cliente')
       setTimeout(() => navigate('/dashboard'), 1200)
@@ -252,7 +255,7 @@ export default function CampaignDetailPage() {
   }
 
   async function handlePreparePublication(platform) {
-    const approvedCopy = getApprovedPublicationCopy(campaign)
+    const approvedCopy = getApprovedPublicationCopy(campaign, platform)
     if (approvedCopy === null) {
       toast.error('Disponible cuando el cliente apruebe la campaña.')
       return
@@ -305,7 +308,7 @@ export default function CampaignDetailPage() {
       </p>
     )
 
-  const isReadonly = READONLY_STATES.includes(campaign.estado)
+  const isReadonly = READONLY_STATES.includes(campaign.estado) || ['pendiente_aprobacion', 'pendiente_ia'].includes(campaign.estado)
   const canSubmit = campaign.estado === 'generado'
   const canPreparePublication = getApprovedPublicationCopy(campaign) !== null
   // HU regenerar: borrador (fallo previo) o rechazado (vuelve a borrador en backend)
@@ -373,7 +376,7 @@ export default function CampaignDetailPage() {
           <VersionHistoryPanel
             campaignId={id}
             refreshKey={versionsRefreshKey}
-            canRestore={['borrador', 'generado'].includes(campaign.estado)}
+            canRestore={['borrador', 'generado'].includes(campaign.estado) && !platformDirty && text === campaign.texto_generado && promptText === campaign.prompt}
             onRestored={(c) => {
               setCampaign(c)
               setText(c.texto_generado || '')
@@ -386,6 +389,10 @@ export default function CampaignDetailPage() {
 
         {/* ── Columna derecha: Editor + Imagen ── */}
         <div className="min-w-0 flex-1">
+          {campaign.texto_generado && <PlatformContentEditor key={`${campaign.id}-${campaign.version}`} campaign={campaign}
+            onPrepareX={() => setShowX(true)}
+            disabled={saving || submitting || text !== campaign.texto_generado || promptText !== campaign.prompt}
+            onDirty={setPlatformDirty} onSaved={c => { setCampaign(c); setText(c.texto_generado || ''); setPlatformDirty(false); setVersionsRefreshKey(value => value + 1) }} />}
           {isReadonly && (
             <div
               className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${
@@ -396,7 +403,8 @@ export default function CampaignDetailPage() {
             >
               {campaign.estado === 'aprobado'
                 ? 'Esta campaña fue aprobada. El texto está bloqueado.'
-                : 'Esta campaña fue rechazada dos veces y quedó en fracaso. Ya no puede modificarse ni regenerarse.'}
+                : campaign.estado === 'fracaso' ? 'Esta campaña fue rechazada dos veces y quedó en fracaso. Ya no puede modificarse ni regenerarse.'
+                : 'El contenido está bloqueado mientras se genera o se revisa por el cliente.'}
             </div>
           )}
 
@@ -466,7 +474,7 @@ export default function CampaignDetailPage() {
           <div className="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-on-surface">Copy publicitario</p>
+                <p className="text-sm font-semibold text-on-surface">Texto base de generación</p>
                 <VoicePlaybackButton text={text} disabled={isGenerating} />
                 <VoiceDictationButton
                   disabled={isReadonly || isGenerating}
@@ -511,14 +519,14 @@ export default function CampaignDetailPage() {
               <div className="flex gap-2">
                 {!isReadonly && (
                   <>
-                    <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+                    <Button variant="outline" size="sm" onClick={handleSave} disabled={saving || platformDirty}>
                       {saving ? 'Guardando…' : 'Guardar cambios'}
                     </Button>
                     {canSubmit && (
                       <Button
                         size="sm"
                         onClick={() => setShowModal(true)}
-                        disabled={submitting || isGenerating}
+                        disabled={submitting || isGenerating || platformDirty || text !== campaign.texto_generado || promptText !== campaign.prompt}
                       >
                         <Send className="h-4 w-4" />
                         {submitting ? 'Enviando…' : 'Enviar al cliente'}
@@ -620,12 +628,14 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {showInstagram && <InstagramPublicationDialog campaign={campaign} onClose={() => setShowInstagram(false)} />}
-      {showFacebook && <FacebookPublicationDialog campaign={campaign} onClose={() => setShowFacebook(false)} />}
-      {showX && <XPublicationDialog campaign={campaign} onClose={() => setShowX(false)} />}
+      {showInstagram && <InstagramPublicationDialog campaign={campaign} onClose={() => { setShowInstagram(false); fetchCampaign({ useDraft: false }).catch(() => {}) }} />}
+      {showFacebook && <FacebookPublicationDialog campaign={campaign} onClose={() => { setShowFacebook(false); fetchCampaign({ useDraft: false }).catch(() => {}) }} />}
+      {showX && <XPublicationDialog campaign={campaign} onClose={() => { setShowX(false); fetchCampaign({ useDraft: false }).catch(() => {}) }} />}
       {showModal && (
         <SubmitModal
-          preview={text}
+          preview={Object.keys(campaign.textos_por_plataforma || {}).length
+            ? Object.entries(campaign.textos_por_plataforma).map(([platform, copy]) => `${PLATFORM_LABELS[platform] || platform}\n${copy}`).join('\n\n')
+            : text}
           onConfirm={handleSubmitConfirm}
           onCancel={() => setShowModal(false)}
         />
@@ -677,7 +687,7 @@ function SubmitModal({ preview, onConfirm, onCancel }) {
       <div className="glass-liquid w-full max-w-lg rounded-3xl p-8">
         <h3 id="submit-title" className="mb-1 text-lg font-semibold text-on-surface">Enviar al cliente</h3>
         <p className="mb-4 text-sm text-on-surface-variant">
-          El cliente verá el siguiente copy para aprobación:
+          El cliente revisará los siguientes textos y la imagen compartida. Su aprobación incluye todas las versiones:
         </p>
         <div className="mb-5 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3 text-sm leading-relaxed text-on-surface">
           {preview}

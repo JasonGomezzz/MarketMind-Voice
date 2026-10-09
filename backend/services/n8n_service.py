@@ -100,11 +100,14 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             "Transforma tu marca hoy con NexoMark IA."
         )
         campaign.texto_generado = mock_copy
+        from services.platform_copy_service import adapt_platform_copies
+        campaign.textos_por_plataforma = adapt_platform_copies(campaign)
+        campaign.version += 1
         # El mock no llama a Gemini Imagen 3, pero devuelve un PNG placeholder
         # honesto para que la web y el mobile siempre muestren un anuncio
         # completo (texto + imagen) sin depender del contenedor n8n.
         campaign.imagen_b64 = MOCK_IMAGE_B64
-        campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])
+        campaign.save(update_fields=["texto_generado", "textos_por_plataforma", "version", "imagen_b64", "fecha_actualizacion"])
         save_campaign_version(campaign)
         campaign.transition_to(CampaignStatus.GENERADO)
         return {"dispatched": True, "mock": True}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../services/api'
+import { getPlatformCopy } from '../services/campaignPublication'
 import { canConfirmXPublication } from '../services/xPublication'
 import { Button } from '@/components/ui/button'
 
@@ -11,6 +12,9 @@ export default function XPublicationDialog({ campaign, onClose }) {
   const [busy, setBusy] = useState(false)
   const [outcome, setOutcome] = useState(null)
   const [error, setError] = useState('')
+  const [summary, setSummary] = useState(null)
+  const [summaryConfirmed, setSummaryConfirmed] = useState(false)
+  const [summarizing, setSummarizing] = useState(false)
   const inFlight = useRef(false)
   const mounted = useRef(true)
   const dialog = useRef(null)
@@ -36,17 +40,45 @@ export default function XPublicationDialog({ campaign, onClose }) {
 
   useEffect(() => {
     let active = true
-    api.get(`/api/campaigns/${campaign.id}/publish-x/`, { params: accountId ? { account_id: accountId } : {} })
-      .then(({ data }) => { if (active) setOutcome({ ...data.data, accountId, message: data.message }) })
+    api.get(`/api/campaigns/${campaign.id}/publish-x/`, { params: {
+      ...(accountId ? { account_id: accountId } : {}), ...(summary ? { summary_id: summary.summary_id } : {}),
+    } })
+      .then(({ data }) => { if (active) setOutcome({ ...data.data, accountId,
+        summaryId: data.data.summary_id || (data.data.status === 'not_published' ? summary?.summary_id : null) || null, message: data.message }) })
       .catch(() => { if (active) setError('No se pudo comprobar el estado de publicación en X.') })
       .finally(() => { if (active) setChecking(false) })
     return () => { active = false }
-  }, [accountId, campaign.id])
+  }, [accountId, campaign.id, summary])
+
+  const summaryId = outcome && outcome.status !== 'not_published'
+    ? outcome.summary_id || null : summary?.summary_id || null
+  const publicationState = { loading, checking, busy: busy || summarizing, error, outcome, summaryId, summaryConfirmed }
+
+  async function summarize() {
+    if (inFlight.current || summarizing || busy) return
+    inFlight.current = true
+    setSummarizing(true)
+    setError('')
+    try {
+      const { data } = await api.post(`/api/campaigns/${campaign.id}/summarize-x/`, { version: campaign.version })
+      if (mounted.current) {
+        setChecking(true)
+        setOutcome(null)
+        setSummaryConfirmed(false)
+        setSummary(data.data)
+      }
+    } catch (failure) {
+      if (mounted.current) setError(failure.response?.data?.message || 'No se pudo preparar el resumen. El contenido aprobado se conserva.')
+    } finally {
+      inFlight.current = false
+      if (mounted.current) setSummarizing(false)
+    }
+  }
 
   function handleKeyDown(event) {
     if (event.key === 'Escape' && !busy) onClose()
     if (event.key !== 'Tab') return
-    const controls = [...dialog.current.querySelectorAll('button:not(:disabled), select:not(:disabled), a[href]')]
+    const controls = [...dialog.current.querySelectorAll('button:not(:disabled), select:not(:disabled), input:not(:disabled), a[href]')]
     if (!controls.length) { event.preventDefault(); return }
     const first = controls[0], last = controls.at(-1)
     if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) {
@@ -57,14 +89,15 @@ export default function XPublicationDialog({ campaign, onClose }) {
   }
 
   async function publish() {
-    if (inFlight.current || !canConfirmXPublication(campaign, accountId, { loading, checking, busy, error, outcome })) return
+    if (inFlight.current || !canConfirmXPublication(campaign, accountId, publicationState)) return
     inFlight.current = true
     setBusy(true)
     try {
       const { data } = await api.post(`/api/campaigns/${campaign.id}/publish-x/`, {
         account_id: Number(accountId), version: campaign.version, confirm: true,
+        ...(summaryId ? { summary_id: summaryId, confirm_summary: summaryConfirmed } : {}),
       })
-      if (mounted.current) setOutcome({ ...data.data, accountId, message: data.message })
+      if (mounted.current) setOutcome({ ...data.data, accountId, summaryId: data.data.summary_id || null, message: data.message })
     } catch (failure) {
       if (mounted.current) setError(failure.response?.data?.message || 'No se confirmó el resultado. Revisa X antes de volver a intentarlo.')
     } finally {
@@ -75,27 +108,36 @@ export default function XPublicationDialog({ campaign, onClose }) {
 
   const selected = accounts.find(account => String(account.id) === accountId)
   const validation = outcome?.text_validation
-  const allowed = canConfirmXPublication(campaign, accountId, { loading, checking, busy, error, outcome })
+  const allowed = canConfirmXPublication(campaign, accountId, publicationState)
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
     <div ref={dialog} tabIndex={-1} onKeyDown={handleKeyDown} role="dialog" aria-modal="true"
       aria-labelledby="x-publication-title" className="glass-liquid max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl p-6">
       <h2 id="x-publication-title" className="text-xl font-semibold">Publicar en Twitter / X</h2>
-      <p className="my-3 text-sm">Revisa la imagen y el texto aprobado. Al confirmar, se publicarán en la cuenta que elijas.</p>
+      <p className="my-3 text-sm">Revisa la imagen y el texto. Puedes resumir la versión de X y confirmarla como marketero, sin cambiar lo aprobado para Facebook e Instagram.</p>
       {campaign.imagen_b64 ? <img src={`data:image/png;base64,${campaign.imagen_b64}`} alt="Imagen aprobada para X"
         className="mx-auto max-h-72 rounded-xl object-contain" /> : <p role="alert">Esta campaña no tiene imagen para publicar.</p>}
-      <div className="my-4 whitespace-pre-wrap break-words rounded-xl border border-outline-variant p-4 text-sm">{campaign.texto_generado}</div>
+      <p className="mt-4 text-sm font-semibold">{summaryId ? 'Resumen de X — revisión del marketero' : 'Texto aprobado por el cliente'}</p>
+      <div className="my-2 whitespace-pre-wrap break-words rounded-xl border border-outline-variant p-4 text-sm">{outcome?.caption ?? summary?.caption ?? getPlatformCopy(campaign, 'twitter')}</div>
+      {(!outcome || outcome.status === 'not_published') && <Button variant="outline" disabled={loading || checking || busy || summarizing}
+        onClick={summarize}>{summarizing ? 'Resumiendo…' : summary ? 'Generar otro resumen para X' : 'Resumir para X'}</Button>}
       {validation && <p className={`mb-3 text-sm ${validation.valid ? 'text-on-surface-variant' : 'text-error'}`}>
         {validation.weighted_length} / {validation.limit} caracteres según las reglas de X.
       </p>}
       {validation && !validation.valid && <p role="alert" className="mb-3 text-sm text-error">
-        El texto aprobado no cumple el límite de X. Necesitas una campaña con texto válido aprobado; no se recortará automáticamente.
+        El texto supera el límite o no es válido para X. Usa «Resumir para X» y revisa el resultado; no se recortará automáticamente.
       </p>}
+      {summaryId && ['not_published', 'failed'].includes(outcome?.status) && <label className="my-3 flex items-start gap-2 text-sm">
+        <input type="checkbox" checked={summaryConfirmed} disabled={busy || summarizing || checking}
+          onChange={event => setSummaryConfirmed(event.target.checked)} />
+        Revisé el resumen, conserva el mensaje aprobado y confirmo su publicación como marketero. No requiere una nueva aprobación del cliente.
+      </label>}
       <label htmlFor="x-destination" className="text-sm font-semibold">Cuenta de destino</label>
-      <select id="x-destination" value={accountId} disabled={loading || busy || checking}
+      <select id="x-destination" value={accountId} disabled={loading || busy || checking || summarizing}
         onChange={event => {
           setChecking(true)
           setOutcome(null)
           setError('')
+          setSummaryConfirmed(false)
           setAccountId(event.target.value)
         }} className="my-2 w-full rounded-xl border border-outline-variant bg-surface-container-low p-3">
         <option value="">{loading ? 'Cargando…' : 'Selecciona una cuenta'}</option>

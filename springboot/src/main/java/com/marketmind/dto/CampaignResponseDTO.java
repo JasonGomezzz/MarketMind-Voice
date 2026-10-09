@@ -26,6 +26,7 @@ public class CampaignResponseDTO {
     private String plataforma;
     private String prompt;
     private String textoGenerado;
+    private java.util.Map<String, String> textosPorPlataforma;
     private String imagenUrl;
     private String imagenB64;
     private Integer tokensConsumidos;

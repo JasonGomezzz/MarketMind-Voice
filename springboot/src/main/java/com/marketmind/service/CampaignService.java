@@ -271,6 +271,7 @@ public class CampaignService {
                 .plataforma(e.getPlataforma())
                 .prompt(e.getPrompt())
                 .textoGenerado(e.getTextoGenerado())
+                .textosPorPlataforma(e.getTextosPorPlataforma())
                 .imagenUrl(e.getImagenUrl())
                 .imagenB64(e.getImagenB64())
                 .tokensConsumidos(e.getTokensConsumidos())

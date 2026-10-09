@@ -28,6 +28,15 @@ class CampaignSerializer(serializers.ModelSerializer):
     """
 
     marketero = serializers.StringRelatedField(read_only=True)
+    publication_status = serializers.SerializerMethodField()
+
+    def get_publication_status(self, campaign):
+        from .models import InstagramPublication, FacebookPublication, XPublication
+        result = {}
+        for platform, model in [('instagram', InstagramPublication), ('facebook', FacebookPublication), ('twitter', XPublication)]:
+            records = list(model.objects.filter(campaign=campaign, campaign_version=campaign.version).values_list('status', flat=True))
+            result[platform] = ('published' if 'published' in records else records[-1] if records else 'not_published')
+        return result
     cliente_email = serializers.EmailField(required=True)
     plataforma = serializers.ChoiceField(
         choices=CampaignPlataforma.choices,
@@ -55,6 +64,8 @@ class CampaignSerializer(serializers.ModelSerializer):
             "prompt",
             "estado",
             "texto_generado",
+            "textos_por_plataforma",
+            "publication_status",
             "imagen_url",
             "imagen_b64",
             "ia_error_message",
@@ -72,6 +83,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "version",
             "estado",
             "texto_generado",
+            "textos_por_plataforma",
             "imagen_url",
             "imagen_b64",
             "ia_error_message",
@@ -200,7 +212,15 @@ class CampaignEditSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Campaign
-        fields = ["prompt", "texto_generado"]
+        fields = ["prompt", "texto_generado", "textos_por_plataforma"]
+
+    def validate_textos_por_plataforma(self, value):
+        from .platform_content import platforms
+        if not isinstance(value, dict) or set(value) != set(platforms(self.instance)):
+            raise serializers.ValidationError('Incluye exactamente las plataformas de esta campaña.')
+        if any(not isinstance(text, str) or not text.strip() or len(text) > 10000 for text in value.values()):
+            raise serializers.ValidationError('Cada versión necesita texto, con un máximo de 10000 caracteres.')
+        return {platform: text.strip() for platform, text in value.items()}
 
     def validate_prompt(self, value: str) -> str:
         value = value.strip()

@@ -43,6 +43,15 @@ def publish(client, setup, **extra):
         {'page_id': page.pk, 'version': campaign.version, 'confirm': True, **extra}, format='json')
 
 
+@patch('apps.campaigns.facebook_publication.send_photo', return_value=('987654', '123456_987654'))
+def test_facebook_uses_platform_copy(send, api_client, fb_publication):
+    campaign, page = fb_publication
+    campaign.textos_por_plataforma = {'facebook': 'Versión aprobada para Facebook', 'instagram': 'Otra versión'}
+    campaign.save()
+    assert publish(api_client, fb_publication).status_code == 200
+    assert FacebookPublication.objects.get().caption == 'Versión aprobada para Facebook'
+
+
 @patch('apps.campaigns.facebook_publication.send_photo')
 def test_browser_detail_provides_read_only_version_for_publication(send, api_client, fb_publication):
     from apps.campaigns.serializers import CampaignSerializer

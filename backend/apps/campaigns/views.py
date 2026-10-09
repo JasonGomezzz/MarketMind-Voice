@@ -43,6 +43,8 @@ from services.version_service import restore_campaign_version, save_campaign_ver
 from .models import Campaign, CampaignStatus, CampaignVersion, CreditPurchase
 from .permissions import N8nCallbackPermission
 from .serializers import CampaignEditSerializer, CampaignSerializer, CampaignVersionSerializer
+from .platform_content import content_errors, platforms
+from services.platform_copy_service import adapt_platform_copies
 
 logger = logging.getLogger(__name__)
 
@@ -431,15 +433,16 @@ class CampaignViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @transaction.atomic
     def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         """
         PATCH /api/campaigns/{id}/
 
         Actualiza texto_generado. Bloqueado si estado es aprobado o rechazado.
         """
-        campaign = self.get_object()
+        campaign = get_object_or_404(self.get_queryset().select_for_update(), pk=kwargs['pk'])
 
-        if campaign.estado in [CampaignStatus.APROBADO, CampaignStatus.FRACASO]:
+        if campaign.estado not in [CampaignStatus.BORRADOR, CampaignStatus.GENERADO, CampaignStatus.RECHAZADO]:
             return Response(
                 api_response(
                     success=False,
@@ -460,7 +463,10 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer.save()
+        if 'version' in request.data and request.data['version'] != campaign.version:
+            return Response(api_response(False, 'La campaña cambió. Recarga antes de guardar.'), status=409)
+        save_campaign_version(campaign)
+        serializer.save(version=campaign.version + 1)
         return Response(
             api_response(
                 success=True,
@@ -493,6 +499,9 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
         campaign = self.get_object()
 
+        if campaign.estado not in [CampaignStatus.BORRADOR, CampaignStatus.GENERADO, CampaignStatus.RECHAZADO]:
+            return Response(api_response(False, 'Abre una nueva revisión antes de cambiar contenido aprobado.'), status=409)
+
         if not (campaign.texto_generado or "").strip():
             return Response(
                 api_response(
@@ -503,17 +512,21 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Preservar el copy actual en el historial antes de reemplazarlo.
-        save_campaign_version(campaign)
-
         mejorado = improve_copy(
             texto_actual=campaign.texto_generado,
             industria=campaign.industria,
             tono=campaign.tono,
             plataforma=campaign.plataforma,
         )
-        campaign.texto_generado = mejorado
-        campaign.save(update_fields=["texto_generado", "fecha_actualizacion"])
+        with transaction.atomic():
+            current = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
+            if current.version != campaign.version or current.estado != campaign.estado:
+                return Response(api_response(False, 'La campaña cambió durante la mejora. Recarga.'), status=409)
+            save_campaign_version(current)
+            current.texto_generado = mejorado
+            current.version += 1
+            current.save(update_fields=['texto_generado', 'version', 'fecha_actualizacion'])
+            campaign = current
 
         return Response(
             api_response(
@@ -525,6 +538,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
         )
 
     @action(detail=True, methods=["post"], url_path="submit")
+    @transaction.atomic
     def submit(self, request: Request, pk: int = None) -> Response:
         """
         POST /api/campaigns/{id}/submit/
@@ -542,7 +556,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        campaign = self.get_object()
+        campaign = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
 
         if campaign.estado != CampaignStatus.GENERADO:
             return Response(
@@ -557,6 +571,11 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        if 'version' in request.data and request.data['version'] != campaign.version:
+            return Response(api_response(False, 'La campaña cambió. Recarga antes de enviar.'), status=409)
+        errors = content_errors(campaign) if campaign.textos_por_plataforma else {}
+        if errors:
+            return Response(api_response(False, 'Revisa las versiones por plataforma antes de enviar.', {'errors': errors}), status=400)
         try:
             campaign.transition_to(CampaignStatus.PENDIENTE_APROBACION)
             campaign.enviado_cliente_at = timezone.now()
@@ -580,6 +599,67 @@ class CampaignViewSet(viewsets.ModelViewSet):
             ),
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=['post'], url_path='reopen-review')
+    @transaction.atomic
+    def reopen_review(self, request, pk=None):
+        campaign = get_object_or_404(self.get_queryset().select_for_update(), pk=pk, marketero=request.user)
+        if request.user.rol != 'marketero' or request.data.get('confirm') is not True:
+            return Response(api_response(False, 'Confirma la nueva revisión.'), status=400)
+        if request.data.get('version') != campaign.version or campaign.estado != CampaignStatus.APROBADO:
+            return Response(api_response(False, 'La campaña cambió. Recarga antes de abrir la revisión.'), status=409)
+        # Never permit editing while a public operation has an unresolved outcome.
+        from .models import InstagramPublication, FacebookPublication, XPublication
+        if any(model.objects.filter(campaign=campaign, status__in=['preparing', 'publishing', 'uncertain']).exists()
+               for model in [InstagramPublication, FacebookPublication, XPublication]):
+            return Response(api_response(False, 'Hay una publicación en curso o pendiente de verificar.'), status=409)
+        save_campaign_version(campaign)
+        campaign.estado = CampaignStatus.GENERADO
+        campaign.version += 1
+        campaign.email_enviado = False
+        campaign.enviado_cliente_at = None
+        campaign.cliente_valoracion = None
+        campaign.cliente_valoracion_at = None
+        campaign.save(update_fields=['estado', 'version', 'email_enviado', 'enviado_cliente_at',
+                                     'cliente_valoracion', 'cliente_valoracion_at', 'fecha_actualizacion'])
+        return Response(api_response(True, 'Nueva revisión abierta. Requiere aprobación del cliente.',
+                                     {'campaign': CampaignSerializer(campaign).data}))
+
+    @action(detail=True, methods=['post'], url_path='validate-platforms')
+    def validate_platforms(self, request, pk=None):
+        from twitter_text import parse_tweet
+        campaign = self.get_object()
+        serializer = CampaignEditSerializer(campaign, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        campaign.textos_por_plataforma = serializer.validated_data.get('textos_por_plataforma', campaign.textos_por_plataforma)
+        from .platform_content import platform_copy
+        text = platform_copy(campaign, 'twitter')
+        return Response(api_response(True, 'Validación de contenido.', {
+            'errors': content_errors(campaign), 'twitter_length': parse_tweet(text).weightedLength if len(text) <= 10000 else len(text)}))
+
+    @action(detail=True, methods=['post'], url_path='adapt-platforms')
+    def adapt_platforms(self, request, pk=None):
+        campaign = self.get_object()
+        if request.user.rol != 'marketero' or campaign.marketero_id != request.user.id:
+            raise PermissionDenied()
+        if campaign.estado != CampaignStatus.GENERADO or not campaign.texto_generado.strip():
+            return Response(api_response(False, 'Solo se adapta contenido generado en revisión.'), status=409)
+        if request.data.get('version') != campaign.version:
+            return Response(api_response(False, 'La campaña cambió. Recarga antes de adaptar.'), status=409)
+        try:
+            copies = adapt_platform_copies(campaign)
+        except ValueError as error:
+            return Response(api_response(False, str(error)), status=503)
+        with transaction.atomic():
+            current = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
+            if current.version != campaign.version or current.estado != CampaignStatus.GENERADO:
+                return Response(api_response(False, 'La campaña cambió durante la generación. Recarga.'), status=409)
+            save_campaign_version(current)
+            current.textos_por_plataforma = copies
+            current.version += 1
+            current.save(update_fields=['textos_por_plataforma', 'version', 'fecha_actualizacion'])
+        return Response(api_response(True, 'Versiones generadas. Revísalas antes de enviar al cliente.',
+                                     {'campaign': CampaignSerializer(current).data}))
 
     @action(detail=False, methods=["get"], url_path="recent-approved")
     def recent_approved(self, request: Request) -> Response:
@@ -795,12 +875,19 @@ class IaResultCallbackView(APIView):
                     .get(n8n_callback_token=token)
                 )
 
+                if campaign.estado != CampaignStatus.PENDIENTE_IA:
+                    return Response(api_response(False, 'Este resultado ya fue procesado o la campaña cambió.'), status=409)
                 if success:
                     copy = request.data.get("copy", "")
                     imagen_b64 = request.data.get("imagen_b64")
                     campaign.texto_generado = copy
                     campaign.imagen_b64 = imagen_b64
-                    campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])
+                    try:
+                        campaign.textos_por_plataforma = adapt_platform_copies(campaign)
+                    except ValueError:
+                        campaign.textos_por_plataforma = {p: copy for p in platforms(campaign)}
+                    campaign.version += 1
+                    campaign.save(update_fields=["texto_generado", "textos_por_plataforma", "version", "imagen_b64", "fecha_actualizacion"])
                     save_campaign_version(campaign)
                     campaign.transition_to(CampaignStatus.GENERADO)
 
@@ -1042,10 +1129,11 @@ class CampaignVersionRestoreView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request: Request, campaign_id: int, version_id: int) -> Response:
         """Valida acceso y estado, delega la copia a restore_campaign_version()."""
         campaign = get_object_or_404(
-            Campaign.objects.select_related("marketero"),
+            Campaign.objects.select_related("marketero").select_for_update(),
             pk=campaign_id,
         )
         user = request.user

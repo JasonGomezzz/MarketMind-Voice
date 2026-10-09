@@ -102,7 +102,14 @@
   <!-- SECCIÓN 3 — Copy Publicitario -->
   <div class="no-break">
     <p class="section-title">Copy Publicitario</p>
-    <div class="copy-body">{{ campaign.texto_generado|linebreaksbr }}</div>
+    {% if campaign.textos_por_plataforma %}
+      {% for platform, copy in campaign.textos_por_plataforma.items %}
+        <p class="section-title">{{ platform }}</p>
+        <div class="copy-body">{{ copy|linebreaksbr }}</div>
+      {% endfor %}
+    {% else %}
+      <div class="copy-body">{{ campaign.texto_generado|linebreaksbr }}</div>
+    {% endif %}
   </div>
 
   <!-- SECCIÓN 4 — Imagen Generada -->

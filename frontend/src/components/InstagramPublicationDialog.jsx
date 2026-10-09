@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../services/api'
+import { getPlatformCopy } from '../services/campaignPublication'
 import { Button } from '@/components/ui/button'
 
 export default function InstagramPublicationDialog({ campaign, onClose }) {
@@ -95,7 +96,7 @@ export default function InstagramPublicationDialog({ campaign, onClose }) {
           <img src={`data:image/png;base64,${campaign.imagen_b64}`} alt="Imagen aprobada para Instagram"
             className="mx-auto max-h-72 rounded-xl object-contain" />
         ) : <p role="alert">Esta campaña no tiene imagen. No se puede publicar en Instagram.</p>}
-        <div className="my-4 whitespace-pre-wrap rounded-xl border border-outline-variant p-4 text-sm">{campaign.texto_generado}</div>
+        <div className="my-4 whitespace-pre-wrap rounded-xl border border-outline-variant p-4 text-sm">{getPlatformCopy(campaign, 'instagram')}</div>
         <label htmlFor="instagram-destination" className="text-sm font-semibold">Cuenta de destino</label>
         <select id="instagram-destination" value={accountId} disabled={busy || checking}
           onChange={(event) => {
@@ -109,12 +110,12 @@ export default function InstagramPublicationDialog({ campaign, onClose }) {
           {accounts.map((account) => <option key={account.id} value={account.id}>@{account.username}</option>)}
         </select>
         {!loading && !accounts.length && <p className="my-2 text-sm">Conecta o renueva tu cuenta en Configuración antes de publicar.</p>}
-        {campaign.texto_generado.length > 2200 && <p role="alert">El texto supera los 2200 caracteres permitidos.</p>}
+        {getPlatformCopy(campaign, 'instagram').length > 2200 && <p role="alert">El texto supera los 2200 caracteres permitidos.</p>}
         {error && <p role="alert" className="my-3 text-error">{error}</p>}
         {outcome && <p role="status" className="my-3">{outcome.message}{outcome.status === 'published' && ` Cuenta: @${outcome.username}.`}</p>}
         <div className="mt-4 flex flex-wrap justify-end gap-3">
           <Button variant="outline" disabled={busy} onClick={onClose}>Cerrar</Button>
-          <Button disabled={loading || checking || busy || !!error || !accountId || !campaign.imagen_b64 || locked || campaign.texto_generado.length > 2200}
+          <Button disabled={loading || checking || busy || !!error || !accountId || !campaign.imagen_b64 || locked || getPlatformCopy(campaign, 'instagram').length > 2200}
             onClick={publish}>{checking ? 'Verificando…' : busy ? 'Publicando…' : outcome?.status === 'published' ? 'Ya publicada' : outcome?.status === 'preparing' ? 'Continuar publicación' : `Publicar${selected ? ` en @${selected.username}` : ''}`}</Button>
         </div>
       </div>

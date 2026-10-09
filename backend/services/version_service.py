@@ -36,6 +36,7 @@ def save_campaign_version(campaign: Campaign) -> None:
             last is not None
             and last.texto_generado == campaign.texto_generado
             and (last.imagen_b64 or "") == (campaign.imagen_b64 or "")
+            and last.textos_por_plataforma == campaign.textos_por_plataforma
         ):
             return
 
@@ -45,6 +46,7 @@ def save_campaign_version(campaign: Campaign) -> None:
             campaign=campaign,
             version_number=next_number,
             texto_generado=campaign.texto_generado,
+            textos_por_plataforma=campaign.textos_por_plataforma,
             imagen_b64=campaign.imagen_b64,
         )
 
@@ -77,6 +79,8 @@ def restore_campaign_version(campaign: Campaign, version: CampaignVersion) -> Ca
         save_campaign_version(campaign)
         campaign.texto_generado = version.texto_generado
         campaign.imagen_b64 = version.imagen_b64
-        campaign.save(update_fields=['texto_generado', 'imagen_b64', 'fecha_actualizacion'])
+        campaign.textos_por_plataforma = version.textos_por_plataforma
+        campaign.version += 1
+        campaign.save(update_fields=['texto_generado', 'textos_por_plataforma', 'imagen_b64', 'version', 'fecha_actualizacion'])
     campaign.refresh_from_db()
     return campaign

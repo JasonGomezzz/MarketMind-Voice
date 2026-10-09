@@ -319,8 +319,12 @@ function CampaignDetailsModal({ campaign, onClose }) {
                 Copy propuesto
               </p>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
-                {campaign.textoGenerado || 'Sin copy generado.'}
+                {!Object.keys(campaign.textosPorPlataforma || {}).length && (campaign.textoGenerado || 'Sin copy generado.')}
               </p>
+              {Object.entries(campaign.textosPorPlataforma || {}).map(([platform, copy]) => <section key={platform} className="my-3">
+                <h3 className="font-semibold">{platform === 'twitter' ? 'Twitter / X' : platform}</h3>
+                <p className="whitespace-pre-wrap text-sm">{copy}</p>
+              </section>)}
             </section>
 
             <section className="rounded-lg border border-outline-variant p-4">

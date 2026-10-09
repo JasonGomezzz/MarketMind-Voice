@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 
 from apps.authentication.models import XAccount, User
 from apps.authentication.x_oauth import access_token_for
-from apps.campaigns.models import XPublication
+from apps.campaigns.models import XPublication, XSummary
 from apps.campaigns.x_publication import XRejected, text_validation
 
 pytestmark = pytest.mark.django_db
@@ -43,6 +43,115 @@ def publish(client, setup, **extra):
     campaign, account = setup
     return client.post(f'/api/campaigns/{campaign.pk}/publish-x/',
         {'account_id': account.pk, 'version': campaign.version, 'confirm': True, **extra}, format='json')
+
+
+@patch('apps.campaigns.x_publication.send_post', return_value='987654')
+@patch('apps.campaigns.x_publication.upload_image', return_value='12345')
+def test_x_uses_its_own_approved_copy(upload, send, api_client, x_publication):
+    campaign, account = x_publication
+    campaign.texto_generado = 'Texto base largo ' * 100
+    campaign.textos_por_plataforma = {'twitter': 'Texto breve aprobado para X', 'instagram': 'Versión para Instagram'}
+    campaign.save()
+    assert publish(api_client, x_publication, caption='Texto no aprobado').status_code == 200
+    assert XPublication.objects.get().caption == 'Texto breve aprobado para X'
+    assert send.call_args.args[0].caption == 'Texto breve aprobado para X'
+
+
+def summarize(client, campaign):
+    return client.post(f'/api/campaigns/{campaign.pk}/summarize-x/', {'version': campaign.version}, format='json')
+
+
+@patch('apps.campaigns.x_publication.adapt_platform_copies', return_value={'twitter': 'Café artesanal con Aroma Andino ☕ #Café'})
+@patch('apps.campaigns.x_publication.send_post', return_value='987654')
+@patch('apps.campaigns.x_publication.upload_image', return_value='12345')
+def test_summary_confirmation_does_not_change_approval_or_other_platforms(upload, send, adapt, api_client, x_publication):
+    campaign, account = x_publication
+    campaign.textos_por_plataforma = {'twitter': 'Contenido largo ' * 100, 'instagram': 'Copy Instagram aprobado', 'facebook': 'Copy Facebook aprobado'}
+    campaign.save()
+    approved_copies = dict(campaign.textos_por_plataforma)
+    original_version = campaign.version
+    response = summarize(api_client, campaign)
+    assert response.status_code == 200
+    summary_id = response.data['data']['summary_id']
+    upload.assert_not_called()
+    send.assert_not_called()
+    assert publish(api_client, x_publication, summary_id=summary_id).status_code == 400
+    send.assert_not_called()
+    response = publish(api_client, x_publication, summary_id=summary_id, confirm_summary=True, caption='Injected text')
+    assert response.status_code == 200 and response.data['data']['status'] == 'published'
+    publication = XPublication.objects.get()
+    assert publication.caption == 'Café artesanal con Aroma Andino ☕ #Café'
+    assert publication.summary_id == XSummary.objects.get().pk
+    assert publication.confirmed_by_id == campaign.marketero_id and publication.confirmed_at
+    campaign.refresh_from_db()
+    assert campaign.estado == 'aprobado' and campaign.version == original_version
+    assert campaign.textos_por_plataforma == approved_copies
+    assert publish(api_client, x_publication, summary_id=summary_id, confirm_summary=True).status_code == 200
+    send.assert_called_once()
+    status = api_client.get(f'/api/campaigns/{campaign.pk}/publish-x/', {'account_id': account.pk})
+    assert status.data['data']['caption'] == publication.caption
+    assert status.data['data']['summary_id'] == summary_id
+    assert status.data['data']['caption_source'] == 'marketer_summary'
+
+
+@pytest.mark.parametrize('change', ['version', 'copy', 'image'])
+@patch('apps.campaigns.x_publication.adapt_platform_copies', return_value={'twitter': 'Resumen válido'})
+def test_summary_stale_version_or_changed_source_cannot_be_used(adapt, api_client, x_publication, change):
+    campaign, account = x_publication
+    summary_id = summarize(api_client, campaign).data['data']['summary_id']
+    if change == 'version':
+        campaign.version += 1
+    elif change == 'copy':
+        campaign.texto_generado = 'Otro texto aprobado'
+    else:
+        campaign.imagen_b64 = 'Another image'
+    campaign.save()
+    assert publish(api_client, x_publication, summary_id=summary_id, confirm_summary=True).status_code == 400
+    assert not XPublication.objects.exists()
+
+
+@patch('apps.campaigns.x_publication.adapt_platform_copies', return_value={'twitter': 'Resumen válido'})
+def test_foreign_summary_rejected_and_arbitrary_text_cannot_bypass_limit(adapt, api_client, x_publication, user_marketero):
+    from apps.campaigns.models import Campaign
+    campaign, account = x_publication
+    other = Campaign.objects.create(titulo='Otra campaña', cliente_nombre='Cliente', industria='retail',
+        prompt='Otro prompt', marketero=user_marketero, estado='aprobado', plataforma='twitter', texto_generado='Otro texto')
+    summary_id = summarize(api_client, other).data['data']['summary_id']
+    assert publish(api_client, x_publication, summary_id=summary_id, confirm_summary=True).status_code == 404
+    campaign.texto_generado = 'a' * 281
+    campaign.save()
+    assert publish(api_client, x_publication, caption='Texto inyectado corto', confirm_summary=True).status_code == 400
+    assert publish(api_client, x_publication, summary_id='invalid', confirm_summary=True).status_code == 400
+    assert not XPublication.objects.exists()
+
+
+@patch('apps.campaigns.x_publication.adapt_platform_copies', return_value={'twitter': 'a' * 281})
+def test_invalid_generated_summary_is_not_truncated_or_saved(adapt, api_client, x_publication):
+    campaign, account = x_publication
+    assert summarize(api_client, campaign).status_code == 503
+    assert not XSummary.objects.exists() and not XPublication.objects.exists()
+    campaign.refresh_from_db()
+    assert campaign.estado == 'aprobado'
+
+
+@pytest.mark.parametrize('state', ['generado', 'pendiente_aprobacion', 'rechazado'])
+def test_summary_requires_approved_campaign(api_client, x_publication, state):
+    campaign, account = x_publication
+    campaign.estado = state
+    campaign.save()
+    assert summarize(api_client, campaign).status_code == 409
+    assert not XSummary.objects.exists()
+
+
+@patch('apps.campaigns.x_publication.adapt_platform_copies')
+def test_campaign_change_during_summary_generation_is_rejected(adapt, api_client, x_publication):
+    campaign, account = x_publication
+    def changed(_campaign):
+        type(campaign).objects.filter(pk=campaign.pk).update(version=campaign.version + 1)
+        return {'twitter': 'Resumen válido'}
+    adapt.side_effect = changed
+    assert summarize(api_client, campaign).status_code == 409
+    assert not XSummary.objects.exists()
 
 
 @patch('apps.campaigns.x_publication.requests.post')

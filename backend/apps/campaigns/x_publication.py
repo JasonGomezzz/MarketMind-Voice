@@ -1,15 +1,20 @@
 """Explicit X publication with approved image/text and durable duplicate protection."""
 import re
+import hashlib
+from types import SimpleNamespace
+from uuid import UUID
 
 import requests
 from cryptography.fernet import InvalidToken
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .platform_content import platform_copy
 from twitter_text import parse_tweet
 
 from apps.authentication.models import XAccount
@@ -17,7 +22,56 @@ from apps.authentication.permissions import IsMarketero
 from apps.authentication.x_oauth import access_token_for, configured
 from core.exceptions import api_response
 from .facebook_publication import jpeg_image
-from .models import Campaign, XPublication
+from .models import Campaign, XPublication, XSummary
+from services.platform_copy_service import adapt_platform_copies
+
+
+def source_digest(campaign):
+    return hashlib.sha256((platform_copy(campaign, 'twitter') + '\0' + (campaign.imagen_b64 or '')).encode()).hexdigest()
+
+
+def summary_for(campaign, value):
+    try:
+        summary_id = UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        raise ValidationError('El resumen de X no es válido.') from None
+    summary = get_object_or_404(XSummary, pk=summary_id, campaign=campaign)
+    if summary.campaign_version != campaign.version or summary.source_digest != source_digest(campaign):
+        raise ValidationError('La campaña cambió. Genera un nuevo resumen de X.')
+    return summary
+
+
+class XSummaryView(APIView):
+    permission_classes = [IsAuthenticated, IsMarketero]
+
+    def post(self, request, campaign_id):
+        campaign = get_object_or_404(Campaign, pk=campaign_id, marketero=request.user)
+        if campaign.estado != 'aprobado' or 'twitter' not in (campaign.plataformas or [campaign.plataforma]):
+            return Response(api_response(False, 'La campaña debe estar aprobada y tener X seleccionado.'), status=409)
+        if type(request.data.get('version')) is not int or request.data['version'] != campaign.version:
+            return Response(api_response(False, 'La campaña cambió. Recarga antes de resumir.'), status=409)
+        source = platform_copy(campaign, 'twitter')
+        if not source.strip():
+            return Response(api_response(False, 'No hay contenido aprobado para resumir.'), status=400)
+        digest = source_digest(campaign)
+        try:
+            caption = adapt_platform_copies(SimpleNamespace(
+                plataformas=['twitter'], plataforma='twitter', texto_generado=source,
+                titulo=campaign.titulo, tono=campaign.tono))['twitter']
+            validation = text_validation(caption)
+            if not validation['valid']:
+                raise ValueError('La IA no produjo un resumen válido para X. Puedes volver a generar; no se recortó ni cambió el contenido aprobado.')
+        except ValueError as error:
+            return Response(api_response(False, str(error)), status=503)
+        with transaction.atomic():
+            current = get_object_or_404(Campaign.objects.select_for_update(), pk=campaign_id, marketero=request.user)
+            if current.estado != 'aprobado' or current.version != campaign.version or source_digest(current) != digest:
+                return Response(api_response(False, 'La campaña cambió durante el resumen. Recarga.'), status=409)
+            summary = XSummary.objects.create(campaign=current, campaign_version=current.version,
+                                             source_digest=digest, caption=caption)
+        return Response(api_response(True, 'Resumen preparado. Revísalo y confirma antes de publicar.', {
+            'summary_id': str(summary.pk), 'caption': caption, 'text_validation': validation,
+            'campaign_version': current.version, 'caption_source': 'marketer_summary'}))
 
 
 class XRejected(Exception):
@@ -87,6 +141,9 @@ def result(publication, validation):
             'publication_url': f'https://x.com/i/status/{publication.post_id}'
                 if publication.status == 'published' else '',
             'text_validation': validation,
+            'caption': publication.caption,
+            'caption_source': 'marketer_summary' if publication.summary_id else 'client_approved',
+            'summary_id': str(publication.summary_id) if publication.summary_id else None,
         }), status=202 if publication.status in ('preparing', 'publishing') else 200)
 
 
@@ -102,15 +159,18 @@ class XPublishView(APIView):
 
     def get(self, request, campaign_id):
         campaign = get_object_or_404(Campaign, pk=campaign_id, marketero=request.user)
-        validation = text_validation(campaign.texto_generado)
+        summary = summary_for(campaign, request.query_params['summary_id']) if request.query_params.get('summary_id') else None
+        caption = summary.caption if summary else platform_copy(campaign, 'twitter')
+        validation = text_validation(caption)
         if request.query_params.get('account_id'):
             account = owned_account(request.user, request.query_params['account_id'])
             publication = XPublication.objects.filter(campaign=campaign,
                 x_user_id=account.x_user_id, campaign_version=campaign.version).first()
             if publication:
-                return result(publication, validation)
+                return result(publication, text_validation(publication.caption))
         return Response(api_response(True, 'Prepara la publicación de X.',
-            {'status': 'not_published', 'text_validation': validation}))
+            {'status': 'not_published', 'text_validation': validation, 'caption': caption,
+             'caption_source': 'marketer_summary' if summary else 'client_approved'}))
 
     def post(self, request, campaign_id):
         if request.data.get('confirm') is not True:
@@ -123,11 +183,15 @@ class XPublishView(APIView):
             version = request.data.get('version')
             if type(version) is not int or version != campaign.version:
                 return Response(api_response(False, 'La campaña cambió. Recarga antes de publicar.'), status=409)
-            validation = text_validation(campaign.texto_generado)
+            summary = summary_for(campaign, request.data['summary_id']) if request.data.get('summary_id') else None
+            if summary and request.data.get('confirm_summary') is not True:
+                return Response(api_response(False, 'Confirma expresamente el resumen de X como marketero.'), status=400)
+            caption = summary.caption if summary else platform_copy(campaign, 'twitter')
+            validation = text_validation(caption)
             existing = XPublication.objects.filter(campaign=campaign, x_user_id=account.x_user_id,
                 campaign_version=campaign.version).first()
             if existing and existing.status != 'failed':
-                return result(existing, validation)
+                return result(existing, text_validation(existing.caption))
             if not validation['valid']:
                 return Response(api_response(False, 'El texto aprobado no cumple el límite de X (280 caracteres ponderados). Necesitas un texto válido aprobado antes de publicar.'), status=400)
             if not configured():
@@ -137,16 +201,20 @@ class XPublishView(APIView):
             except ValueError as error:
                 return Response(api_response(False, str(error)), status=400)
             if existing:
-                if existing.caption != campaign.texto_generado or existing.image_jpeg != jpeg:
+                if existing.caption != caption or existing.image_jpeg != jpeg:
                     return Response(api_response(False, 'El contenido cambió. Recarga la campaña antes de publicar.'), status=409)
                 publication = existing
                 publication.status = 'preparing'
                 publication.message = ''
-                publication.save(update_fields=['status', 'message'])
+                publication.summary = summary
+                publication.confirmed_by = request.user
+                publication.confirmed_at = timezone.now()
+                publication.save(update_fields=['status', 'message', 'summary', 'confirmed_by', 'confirmed_at'])
             else:
                 publication = XPublication.objects.create(campaign=campaign, account=account,
                     x_user_id=account.x_user_id, username=account.username,
-                    campaign_version=campaign.version, caption=campaign.texto_generado, image_jpeg=jpeg)
+                    campaign_version=campaign.version, caption=caption, image_jpeg=jpeg,
+                    summary=summary, confirmed_by=request.user, confirmed_at=timezone.now())
         # Only this explicitly confirmed request performs uploads/refreshes. GET
         # and reconnection never post. Concurrent clicks return the durable attempt.
         try:
