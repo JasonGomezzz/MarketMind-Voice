@@ -75,7 +75,7 @@ class TestCampaignCreate:
     def test_create_accepts_multiple_platforms(self, api_client):
         payload = {
             **VALID_PAYLOAD,
-            "plataformas": ["instagram", "facebook", "linkedin"],
+            "plataformas": ["instagram", "facebook", "twitter"],
         }
         payload.pop("plataforma")
 
@@ -83,8 +83,29 @@ class TestCampaignCreate:
 
         assert response.status_code == 202
         campaign = response.data["data"]["campaign"]
-        assert campaign["plataformas"] == ["instagram", "facebook", "linkedin"]
+        assert campaign["plataformas"] == ["instagram", "facebook", "twitter"]
         assert campaign["plataforma"] == "instagram"
+
+    @pytest.mark.parametrize("selection", [
+        {"plataforma": "linkedin"},
+        {"plataformas": ["instagram", "linkedin"]},
+        {"plataforma": "linkedin", "plataformas": ["instagram"]},
+    ])
+    def test_create_rejects_retired_linkedin(self, api_client, selection):
+        payload = {**VALID_PAYLOAD, **selection}
+        before = Campaign.objects.count()
+        response = api_client.post(CAMPAIGNS_URL, payload, format="json")
+        assert response.status_code == 400
+        assert "plataformas" in response.data["data"]["errors"]
+        assert Campaign.objects.count() == before
+
+    def test_legacy_linkedin_campaign_remains_readable(self, api_client, campaign):
+        campaign.plataforma = CampaignPlataforma.LINKEDIN
+        campaign.plataformas = ["linkedin"]
+        campaign.save()
+        response = api_client.get(campaign_url(campaign.pk))
+        assert response.status_code == 200
+        assert response.data["data"]["campaign"]["plataformas"] == ["linkedin"]
 
     def test_create_requires_at_least_one_platform(self, api_client):
         payload = {**VALID_PAYLOAD, "plataformas": []}

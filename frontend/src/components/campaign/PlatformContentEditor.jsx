@@ -5,7 +5,7 @@ import { getPlatformCopy } from '../../services/campaignPublication'
 import { Button } from '../ui/button'
 import PlatformIcon from './PlatformIcon'
 
-const LABELS = { instagram: 'Instagram', facebook: 'Facebook', twitter: 'Twitter / X', linkedin: 'LinkedIn', google_ads: 'Google Ads', tiktok: 'TikTok' }
+const LABELS = { instagram: 'Instagram', facebook: 'Facebook', twitter: 'Twitter / X', linkedin: 'LinkedIn (retirada)', google_ads: 'Google Ads', tiktok: 'TikTok' }
 
 export default function PlatformContentEditor({ campaign, onSaved, onDirty, onPrepareX, disabled = false }) {
   const platforms = campaign.plataformas?.length ? campaign.plataformas : [campaign.plataforma]

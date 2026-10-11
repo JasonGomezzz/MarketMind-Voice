@@ -48,9 +48,9 @@ const TEMPLATE_POOL = [
   {
     icon: Share2,
     tint: 'bg-primary/10 text-primary',
-    titulo: 'LinkedIn B2B',
+    titulo: 'Facebook para negocios',
     texto:
-      'Escribe un post de LinkedIn con tono profesional que nos posicione como líderes del sector: un dato duro de apertura, 3 aprendizajes accionables y una pregunta final para generar conversación.',
+      'Escribe una publicación de Facebook que presente nuestro negocio: un beneficio concreto de apertura, 3 motivos para elegirnos y una invitación final a conocer nuestros productos.',
   },
   {
     icon: Mail,
@@ -101,7 +101,7 @@ const TIPS = [
   },
   {
     titulo: 'Menciona la plataforma',
-    desc: 'La IA escribe distinto para LinkedIn que para Instagram. El campo plataforma del formulario ya se lo indica.',
+    desc: 'La IA escribe distinto para Facebook que para Instagram. El campo plataforma del formulario ya se lo indica.',
   },
   {
     titulo: 'Refina por iteración',

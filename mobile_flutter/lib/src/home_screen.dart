@@ -458,7 +458,7 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
         _Dropdown(
           label: 'Plataforma',
           value: platform,
-          values: const ['instagram', 'facebook', 'linkedin'],
+          values: const ['instagram', 'facebook'],
           onChanged: (v) => setState(() => platform = v),
         ),
         const SizedBox(height: 12),

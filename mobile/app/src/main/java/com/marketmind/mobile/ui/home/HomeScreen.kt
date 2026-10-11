@@ -134,12 +134,6 @@ private val platformOptions = listOf(
         color = Color(0xFFE8409C),
         drawableRes = R.drawable.ig_logo,
     ),
-    PlatformOption(
-        value = "linkedin",
-        label = "LinkedIn",
-        color = Color(0xFF0A66C2),
-        drawableRes = R.drawable.linkedin_logo,
-    ),
 )
 
 @Composable

@@ -26,7 +26,7 @@ const PLATAFORMA_LABELS = {
   instagram: 'Instagram',
   facebook: 'Facebook',
   twitter: 'Twitter / X',
-  linkedin: 'LinkedIn',
+  linkedin: 'LinkedIn (retirada)',
   google_ads: 'Google Ads',
 }
 

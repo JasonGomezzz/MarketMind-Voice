@@ -134,6 +134,12 @@ class CampaignSerializer(serializers.ModelSerializer):
         attrs = super().validate(attrs)
         plataformas = attrs.get("plataformas")
         plataforma_legacy = attrs.get("plataforma")
+        # Keep the model choice for historical records, but reject new selections
+        # through either API field, including conflicting legacy/multiple inputs.
+        if plataforma_legacy == CampaignPlataforma.LINKEDIN or CampaignPlataforma.LINKEDIN in (plataformas or []):
+            raise serializers.ValidationError(
+                {"plataformas": "LinkedIn ya no está disponible para nuevas campañas."}
+            )
         if not plataformas and plataforma_legacy:
             plataformas = [plataforma_legacy]
         if not plataformas:

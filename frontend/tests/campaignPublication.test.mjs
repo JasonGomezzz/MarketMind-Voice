@@ -13,6 +13,13 @@ test('publication uses only the saved approved copy', () => {
   assert.equal(getApprovedPublicationCopy({ estado: 'aprobado', texto_generado: 'Texto aprobado', draft: 'Texto sin aprobar' }), 'Texto aprobado')
 })
 
+test('retired LinkedIn campaigns remain stored but cannot prepare publication', () => {
+  const campaign = { estado: 'aprobado', texto_generado: 'Contenido histórico', textos_por_plataforma: { linkedin: 'Copy antiguo' } }
+  assert.equal(getApprovedPublicationCopy(campaign, 'linkedin'), null)
+  assert.equal(campaign.textos_por_plataforma.linkedin, 'Copy antiguo')
+  assert.equal(getApprovedPublicationCopy(campaign, 'facebook'), 'Contenido histórico')
+})
+
 test('approved campaigns without usable text cannot prepare a publication', () => {
   for (const texto_generado of ['', '   ', null, undefined, 123]) {
     assert.equal(getApprovedPublicationCopy({ estado: 'aprobado', texto_generado }), null)

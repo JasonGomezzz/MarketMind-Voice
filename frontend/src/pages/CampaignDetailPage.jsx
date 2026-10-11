@@ -24,14 +24,13 @@ const PLATFORM_LABELS = {
   instagram: 'Instagram',
   facebook: 'Facebook',
   twitter: 'Twitter / X',
-  linkedin: 'LinkedIn',
+  linkedin: 'LinkedIn (retirada)',
   google_ads: 'Google Ads',
   tiktok: 'TikTok',
 }
 
 const PLATFORM_PUBLISH_URLS = {
   instagram: () => 'https://www.instagram.com/',
-  linkedin: (copy) => `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(copy)}`,
   google_ads: () => 'https://ads.google.com/aw/campaigns/new',
   tiktok: () => 'https://www.tiktok.com/upload',
 }
@@ -606,7 +605,7 @@ export default function CampaignDetailPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {(campaign.plataformas?.length ? campaign.plataformas : [campaign.plataforma]).map(
+                {(campaign.plataformas?.length ? campaign.plataformas : [campaign.plataforma]).filter((platform) => platform !== 'linkedin').map(
                   (platform) => (
                     <Button
                       key={platform}
