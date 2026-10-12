@@ -76,3 +76,8 @@ frontend/dist-instagram/
 
 # Docs de sustentación (privados, como CLAUDE.md — no van al repo)
 docs/
+
+# Backups contienen datos personales, hashes y credenciales sociales cifradas.
+backups/
+*.dump
+*.backup
