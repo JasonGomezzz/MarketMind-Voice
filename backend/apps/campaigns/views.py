@@ -606,14 +606,26 @@ class CampaignViewSet(viewsets.ModelViewSet):
         campaign = get_object_or_404(self.get_queryset().select_for_update(), pk=pk, marketero=request.user)
         if request.user.rol != 'marketero' or request.data.get('confirm') is not True:
             return Response(api_response(False, 'Confirma la nueva revisión.'), status=400)
-        if request.data.get('version') != campaign.version or campaign.estado != CampaignStatus.APROBADO:
+        if type(request.data.get('version')) is not int or request.data.get('version') != campaign.version or campaign.estado != CampaignStatus.APROBADO:
             return Response(api_response(False, 'La campaña cambió. Recarga antes de abrir la revisión.'), status=409)
+        added_platform = request.data.get('add_platform')
+        if 'add_platform' in request.data and added_platform != 'tiktok':
+            return Response(api_response(False, 'Solo se admite añadir TikTok en esta revisión.'), status=400)
+        if added_platform and added_platform in platforms(campaign):
+            return Response(api_response(False, 'TikTok ya está seleccionado en esta campaña.'), status=400)
         # Never permit editing while a public operation has an unresolved outcome.
-        from .models import InstagramPublication, FacebookPublication, XPublication
+        from .models import InstagramPublication, FacebookPublication, XPublication, TikTokUpload
         if any(model.objects.filter(campaign=campaign, status__in=['preparing', 'publishing', 'uncertain']).exists()
                for model in [InstagramPublication, FacebookPublication, XPublication]):
             return Response(api_response(False, 'Hay una publicación en curso o pendiente de verificar.'), status=409)
-        save_campaign_version(campaign)
+        if TikTokUpload.objects.filter(campaign=campaign, status__in=['sending', 'processing', 'inbox', 'uncertain']).exists():
+            return Response(api_response(False, 'Hay un envío TikTok pendiente de verificar o finalizar.'), status=409)
+        save_campaign_version(campaign, preserve_history=bool(added_platform))
+        if added_platform:
+            campaign.plataformas = [*platforms(campaign), added_platform]
+            campaign.textos_por_plataforma = {
+                **(campaign.textos_por_plataforma or {}), added_platform: campaign.texto_generado,
+            }
         campaign.estado = CampaignStatus.GENERADO
         campaign.version += 1
         campaign.email_enviado = False
@@ -621,7 +633,8 @@ class CampaignViewSet(viewsets.ModelViewSet):
         campaign.cliente_valoracion = None
         campaign.cliente_valoracion_at = None
         campaign.save(update_fields=['estado', 'version', 'email_enviado', 'enviado_cliente_at',
-                                     'cliente_valoracion', 'cliente_valoracion_at', 'fecha_actualizacion'])
+                                     'cliente_valoracion', 'cliente_valoracion_at', 'fecha_actualizacion',
+                                     'plataformas', 'textos_por_plataforma'])
         return Response(api_response(True, 'Nueva revisión abierta. Requiere aprobación del cliente.',
                                      {'campaign': CampaignSerializer(campaign).data}))
 

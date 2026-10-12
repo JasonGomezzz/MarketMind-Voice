@@ -257,7 +257,7 @@ N8N_WEBHOOK_BASE_URL = config(
 N8N_WEBHOOK_TIMEOUT = 5             # segundos — "Respond Immediately" debe responder < 500ms
 DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://host.docker.internal:8000")
 SPRINGBOOT_INTERNAL_URL = config("SPRINGBOOT_INTERNAL_URL", default="http://localhost:8081")
-INTERNAL_EVENT_TOKEN = config("INTERNAL_EVENT_TOKEN", default="dev-internal-event-token")
+INTERNAL_EVENT_TOKEN = config('INTERNAL_EVENT_TOKEN', default='')
 
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 GEMINI_MODEL = "gemini-2.5-flash"
@@ -287,6 +287,12 @@ FACEBOOK_GRAPH_VERSION = config('FACEBOOK_GRAPH_VERSION', default='v23.0')
 X_CLIENT_ID = config('X_CLIENT_ID', default='')
 X_CLIENT_SECRET = config('X_CLIENT_SECRET', default='')
 X_REDIRECT_URI = config('X_REDIRECT_URI', default='')
+TIKTOK_CLIENT_KEY = config('TIKTOK_CLIENT_KEY', default='')
+TIKTOK_CLIENT_SECRET = config('TIKTOK_CLIENT_SECRET', default='')
+TIKTOK_REDIRECT_URI = config('TIKTOK_REDIRECT_URI', default='')
+TIKTOK_MEDIA_BASE_URL = config('TIKTOK_MEDIA_BASE_URL', default='')
+TIKTOK_MEDIA_VERIFIED = config('TIKTOK_MEDIA_VERIFIED', default=False, cast=bool)
+TIKTOK_VERIFICATION_FILE = config('TIKTOK_VERIFICATION_FILE', default='')
 RECOVERY_EMAIL_COOLDOWN_SECONDS = 60
 RECOVERY_EMAIL_HOURLY_LIMIT = 5
 RECOVERY_IP_HOURLY_LIMIT = 20

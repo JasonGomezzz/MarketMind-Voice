@@ -31,9 +31,9 @@ class CampaignSerializer(serializers.ModelSerializer):
     publication_status = serializers.SerializerMethodField()
 
     def get_publication_status(self, campaign):
-        from .models import InstagramPublication, FacebookPublication, XPublication
+        from .models import InstagramPublication, FacebookPublication, XPublication, TikTokUpload
         result = {}
-        for platform, model in [('instagram', InstagramPublication), ('facebook', FacebookPublication), ('twitter', XPublication)]:
+        for platform, model in [('instagram', InstagramPublication), ('facebook', FacebookPublication), ('twitter', XPublication), ('tiktok', TikTokUpload)]:
             records = list(model.objects.filter(campaign=campaign, campaign_version=campaign.version).values_list('status', flat=True))
             result[platform] = ('published' if 'published' in records else records[-1] if records else 'not_published')
         return result

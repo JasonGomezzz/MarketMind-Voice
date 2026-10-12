@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.db import connection
 from django.http import JsonResponse
 from django.urls import include, path
+from apps.campaigns.tiktok_webhooks import TikTokWebhookView
 
 from apps.authentication.admin_views import (
     AdminResetQuotaView,
@@ -32,6 +33,7 @@ def health(request):
 
 
 urlpatterns = [
+    path('api/tiktok/webhook/', TikTokWebhookView.as_view()),
     path('api/auth/credit-requests/', CreditRequestListView.as_view()),
     path('api/admin/credit-requests/', AdminCreditRequestListView.as_view()),
     path('api/admin/credit-requests/<int:pk>/', AdminCreditRequestDetailView.as_view()),

@@ -18,6 +18,7 @@ import { useTheme } from '../hooks/useTheme'
 import InstagramAccounts from '../components/InstagramAccounts'
 import FacebookPages from '../components/FacebookPages'
 import XAccounts from '../components/XAccounts'
+import TikTokAccounts from '../components/TikTokAccounts'
 
 /**
  * Configuración de cuenta (portado de Stitch: account_settings, adaptado a los
@@ -223,6 +224,7 @@ export default function AccountSettingsPage() {
         {user.rol === 'marketero' && <InstagramAccounts />}
         {user.rol === 'marketero' && <FacebookPages />}
         {user.rol === 'marketero' && <XAccounts />}
+        {user.rol === 'marketero' && <TikTokAccounts />}
 
         {/* Seguridad */}
         <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">

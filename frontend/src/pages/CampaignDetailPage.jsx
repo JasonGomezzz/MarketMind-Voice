@@ -12,6 +12,7 @@ import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import InstagramPublicationDialog from '../components/InstagramPublicationDialog'
 import FacebookPublicationDialog from '../components/FacebookPublicationDialog'
 import XPublicationDialog from '../components/XPublicationDialog'
+import TikTokUploadDialog from '../components/TikTokUploadDialog'
 import PlatformContentEditor from '../components/campaign/PlatformContentEditor'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
@@ -32,7 +33,6 @@ const PLATFORM_LABELS = {
 const PLATFORM_PUBLISH_URLS = {
   instagram: () => 'https://www.instagram.com/',
   google_ads: () => 'https://ads.google.com/aw/campaigns/new',
-  tiktok: () => 'https://www.tiktok.com/upload',
 }
 
 function wordCount(text) {
@@ -62,6 +62,7 @@ export default function CampaignDetailPage() {
   const [showInstagram, setShowInstagram] = useState(false)
   const [showFacebook, setShowFacebook] = useState(false)
   const [showX, setShowX] = useState(false)
+  const [showTikTok, setShowTikTok] = useState(false)
   const [platformDirty, setPlatformDirty] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [versionsRefreshKey, setVersionsRefreshKey] = useState(0)
@@ -269,6 +270,10 @@ export default function CampaignDetailPage() {
     }
     if (platform === 'twitter') {
       setShowX(true)
+      return
+    }
+    if (platform === 'tiktok') {
+      setShowTikTok(true)
       return
     }
     const destination = PLATFORM_PUBLISH_URLS[platform]?.(approvedCopy)
@@ -601,7 +606,7 @@ export default function CampaignDetailPage() {
                 )}
                 <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
                   Instagram, Facebook y X muestran la imagen y el texto aprobado para elegir el destino y confirmar la publicación.
-                  Las demás plataformas todavía requieren completar la publicación manualmente.
+                  TikTok envía un borrador que debes terminar de publicar en su app. Google Ads requiere completar la publicación manualmente.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -630,6 +635,7 @@ export default function CampaignDetailPage() {
       {showInstagram && <InstagramPublicationDialog campaign={campaign} onClose={() => { setShowInstagram(false); fetchCampaign({ useDraft: false }).catch(() => {}) }} />}
       {showFacebook && <FacebookPublicationDialog campaign={campaign} onClose={() => { setShowFacebook(false); fetchCampaign({ useDraft: false }).catch(() => {}) }} />}
       {showX && <XPublicationDialog campaign={campaign} onClose={() => { setShowX(false); fetchCampaign({ useDraft: false }).catch(() => {}) }} />}
+      {showTikTok && <TikTokUploadDialog campaign={campaign} onClose={() => { setShowTikTok(false); fetchCampaign({ useDraft: false }).catch(() => {}) }} />}
       {showModal && (
         <SubmitModal
           preview={Object.keys(campaign.textos_por_plataforma || {}).length

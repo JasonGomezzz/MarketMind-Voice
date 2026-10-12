@@ -406,6 +406,38 @@ class XPublication(models.Model):
                                               name='unique_x_publication')]
 
 
+class TikTokUpload(models.Model):
+    """One immutable confirmed upload per approved version/account, never auto-resent."""
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
+    account = models.ForeignKey('authentication.TikTokAccount', on_delete=models.SET_NULL, null=True)
+    open_id = models.CharField(max_length=128)
+    display_name = models.CharField(max_length=255)
+    campaign_version = models.IntegerField()
+    caption = models.TextField()
+    image_jpeg = models.TextField()
+    image_ticket = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    image_expires_at = models.DateTimeField()
+    status = models.CharField(max_length=20, default='sending')
+    publish_id = models.CharField(max_length=64, blank=True)
+    message = models.TextField(blank=True)
+    checked_at = models.DateTimeField(null=True, blank=True)
+    confirmation_source = models.CharField(max_length=20, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['campaign', 'open_id', 'campaign_version'],
+                                              name='unique_tiktok_upload')]
+
+
+class TikTokWebhookReceipt(models.Model):
+    """Signed event deduplication; never retain credentials or raw event bodies."""
+    digest = models.CharField(max_length=64, unique=True)
+    event = models.CharField(max_length=64)
+    upload = models.ForeignKey(TikTokUpload, on_delete=models.SET_NULL, null=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+
 class CreditPurchase(models.Model):
     """
     Registro append-only de compras de créditos de IA. Pasarela de pago

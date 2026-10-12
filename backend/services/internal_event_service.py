@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 def notify_campaign_submitted(campaign_id: int) -> None:
     """Avisa a Spring Boot que una campaña fue enviada al cliente."""
+    if not settings.INTERNAL_EVENT_TOKEN:
+        logger.warning('Notificación interna omitida: falta configurar el token privado.')
+        return
     url = f"{settings.SPRINGBOOT_INTERNAL_URL.rstrip('/')}/api/internal/campaign-events/submitted"
     try:
         response = requests.post(

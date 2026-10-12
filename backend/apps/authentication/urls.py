@@ -12,8 +12,14 @@ from .password_reset import PasswordResetRequestView, PasswordResetConfirmView
 from .instagram import InstagramAccountsView, InstagramConnectView, InstagramCompleteView, InstagramDisconnectView
 from .facebook import FacebookPagesView, FacebookConnectView, FacebookCompleteView, FacebookDisconnectView, FacebookCallbackRelayView
 from .x_oauth import XAccountsView, XConnectView, XDisconnectView, XCallbackView
+from .tiktok import TikTokAccountsView, TikTokConnectView, TikTokCompleteView, TikTokDisconnectView, TikTokCallbackView
 
 urlpatterns = [
+    path('tiktok/accounts/', TikTokAccountsView.as_view()),
+    path('tiktok/accounts/<int:pk>/', TikTokDisconnectView.as_view()),
+    path('tiktok/connect/', TikTokConnectView.as_view()),
+    path('tiktok/complete/', TikTokCompleteView.as_view()),
+    path('tiktok/callback/', TikTokCallbackView.as_view()),
     path('x/accounts/', XAccountsView.as_view()),
     path('x/accounts/<int:pk>/', XDisconnectView.as_view()),
     path('x/connect/', XConnectView.as_view()),

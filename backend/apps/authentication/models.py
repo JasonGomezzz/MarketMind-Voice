@@ -322,3 +322,27 @@ class XAuthorization(models.Model):
     expires_at = models.DateTimeField()
     used = models.BooleanField(default=False)
     return_origin = models.CharField(max_length=255)
+
+
+class TikTokAccount(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tiktok_accounts')
+    open_id = models.CharField(max_length=128)
+    display_name = models.CharField(max_length=255)
+    encrypted_access_token = models.TextField()
+    encrypted_refresh_token = models.TextField()
+    expires_at = models.DateTimeField()
+    refresh_expires_at = models.DateTimeField()
+    scopes = models.JSONField(default=list)
+    connected_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['owner', 'open_id'], name='unique_owner_tiktok_account')]
+
+
+class TikTokAuthorization(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    state_hash = models.CharField(max_length=64, unique=True)
+    token_version = models.IntegerField()
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    return_origin = models.CharField(max_length=255)

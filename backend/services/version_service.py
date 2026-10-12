@@ -12,12 +12,13 @@ from apps.campaigns.models import Campaign, CampaignVersion
 MAX_VERSIONS = 5
 
 
-def save_campaign_version(campaign: Campaign) -> None:
+def save_campaign_version(campaign: Campaign, *, preserve_history: bool = False) -> None:
     """
     Guarda el estado actual de texto_generado e imagen_b64 como snapshot
     inmutable. No-op si texto_generado está vacío o si el último snapshot
     ya tiene exactamente el mismo contenido. Conserva solo las últimas
-    MAX_VERSIONS (LRU).
+    MAX_VERSIONS (LRU), salvo preserve_history=True al ampliar destinos
+    de una campaña aprobada: esa operación no elimina snapshots previos.
 
     Args:
         campaign: Instancia de Campaign con texto_generado actual.
@@ -49,6 +50,9 @@ def save_campaign_version(campaign: Campaign) -> None:
             textos_por_plataforma=campaign.textos_por_plataforma,
             imagen_b64=campaign.imagen_b64,
         )
+
+        if preserve_history:
+            return
 
         ids_to_delete = list(
             CampaignVersion.objects

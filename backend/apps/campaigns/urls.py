@@ -3,6 +3,7 @@ from rest_framework.routers import SimpleRouter
 from .instagram_publication import InstagramPublishView
 from .facebook_publication import FacebookPublishView
 from .x_publication import XPublishView, XSummaryView
+from .tiktok_publication import TikTokUploadView, TikTokUploadStatusView
 
 from .views import (
     CampaignExportPDFView,
@@ -19,6 +20,8 @@ router = SimpleRouter()
 router.register(r"", CampaignViewSet, basename="campaign")
 
 urlpatterns = [
+    path('<int:campaign_id>/send-tiktok/', TikTokUploadView.as_view()),
+    path('<int:campaign_id>/tiktok-status/', TikTokUploadStatusView.as_view()),
     path('<int:campaign_id>/summarize-x/', XSummaryView.as_view(), name='summarize-x'),
     path('<int:campaign_id>/publish-x/', XPublishView.as_view(), name='publish-x'),
     path('<int:campaign_id>/publish-facebook/', FacebookPublishView.as_view(), name='publish-facebook'),
