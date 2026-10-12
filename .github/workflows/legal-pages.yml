@@ -1,0 +1,61 @@
+name: Publicar documentos NexoMark
+
+# No deployment on push or PR. Execution requires explicit confirmation.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_publication:
+        description: 'Confirmo publicar páginas, nombres y correo de contacto'
+        required: true
+        type: boolean
+        default: false
+      allow_drafts:
+        description: 'Publicar borradores con sus avisos visibles (no políticas vigentes)'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legal-github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ inputs.confirm_publication }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar preparador
+        run: node --test scripts/prepare-legal-site.test.mjs
+      - name: Preparar solo archivos públicos permitidos
+        env:
+          ALLOW_DRAFTS: ${{ inputs.allow_drafts }}
+        run: |
+          args=()
+          if [ "$ALLOW_DRAFTS" = "true" ]; then args+=(--allow-drafts); fi
+          node scripts/prepare-legal-site.mjs "$RUNNER_TEMP/legal-pages" "${args[@]}"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/legal-pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configurar Pages ya habilitado por el administrador
+        uses: actions/configure-pages@v5
+      - name: Publicar solo el artefacto legal
+        id: deployment
+        uses: actions/deploy-pages@v4
