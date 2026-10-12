@@ -438,6 +438,20 @@ class TikTokWebhookReceipt(models.Model):
     received_at = models.DateTimeField(auto_now_add=True)
 
 
+class PublicationMetricSnapshot(models.Model):
+    """Daily provider counters, independent of the campaign's current revision."""
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
+    platform = models.CharField(max_length=20)
+    publication_id = models.PositiveBigIntegerField()
+    day = models.DateField()
+    metrics = models.JSONField(default=dict)
+    measured_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['platform', 'publication_id', 'day'],
+                                              name='unique_daily_publication_metrics')]
+
+
 class CreditPurchase(models.Model):
     """
     Registro append-only de compras de créditos de IA. Pasarela de pago

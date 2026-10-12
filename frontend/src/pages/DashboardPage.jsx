@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import api from '../services/api'
 import { STATES } from '@/lib/campaignStates'
+import PublicationStatistics from '@/components/campaign/PublicationStatistics'
 
 /**
  * Dashboard de MARKETERO / SUPERADMIN (Lumina Creative).
@@ -195,6 +196,8 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </div>
+
+      <PublicationStatistics />
 
       {/* Distribución por estado FSM */}
       {!loading && !error && stats && (

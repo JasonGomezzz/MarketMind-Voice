@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
 import { ArrowLeft, FileText, ImageOff, RefreshCw, Send, Star, Trash2 } from 'lucide-react'
 import CampaignPlatforms from '@/components/campaign/CampaignPlatforms'
+import PublicationStatistics from '@/components/campaign/PublicationStatistics'
 import PlatformIcon from '@/components/campaign/PlatformIcon'
 import ImageLightbox from '@/components/ui/ImageLightbox'
 import api from '../services/api'
@@ -393,6 +394,7 @@ export default function CampaignDetailPage() {
 
         {/* ── Columna derecha: Editor + Imagen ── */}
         <div className="min-w-0 flex-1">
+          <PublicationStatistics campaignId={campaign.id} />
           {campaign.texto_generado && <PlatformContentEditor key={`${campaign.id}-${campaign.version}`} campaign={campaign}
             onPrepareX={() => setShowX(true)}
             disabled={saving || submitting || text !== campaign.texto_generado || promptText !== campaign.prompt}

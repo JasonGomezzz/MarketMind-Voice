@@ -4,6 +4,7 @@ from .instagram_publication import InstagramPublishView
 from .facebook_publication import FacebookPublishView
 from .x_publication import XPublishView, XSummaryView
 from .tiktok_publication import TikTokUploadView, TikTokUploadStatusView
+from .publication_statistics import PublicationStatisticsView, RefreshPublicationStatisticsView
 
 from .views import (
     CampaignExportPDFView,
@@ -20,6 +21,9 @@ router = SimpleRouter()
 router.register(r"", CampaignViewSet, basename="campaign")
 
 urlpatterns = [
+    path('publication-statistics/', PublicationStatisticsView.as_view()),
+    path('<int:campaign_id>/publication-statistics/', PublicationStatisticsView.as_view()),
+    path('<int:campaign_id>/publication-statistics/refresh/', RefreshPublicationStatisticsView.as_view()),
     path('<int:campaign_id>/send-tiktok/', TikTokUploadView.as_view()),
     path('<int:campaign_id>/tiktok-status/', TikTokUploadStatusView.as_view()),
     path('<int:campaign_id>/summarize-x/', XSummaryView.as_view(), name='summarize-x'),
