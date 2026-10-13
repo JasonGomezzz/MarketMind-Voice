@@ -65,7 +65,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/brand/nexomark-mark.svg
+    - assets/brand/nexomark-icon.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

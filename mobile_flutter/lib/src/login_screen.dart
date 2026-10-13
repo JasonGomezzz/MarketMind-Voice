@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import 'api_client.dart';
 
@@ -43,8 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SvgPicture.asset(
-                  'assets/brand/nexomark-mark.svg',
+                Image.asset(
+                  'assets/brand/nexomark-icon.png',
                   width: 72,
                   height: 72,
                 ),

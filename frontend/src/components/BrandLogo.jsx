@@ -1,7 +1,7 @@
 export default function BrandLogo({ compact = false, className = '' }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`} aria-label="NexoMark IA">
-      <img src="/nexomark-mark.svg" alt="" className="h-9 w-9 shrink-0" />
+      <img src="/nexomark-icon.png" alt="" className="h-9 w-9 shrink-0" />
       {!compact && (
         <span className="inline-flex items-center gap-1.5 font-extrabold tracking-tight">
           <span className="bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
