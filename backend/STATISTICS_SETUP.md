@@ -101,7 +101,9 @@ comprobar la respuesta real. El código OAuth anterior ya está consumido y no s
 
 ### Completar TikTok
 
-1. En el MISMO Sandbox de Login Kit/Content Posting, habilitar Display API y `video.list`.
+1. En el MISMO Sandbox de Login Kit/Content Posting, ir a Scopes → Add scopes y añadir
+   `video.list`; Apply changes. Portal verificado el 12 de octubre: Display API NO
+   aparece como producto en Add products; no añadir Share Kit ni Data Portability.
 2. Configurar `TIKTOK_METRICS_PERMISSIONS=true` en .env privado, reiniciar Django/bridge
    y reconectar la misma cuenta autorizando lectura. Los tokens antiguos de upload
    siguen siendo válidos para su función; no se exige video.list para refrescarlos.

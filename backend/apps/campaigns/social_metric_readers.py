@@ -67,7 +67,7 @@ def x_counters(publication, count):
 def tiktok_counters(publication, count):
     account = owned_account(publication, TikTokAccount, 'open_id')
     if 'video.list' not in account.scopes:
-        raise MetricReadUnavailable('TikTok: habilita Display API y reconecta con el permiso video.list.')
+        raise MetricReadUnavailable('TikTok: añade video.list en Scopes del Sandbox y reconecta con ese permiso.')
     identifiers = publication.public_post_ids
     if (not isinstance(identifiers, list) or not 1 <= len(identifiers) <= 20
             or any(not isinstance(i, str) or not re.fullmatch(r'[0-9]{1,64}', i) for i in identifiers)
