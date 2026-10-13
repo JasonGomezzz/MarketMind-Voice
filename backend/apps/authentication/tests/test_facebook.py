@@ -23,6 +23,7 @@ def fb_settings(settings):
     settings.FACEBOOK_REDIRECT_URI = 'https://demo.example/api/auth/facebook/callback/'
     settings.FACEBOOK_GRAPH_VERSION = 'v23.0'
     settings.FACEBOOK_LOGIN_CONFIG_ID = ''
+    settings.FACEBOOK_METRICS_PERMISSIONS = False
     settings.FRONTEND_BASE_URL = 'http://localhost:5173'
     settings.SOCIAL_TOKEN_ENCRYPTION_KEY = Fernet.generate_key().decode()
     return settings
@@ -164,6 +165,48 @@ def test_exchange_uses_fixed_host_bearer_minimal_permissions_and_pages(get, fb_s
     assert get.call_args.kwargs['params']['fields'] == 'id,name,access_token,tasks'
     assert all(call.args[0].startswith('https://graph.facebook.com/v23.0/') for call in get.call_args_list)
     assert get.call_args_list[0].kwargs['params']['redirect_uri'] == fb_settings.FACEBOOK_REDIRECT_URI
+
+
+@patch('apps.authentication.facebook.requests.get')
+def test_missing_exchange_expiry_uses_verified_debug_deadlines(get, fb_settings):
+    now = int(timezone.now().timestamp())
+    responses = graph_responses()
+    responses[2] = {'access_token': 'long'}
+    responses.insert(4, {'data': {'is_valid': True, 'app_id': fb_settings.FACEBOOK_APP_ID,
+        'user_id': '123', 'expires_at': now + 7200, 'data_access_expires_at': now + 1800}})
+    get.side_effect = [Mock(status_code=200, json=lambda value=value: value) for value in responses]
+    pages, lifetime = exchange_code('code')
+    assert pages[0]['page_id'] == '456' and 1795 <= lifetime <= 1800
+    debug = get.call_args_list[4]
+    assert debug.args[0] == 'https://graph.facebook.com/v23.0/debug_token'
+    assert debug.kwargs['params'] == {'input_token': 'long'}
+    assert debug.kwargs['headers']['Authorization'] == 'Bearer 123|test-secret'
+    assert debug.kwargs['allow_redirects'] is False
+
+
+@pytest.mark.parametrize('changes', [
+    {'is_valid': False}, {'app_id': 'other'}, {'user_id': 'other'},
+    {'expires_at': True}, {'expires_at': -1}, {'expires_at': 1},
+    {'expires_at': 0, 'data_access_expires_at': 0}, {'data_access_expires_at': 'wrong'},
+])
+def test_debug_expiry_rejects_wrong_identity_or_invalid_deadlines(fb_settings, changes):
+    from apps.authentication.facebook import token_lifetime
+    details = {'is_valid': True, 'app_id': fb_settings.FACEBOOK_APP_ID, 'user_id': '123',
+               'expires_at': int(timezone.now().timestamp()) + 3600, 'data_access_expires_at': 0}
+    details.update(changes)
+    with patch('apps.authentication.facebook.graph', return_value={'data': details}):
+        with pytest.raises(FacebookError) as error:
+            token_lifetime({}, 'private', '123')
+        assert error.value.stage == 'expiry'
+
+
+@pytest.mark.parametrize('value', [True, False, None, 1.5, '', '-1', 0, 90 * 86400 + 1])
+def test_invalid_explicit_expiry_never_falls_back(fb_settings, value):
+    from apps.authentication.facebook import token_lifetime
+    with patch('apps.authentication.facebook.graph') as debug:
+        with pytest.raises(FacebookError):
+            token_lifetime({'expires_in': value}, 'private', '123')
+        debug.assert_not_called()
 
 
 @pytest.mark.parametrize('index,replacement,stage', [

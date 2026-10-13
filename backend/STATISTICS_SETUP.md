@@ -90,6 +90,15 @@ permisos en portales ni se reconectaron las cuentas automáticamente.
 4. Verificar una respuesta real y el contador almacenado. Un permiso en el portal no
    equivale a un permiso concedido al token anterior. Producción puede exigir revisión.
 
+La reconexión de prueba del 12 de octubre llegó al backend pero falló en etapa expiry;
+no se registró ninguna Página ni snapshot Facebook. Se reforzó la validación: si el
+intercambio omite expires_in, consultar debug_token de ese token, validar is_valid,
+app_id y user_id, y usar el menor vencimiento finito de token/acceso a datos. Si no
+hay una fecha verificable, se rechaza la conexión; no inventar 60 días ni aceptar
+token de otro usuario/app. Un expires_in explícito inválido no se sustituye por defecto.
+Este ajuste está probado con mocks; requiere nueva autorización del usuario para
+comprobar la respuesta real. El código OAuth anterior ya está consumido y no se reutiliza.
+
 ### Completar TikTok
 
 1. En el MISMO Sandbox de Login Kit/Content Posting, habilitar Display API y `video.list`.

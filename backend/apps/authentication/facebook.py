@@ -87,6 +87,39 @@ def identity(token):
     return user_id
 
 
+def token_lifetime(extended, token, user_id):
+    """Use provider expiry, never guess a lifetime for an exchanged token."""
+    if 'expires_in' in extended:
+        value = extended['expires_in']
+        if type(value) is int and 0 < value <= 90 * 86400:
+            return value
+        if isinstance(value, str) and len(value) <= 9 and value.isascii() and value.isdigit() and 0 < int(value) <= 90 * 86400:
+            return int(value)
+        raise FacebookError('expiry')
+    # An exchange of an already extended token can omit expires_in. Validate
+    # the exact token against this app and user before trusting debug expiry.
+    details = graph('debug_token', 'expiry',
+                    settings.FACEBOOK_APP_ID + '|' + settings.FACEBOOK_APP_SECRET,
+                    input_token=token).get('data')
+    if (not isinstance(details, dict) or details.get('is_valid') is not True
+            or details.get('app_id') != settings.FACEBOOK_APP_ID
+            or details.get('user_id') != user_id):
+        raise FacebookError('expiry')
+    expires = details.get('expires_at')
+    access_expires = details.get('data_access_expires_at', 0)
+    if (type(expires) is not int or expires < 0
+            or type(access_expires) is not int or access_expires < 0):
+        raise FacebookError('expiry')
+    deadlines = [value for value in (expires, access_expires) if value > 0]
+    if not deadlines:
+        # No invented expiry for tokens reported without a finite deadline.
+        raise FacebookError('expiry')
+    lifetime = min(deadlines) - int(timezone.now().timestamp())
+    if lifetime <= 0:
+        raise FacebookError('expiry')
+    return min(lifetime, 90 * 86400)
+
+
 def exchange_code(code):
     short = graph('oauth/access_token', 'code', client_id=settings.FACEBOOK_APP_ID,
                   client_secret=settings.FACEBOOK_APP_SECRET,
@@ -101,12 +134,7 @@ def exchange_code(code):
     token = extended.get('access_token')
     if not isinstance(token, str) or not token or identity(token) != user_id:
         raise FacebookError('identity')
-    try:
-        lifetime = int(extended['expires_in'])
-        if lifetime <= 0 or lifetime > 90 * 86400:
-            raise ValueError()
-    except (ValueError, TypeError, KeyError):
-        raise FacebookError('expiry') from None
+    lifetime = token_lifetime(extended, token, user_id)
     permissions = graph('me/permissions', 'permissions', token).get('data')
     if not isinstance(permissions, list):
         raise FacebookError('permissions')
