@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import api from '../services/api'
 import { rememberXAuthorization, takeXAuthorization } from '../services/xAuthorization'
 import { Button } from './ui/button'
+import SocialConnectionSection from './SocialConnectionSection'
 
 export default function XAccounts() {
   const [accounts, setAccounts] = useState([])
@@ -61,8 +62,7 @@ export default function XAccounts() {
     finally { setBusy(false) }
   }
 
-  return <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
-    <h2 className="text-xl font-semibold text-on-surface">Redes sociales · X</h2>
+  return <SocialConnectionSection platform="twitter" name="X / Twitter">
     <p className="mt-2 text-sm text-on-surface-variant">Conecta tu cuenta de X para publicar campañas aprobadas con imagen y texto.</p>
     {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
     {loading ? <p className="mt-3 text-sm">Cargando conexiones…</p> : <>
@@ -75,5 +75,5 @@ export default function XAccounts() {
       <Button disabled={busy || !configured} onClick={connect}>{busy ? 'Procesando…' : 'Conectar X'}</Button>
     </>}
     <p className="mt-3 text-xs text-on-surface-variant">Publica desde una campaña aprobada, revisando la imagen, el texto y la cuenta de destino. Puedes revocar el acceso desde X.</p>
-  </section>
+  </SocialConnectionSection>
 }

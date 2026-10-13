@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import api from '../services/api'
 import { rememberTikTokAuthorization, takeTikTokAuthorization } from '../services/tiktokAuthorization'
 import { Button } from './ui/button'
-import PlatformIcon from './campaign/PlatformIcon'
+import SocialConnectionSection from './SocialConnectionSection'
 
 export default function TikTokAccounts() {
   const [accounts, setAccounts] = useState([])
@@ -67,8 +67,7 @@ export default function TikTokAccounts() {
     finally { setBusy(false) }
   }
 
-  return <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
-    <h2 className="flex items-center gap-2 text-xl font-semibold text-on-surface"><PlatformIcon platform="tiktok" className="h-5 w-5" />Redes sociales · TikTok</h2>
+  return <SocialConnectionSection platform="tiktok" name="TikTok">
     <p className="mt-2 text-sm text-on-surface-variant">Conecta una cuenta que tengas autorización para administrar. Cada conexión pertenece a tu usuario.</p>
     {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
     {loading ? <p className="mt-3 text-sm">Cargando conexiones…</p> : <>
@@ -81,5 +80,5 @@ export default function TikTokAccounts() {
       <Button disabled={busy || !configured} onClick={connect}>{busy ? 'Procesando…' : 'Conectar TikTok'}</Button>
     </>}
     <p className="mt-3 text-xs text-on-surface-variant">Conectar no publica ni envía contenido. Las campañas aprobadas permiten confirmar un envío a TikTok cuando la URL pública de imágenes esté verificada. Debes terminar la publicación en la app de TikTok. Desconectar elimina la credencial local; puedes revocar la autorización también desde TikTok.</p>
-  </section>
+  </SocialConnectionSection>
 }

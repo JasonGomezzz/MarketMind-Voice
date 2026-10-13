@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import api from '../services/api'
 import { rememberFacebookAuthorization, takeFacebookAuthorization } from '../services/facebookAuthorization'
 import { Button } from './ui/button'
+import SocialConnectionSection from './SocialConnectionSection'
 
 export default function FacebookPages() {
   const [pages, setPages] = useState([])
@@ -71,8 +72,7 @@ export default function FacebookPages() {
   }
 
   return (
-    <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-on-surface">Redes sociales · Facebook</h2>
+    <SocialConnectionSection platform="facebook" name="Facebook">
       <p className="mt-2 text-sm text-on-surface-variant">Autoriza las Páginas que administras con tu cuenta de Facebook. Cada conexión pertenece a tu usuario; no se publica en tu perfil personal.</p>
       {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
       {loading ? <p className="mt-3 text-sm">Cargando conexiones…</p> : <>
@@ -87,6 +87,6 @@ export default function FacebookPages() {
         <Button disabled={busy || !configured} onClick={connect}>{busy ? 'Procesando…' : 'Conectar Facebook'}</Button>
       </>}
       <p className="mt-3 text-xs text-on-surface-variant">Conectar no publica automáticamente. Puedes publicar en tu Página desde una campaña aprobada, revisando su imagen y texto. Desconectar elimina la credencial local; también puedes revocar el acceso desde Facebook.</p>
-    </section>
+    </SocialConnectionSection>
   )
 }

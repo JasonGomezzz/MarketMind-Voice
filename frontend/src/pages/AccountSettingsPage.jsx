@@ -221,10 +221,18 @@ export default function AccountSettingsPage() {
           </form>
         </section>
 
-        {user.rol === 'marketero' && <InstagramAccounts />}
-        {user.rol === 'marketero' && <FacebookPages />}
-        {user.rol === 'marketero' && <XAccounts />}
-        {user.rol === 'marketero' && <TikTokAccounts />}
+        {user.rol === 'marketero' && (
+          <section aria-labelledby="social-connections-heading" className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
+            <h2 id="social-connections-heading" className="text-xl font-semibold text-on-surface">Conexiones de redes sociales</h2>
+            <p className="mt-2 text-sm text-on-surface-variant">Gestiona tus cuentas conectadas por plataforma. Conectar una cuenta no publica contenido automáticamente.</p>
+            <div className="mt-6 divide-y divide-outline-variant">
+              <InstagramAccounts />
+              <FacebookPages />
+              <XAccounts />
+              <TikTokAccounts />
+            </div>
+          </section>
+        )}
 
         {/* Seguridad */}
         <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">

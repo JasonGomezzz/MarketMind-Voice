@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import api from '../services/api'
 import { rememberInstagramAuthorization, takeInstagramAuthorization } from '../services/instagramAuthorization'
 import { Button } from './ui/button'
+import SocialConnectionSection from './SocialConnectionSection'
 
 export default function InstagramAccounts() {
   const [accounts, setAccounts] = useState([])
@@ -72,8 +73,7 @@ export default function InstagramAccounts() {
   }
 
   return (
-    <section className="rounded-xl border border-outline-variant bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-on-surface">Redes sociales · Instagram</h2>
+    <SocialConnectionSection platform="instagram" name="Instagram">
       <p className="mt-2 text-sm text-on-surface-variant">Conecta una o varias cuentas profesionales que tengas autorización para administrar. Cada conexión pertenece a tu usuario.</p>
       {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
       {loading ? <p className="mt-3 text-sm">Cargando conexiones…</p> : <>
@@ -88,6 +88,6 @@ export default function InstagramAccounts() {
         <Button disabled={!configured || busy} onClick={connect}>{busy ? 'Procesando…' : 'Conectar Instagram'}</Button>
         <p className="mt-3 text-xs text-on-surface-variant">Conectar no publica automáticamente. Puedes publicar desde una campaña aprobada, revisando su imagen y texto. Desconectar elimina la credencial local; puedes revocar también el acceso desde Instagram.</p>
       </>}
-    </section>
+    </SocialConnectionSection>
   )
 }
