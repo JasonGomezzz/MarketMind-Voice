@@ -36,6 +36,9 @@ class CampaignSerializer(serializers.ModelSerializer):
         for platform, model in [('instagram', InstagramPublication), ('facebook', FacebookPublication), ('twitter', XPublication), ('tiktok', TikTokUpload)]:
             records = list(model.objects.filter(campaign=campaign, campaign_version=campaign.version).values_list('status', flat=True))
             result[platform] = ('published' if 'published' in records else records[-1] if records else 'not_published')
+            if platform == 'tiktok' and result[platform] != 'published' and model.objects.filter(
+                    campaign=campaign, campaign_version=campaign.version, publication_link__isnull=False).exists():
+                result[platform] = 'linked'
         return result
     cliente_email = serializers.EmailField(required=True)
     plataforma = serializers.ChoiceField(

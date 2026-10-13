@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { canSendTikTok, shouldPollTikTok } from '../src/services/tiktokPublication.js'
+import { canSendTikTok, shouldPollTikTok, canConfirmTikTokLink } from '../src/services/tiktokPublication.js'
 
 const campaign = { estado: 'aprobado', plataformas: ['tiktok'], texto_generado: 'Café', imagen_b64: 'image' }
 const ready = { configured: true, outcome: { status: 'not_sent', media_ready: true } }
@@ -22,4 +22,17 @@ test('never resends processing, inbox, published or ambiguous outcomes', () => {
 test('UTF-16 overflow and dirty/error state prevent send', () => {
   assert.equal(canSendTikTok({ ...campaign, texto_generado: '😀'.repeat(2001) }, '1', ready), false)
   assert.equal(canSendTikTok(campaign, '1', { ...ready, error: 'Failed' }), false)
+})
+
+test('link confirmation requires the exact checked post, account, upload and consent', () => {
+  const preview = { publication: '123', accountId: '1', upload_id: 7, campaign_version: 1 }
+  const outcome = { upload_id: 7 }
+  assert.equal(canConfirmTikTokLink(preview, '123', '1', outcome, false, true, 1), true)
+  assert.equal(canConfirmTikTokLink(preview, '123', '1', outcome, false, true, 2), false)
+  assert.equal(canConfirmTikTokLink(preview, '124', '1', outcome, false, true), false)
+  assert.equal(canConfirmTikTokLink(preview, '123', '2', outcome, false, true), false)
+  assert.equal(canConfirmTikTokLink(preview, '123', '1', { upload_id: 8 }, false, true), false)
+  assert.equal(canConfirmTikTokLink(preview, '123', '1', outcome, true, true), false)
+  assert.equal(canConfirmTikTokLink(preview, '123', '1', outcome, false, false), false)
+  assert.equal(shouldPollTikTok('inbox', true), false)
 })

@@ -431,6 +431,16 @@ class TikTokUpload(models.Model):
                                               name='unique_tiktok_upload')]
 
 
+class TikTokPublicationLink(models.Model):
+    """User-confirmed association verified by Display API, not an upload receipt."""
+    upload = models.OneToOneField(TikTokUpload, on_delete=models.CASCADE, related_name='publication_link')
+    post_id = models.CharField(max_length=64, unique=True)
+    post_url = models.URLField(max_length=512, blank=True)
+    provider_created_at = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(default=timezone.now)
+    confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+
 class TikTokWebhookReceipt(models.Model):
     """Signed event deduplication; never retain credentials or raw event bodies."""
     digest = models.CharField(max_length=64, unique=True)

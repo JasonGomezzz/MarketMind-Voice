@@ -96,8 +96,14 @@ def send_upload(upload, token):
 
 def result(upload=None):
     status = upload.status if upload else 'not_sent'
-    return Response(api_response(True, MESSAGES.get(status, 'Todavía no se envió esta campaña.'), {
+    link = getattr(upload, 'publication_link', None) if upload else None
+    message = ('Publicación existente vinculada y verificada por API. El estado del envío original se conserva; no reenvíes.'
+               if link else MESSAGES.get(status, 'Todavía no se envió esta campaña.'))
+    return Response(api_response(True, message, {
         'status': status, 'account_name': upload.display_name if upload else '',
+        'upload_id': upload.pk if upload else None,
+        'linked_publication': {'post_id': link.post_id, 'post_url': link.post_url,
+                               'verified_at': link.verified_at.isoformat()} if link else None,
         'media_ready': media_ready(),
         'confirmation_source': upload.confirmation_source if upload else '',
         'published_at': upload.published_at.isoformat() if upload and upload.published_at else None,

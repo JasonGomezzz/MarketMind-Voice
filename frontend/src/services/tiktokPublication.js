@@ -1,7 +1,14 @@
 import { getApprovedPublicationCopy } from './campaignPublication.js'
 
-export function shouldPollTikTok(status) {
-  return ['sending', 'processing', 'inbox', 'uncertain'].includes(status)
+export function shouldPollTikTok(status, linked = false) {
+  return !linked && ['sending', 'processing', 'inbox', 'uncertain'].includes(status)
+}
+
+export function canConfirmTikTokLink(preview, publication, accountId, outcome, busy, confirmed, version) {
+  return !!(confirmed && !busy && preview && preview.publication === publication.trim()
+    && preview.accountId === accountId && preview.upload_id === outcome?.upload_id
+    && preview.campaign_version === version
+    && !outcome?.linked_publication)
 }
 
 export function canSendTikTok(campaign, accountId, state) {

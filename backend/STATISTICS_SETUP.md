@@ -15,8 +15,9 @@ como se explica debajo, sin usar cifras simuladas del esquema como datos reales.
 
 - Dashboard y detalle de campaña de marketero: bloques Facebook, Instagram, X y TikTok.
   Google Ads se distingue como anuncios todavía no integrados, sin métricas orgánicas ficticias.
-- Solo cuentan publicaciones `published`, incluyendo versiones anteriores. Envíos pendientes
-  se muestran aparte. No se infiere publicación TikTok por ver contenido similar en el perfil.
+- Cuentan publicaciones `published` y posts TikTok existentes vinculados expresamente
+  por el propietario tras validación Display API, incluyendo versiones anteriores. Envíos
+  pendientes sin vinculación se muestran aparte. No se infiere publicación por similitud.
 - Gráfico de publicaciones por mes/año, según fecha local de registro del envío confirmado
   (TikTok usa fecha de confirmación cuando existe). No se afirma fecha exacta de publicación remota.
 - Últimos contadores acumulados por publicación, cobertura y fecha de medición. Ausencia es null,
@@ -35,7 +36,16 @@ como se explica debajo, sin usar cifras simuladas del esquema como datos reales.
   autenticado del envío o webhook firmado. Conserva varios IDs si el usuario creó varios
   posts desde un mismo borrador; suma contadores solo si todos los IDs se devuelven.
   Los totales/coverage cuentan esos posts, no duplican mediciones del mismo envío.
-  Compatibilidad con fotos NO confirmada. No inferir ID ni estado por imagen/texto similares.
+  La foto concreta de prueba fue leída realmente (2 likes, 0 compartidos, 304 vistas),
+  sin generalizar compatibilidad a todos los posts. No inferir ID ni estado por similitud.
+- Vinculación TikTok en el diálogo de campaña: URL pública o ID → Verificar publicación
+  (sin escribir) → comprobar cuenta/post/contadores → confirmar asociación. El servidor
+  vuelve a verificar propiedad y guarda `TikTokPublicationLink` con autor y fecha; no
+  sustituye status/publish_id/public_post_ids del envío ni fabrica un webhook. ID único
+  y un vínculo por envío evitan dobles asociaciones; no se reemplazan vínculos existentes.
+  Historial y estadísticas distinguen user_confirmed_display_api de confirmación de envío.
+  Si TikTok entrega después el mismo ID por webhook, no se cuenta dos veces. Se usa la
+  fecha de creación del post de la API si existe. Sin contadores válidos, no se vincula.
 - Me gusta por mes: suma de los últimos contadores acumulados de las publicaciones
   registradas en cada mes. Funciona desde la primera medición, sin exigir dos meses.
   No representa el mes en que ocurrió cada like: una publicación de enero puede acumular
@@ -53,12 +63,17 @@ como se explica debajo, sin usar cifras simuladas del esquema como datos reales.
 - POST `/api/campaigns/7/publication-statistics/refresh/`
   JSON `platform` facebook/instagram/twitter/tiktok y `publication_id` local del historial propio.
   Nunca aceptar IDs remotos arbitrarios ni texto/token del navegador.
+- POST `/api/campaigns/7/link-tiktok-publication/`: upload_id local, version actual,
+  publication (ID o URL TikTok canónica), confirm boolean. Solo propietario marketero,
+  solo envío previo de su campaña/cuenta; false verifica, true vincula. Esta ruta NO
+  está expuesta en el bridge público. Nunca se usa la URL recibida como destino HTTP.
 
 ## Ejecutar y verificar
 
 Desde raíz: `./scripts/backup-postgres.ps1` antes de migrar.
 Desde backend: `./venv/Scripts/python.exe manage.py migrate campaigns`
-(`0021_publication_metric_snapshot` y `0022_tiktokupload_public_post_ids_xmetricreadbudget`), luego servidor normal
+(`0021_publication_metric_snapshot`, `0022_tiktokupload_public_post_ids_xmetricreadbudget`
+y `0023_tiktokpublicationlink`), luego servidor normal
 `./venv/Scripts/python.exe manage.py runserver 127.0.0.1:8000`.
 Desde frontend: `npm run dev`, abrir localhost:5173/dashboard.
 Pruebas: backend `./venv/Scripts/python.exe -m pytest -q`;
@@ -113,6 +128,12 @@ comprobar la respuesta real. El código OAuth anterior ya está consumido y no s
    no devuelve la foto, no inventar ceros ni afirmar soporte de fotos: resolver con TikTok
    o acordar otro contenido de prueba por separado. No publicar un video nuevo sin permiso.
 
+Actualización: si ya existe el post final, el propietario puede vincularlo desde el
+diálogo de la campaña usando la verificación y confirmación descritas arriba. La lectura
+real del ID de la foto de prueba sí devuelve contadores; su envío original sigue inbox.
+La vinculación no afirma que Content Posting confirmó ese envío. Se detiene el sondeo
+automático del envío vinculado, pero la consulta manual de estado sigue disponible.
+
 ### Presupuesto X de esta prueba
 
 El usuario autorizó hasta US$0.10 de saldo existente. Se creó SOLO en la base local
@@ -130,15 +151,19 @@ Fuentes oficiales: [X pricing](https://docs.x.com/x-api/getting-started/pricing)
 [TikTok Query Videos](https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query),
 [TikTok Get Post Status](https://developers.tiktok.com/docs/en/content-posting-api-reference-get-video-status).
 
-Vistas y compartidos de Instagram necesitan Insights adicional. El lector X está implementado
-y probado realmente; TikTok está implementado con mocks, pendiente de permisos/ID y soporte de fotos.
-El 12 de octubre la consulta real del envío TikTok original devolvió inbox sin IDs públicos.
+Vistas y compartidos de Instagram necesitan Insights adicional. X está probado realmente.
+TikTok: permiso video.list concedido y foto de café vinculada mediante la interfaz,
+tras confirmación expresa del propietario y validación de la API. La medición guardada
+en esa prueba final mostró 2 likes, 0 compartidos y 310 vistas; dashboard confirmó
+1 publicación y likes octubre=2. El envío original sigue inbox, sin receipt de publicación;
+el vínculo se identifica como user_confirmed_display_api, no como webhook recibido.
 Google Ads se deja para después por decisión del usuario. Pantallas cliente,
 móvil y mediciones programadas pendientes. No habilitar permisos Insights ni revisión de apps
 sin revisar requisitos oficiales y autorización del usuario.
 
 Los documentos legales públicos siguen siendo borradores: revisar su coherencia antes de
 publicar la funcionalidad. Obsidian/backups/.env y el allowance local no se suben al repo.
-No afirmar que todas las plataformas están listas para presentación: Facebook y TikTok
-todavía requieren validación real. El navegador del perfil TOY no respondió durante
-este avance; no se verificaron ni alteraron permisos de los portales en esa sesión.
+Facebook likes, Instagram likes, X y esta publicación TikTok tienen mediciones reales.
+Todavía no afirmar que TODOS los contadores de TODAS las plataformas están completos:
+faltan Insights IG, vistas/compartidos Facebook cuando el proveedor no los devuelva,
+pantallas cliente/móvil y actualización programada. Google Ads sigue pospuesto.

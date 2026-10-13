@@ -103,6 +103,7 @@ export default function PublicationStatistics({ campaignId }) {
           <tbody>{data.publications.map(row => <tr key={`${row.platform}-${row.publication_id}`} className="border-b border-outline-variant">
             <td className="p-2"><span className="flex items-center gap-2"><PlatformIcon platform={row.platform} />{labels[row.platform]} · {row.destination}</span>
               <Link className="underline" to={`/campaigns/${row.campaign_id}`}>{row.title}</Link><p className="text-xs">Versión {row.version}</p>
+              {row.confirmation_source === 'user_confirmed_display_api' && <p className="text-xs">Publicación existente vinculada por el propietario y verificada por API; estado del envío original: {row.delivery_status}.</p>}
               {row.publication_count > 1 && <p className="text-xs">{row.publication_count} posts públicos confirmados para este envío · contadores sumados</p>}</td>
             {['likes', 'shares'].map(k => <td className="p-2 tabular-nums" key={k}>{number(row.metrics[k])}</td>)}
             <td className="p-2"><p className="mb-1 text-xs">{row.measured_at ? new Date(row.measured_at).toLocaleString('es-PE') : 'Sin consultar'}</p>

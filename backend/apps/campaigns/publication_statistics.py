@@ -7,6 +7,7 @@ from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -21,6 +22,7 @@ from core.exceptions import api_response
 from .models import (Campaign, InstagramPublication, FacebookPublication,
                      PublicationMetricSnapshot, XPublication, TikTokUpload, XMetricReadBudget)
 from .social_metric_readers import x_counters, tiktok_counters, MetricReadUnavailable
+from .tiktok_post_ids import effective_public_post_ids
 
 MODELS = {'facebook': FacebookPublication, 'instagram': InstagramPublication,
           'twitter': XPublication, 'tiktok': TikTokUpload}
@@ -95,7 +97,7 @@ def refresh_availability(platform, publication):
         return bool(budget and budget.requests_reserved < budget.request_limit), 'X requiere presupuesto de lectura autorizado.'
     if platform == 'tiktok':
         account = publication.account
-        available = bool(publication.public_post_ids and account and 'video.list' in account.scopes)
+        available = bool(effective_public_post_ids(publication) and account and 'video.list' in account.scopes)
         return available, 'TikTok requiere un ID público confirmado y permiso video.list; compatibilidad de fotos pendiente.'
     return True, ''
 
@@ -106,11 +108,17 @@ def publication_rows(campaigns):
         snapshots[(s.platform, s.publication_id)] = s
     rows = []
     for platform, model in MODELS.items():
-        for p in model.objects.filter(campaign__in=campaigns, status='published').select_related('campaign'):
+        eligible = Q(status='published') | Q(publication_link__isnull=False) if platform == 'tiktok' else Q(status='published')
+        records = model.objects.filter(eligible, campaign__in=campaigns).select_related('campaign')
+        if platform == 'tiktok':
+            records = records.select_related('account', 'publication_link')
+        for p in records:
             s = snapshots.get((platform, p.pk))
+            post_ids = effective_public_post_ids(p) if platform == 'tiktok' else []
+            link = getattr(p, 'publication_link', None) if platform == 'tiktok' else None
             # A second public post can appear later for the same TikTok upload.
             # Never present an old subset as complete coverage of the new set.
-            if platform == 'tiktok' and s and s.metrics.get('_public_post_ids') != sorted(p.public_post_ids):
+            if platform == 'tiktok' and s and s.metrics.get('_public_post_ids') != post_ids:
                 s = None
             available, reason = refresh_availability(platform, p)
             cost_note = ''
@@ -121,11 +129,13 @@ def publication_rows(campaigns):
                                  f'{max(0, budget.request_limit - budget.requests_reserved)} consultas autorizadas restantes. '
                                  'Tarifa sujeta a cambios de X; sin compra ni recarga automática.')
             rows.append({'platform': platform, 'publication_id': p.pk, 'campaign_id': p.campaign_id,
-                         'publication_count': max(1, len(p.public_post_ids)) if platform == 'tiktok' else 1,
+                         'publication_count': max(1, len(post_ids)) if platform == 'tiktok' else 1,
                          'title': p.campaign.titulo, 'version': p.campaign_version,
                          'destination': p.page_name if platform == 'facebook' else
                                         p.display_name if platform == 'tiktok' else p.username,
-                         'registered_at': (p.published_at or p.created_at).isoformat() if platform == 'tiktok' else p.created_at.isoformat(),
+                         'registered_at': ((link.provider_created_at if link and link.provider_created_at else None) or p.published_at or p.created_at).isoformat() if platform == 'tiktok' else p.created_at.isoformat(),
+                         'confirmation_source': 'user_confirmed_display_api' if link else (p.confirmation_source if platform == 'tiktok' else 'provider'),
+                         'delivery_status': p.status if platform == 'tiktok' else 'published',
                          'can_refresh': available, 'refresh_note': reason if not available else '',
                          'refresh_cost_note': cost_note,
                          'metrics': {k: s.metrics.get(k) if s else None for k in METRICS},
@@ -177,9 +187,12 @@ class PublicationStatisticsView(APIView):
         year_rows = [row for row in rows if publication_month(row).startswith(f'{year}-')]
         platforms = summary(year_rows)
         for platform, model in MODELS.items():
-            platforms[platform]['pending'] = model.objects.filter(campaign__in=campaigns,
+            pending = model.objects.filter(campaign__in=campaigns,
                 created_at__year=int(year),
-                status__in=['publishing', 'preparing', 'processing', 'inbox', 'uncertain', 'sending']).count()
+                status__in=['publishing', 'preparing', 'processing', 'inbox', 'uncertain', 'sending'])
+            if platform == 'tiktok':
+                pending = pending.filter(publication_link__isnull=True)
+            platforms[platform]['pending'] = pending.count()
         if request.user.rol != 'marketero':
             for row in rows:
                 row['can_refresh'] = False
@@ -201,8 +214,9 @@ class PublicationStatisticsView(APIView):
                      'Los meses cuentan la fecha de registro del envío confirmado, incluyendo versiones anteriores. '
                      'Vistas y compartidos de Instagram requieren integración Insights adicional. '
                      'X: reposts (sin citas) e impresiones; consultas con presupuesto limitado. '
-                     'TikTok requiere ID público y Display API; fotos pendientes de compatibilidad. Google Ads se deja para después. '
-                     'No incluye publicaciones externas a NexoMark ni envíos sin confirmación.'}))
+                     'TikTok incluye publicaciones confirmadas o vinculadas por el propietario y verificadas por API. '
+                     'En vinculaciones se usa la fecha de publicación de TikTok cuando está disponible. Google Ads se deja para después. '
+                     'No incluye otros posts del perfil ni envíos sin confirmación o vinculación verificada.'}))
 
 
 class RefreshPublicationStatisticsView(APIView):
@@ -217,9 +231,12 @@ class RefreshPublicationStatisticsView(APIView):
         # Paid reservations must survive provider failure, so network reads are
         # intentionally outside a surrounding database transaction.
         p = get_object_or_404(MODELS[platform].objects,
-                             pk=identifier, campaign=campaign, status='published')
+                             pk=identifier, campaign=campaign)
+        if p.status != 'published' and not (platform == 'tiktok' and getattr(p, 'publication_link', None)):
+            from django.http import Http404
+            raise Http404
         latest = PublicationMetricSnapshot.objects.filter(platform=platform, publication_id=p.pk).order_by('-measured_at').first()
-        same_content = platform != 'tiktok' or latest and latest.metrics.get('_public_post_ids') == sorted(p.public_post_ids)
+        same_content = platform != 'tiktok' or latest and latest.metrics.get('_public_post_ids') == effective_public_post_ids(p)
         if latest and same_content and timezone.now() - latest.measured_at < timedelta(minutes=5):
             return Response(api_response(True, 'Se conserva la medición reciente; espera cinco minutos.',
                                          {'measured_at': latest.measured_at.isoformat()}))

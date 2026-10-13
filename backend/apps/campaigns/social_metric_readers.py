@@ -8,6 +8,7 @@ from apps.authentication.models import XAccount, TikTokAccount
 from apps.authentication.x_oauth import access_token_for as x_token
 from apps.authentication.tiktok import access_token_for as tiktok_token
 from .models import XMetricReadBudget
+from .tiktok_post_ids import effective_public_post_ids
 
 
 class MetricReadUnavailable(ValueError):
@@ -64,17 +65,16 @@ def x_counters(publication, count):
     return values
 
 
-def tiktok_counters(publication, count):
-    account = owned_account(publication, TikTokAccount, 'open_id')
+def query_tiktok_publications(account, identifiers, *, details=False):
     if 'video.list' not in account.scopes:
         raise MetricReadUnavailable('TikTok: añade video.list en Scopes del Sandbox y reconecta con ese permiso.')
-    identifiers = publication.public_post_ids
     if (not isinstance(identifiers, list) or not 1 <= len(identifiers) <= 20
             or any(not isinstance(i, str) or not re.fullmatch(r'[0-9]{1,64}', i) for i in identifiers)
             or len(set(identifiers)) != len(identifiers)):
         raise MetricReadUnavailable('TikTok aún no confirmó el identificador público de este envío.')
     response = requests.post('https://open.tiktokapis.com/v2/video/query/',
-        params={'fields': 'id,like_count,comment_count,share_count,view_count'},
+        params={'fields': 'id,like_count,comment_count,share_count,view_count' +
+                (',video_description,create_time,share_url' if details else '')},
         json={'filters': {'video_ids': identifiers}},
         headers={'Authorization': f'Bearer {tiktok_token(account)}'}, timeout=20, allow_redirects=False)
     response.raise_for_status()
@@ -87,6 +87,10 @@ def tiktok_counters(publication, count):
             or any(not isinstance(v, dict) or v.get('id') not in identifiers for v in videos)
             or len({v['id'] for v in videos}) != len(identifiers)):
         raise MetricReadUnavailable('TikTok no devolvió todos los contenidos confirmados; las fotos pueden no ser compatibles con Display API.')
+    return videos
+
+
+def tiktok_values(videos, count):
     values = {}
     for metric, field in {'likes': 'like_count', 'comments': 'comment_count',
                           'shares': 'share_count', 'views': 'view_count'}.items():
@@ -94,5 +98,10 @@ def tiktok_counters(publication, count):
         values[metric] = sum(counters) if all(c is not None for c in counters) else None
     if all(v is None for v in values.values()):
         raise MetricReadUnavailable('TikTok no devolvió contadores disponibles.')
-    values['_public_post_ids'] = sorted(identifiers)
+    values['_public_post_ids'] = sorted(v['id'] for v in videos)
     return values
+
+
+def tiktok_counters(publication, count):
+    account = owned_account(publication, TikTokAccount, 'open_id')
+    return tiktok_values(query_tiktok_publications(account, effective_public_post_ids(publication)), count)
