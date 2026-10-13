@@ -77,7 +77,10 @@ export default function PublicationStatistics({ campaignId }) {
                   description="Likes acumulados de las publicaciones registradas en cada mes."
                   empty="Sin publicaciones con medición de likes. Los meses sin datos no equivalen a cero." />
               </div>
-              <details className="mt-2 text-xs"><summary className="cursor-pointer">Ver cifras mensuales</summary>
+              <details className="group mt-2 text-xs"><summary className="cursor-pointer">
+                <span className="group-open:hidden">Ver tabla mensual</span>
+                <span className="hidden group-open:inline">Ocultar tabla mensual</span>
+              </summary>
                 <table className="mt-2 w-full text-left"><caption className="sr-only">Cifras mensuales de {label}</caption>
                   <thead><tr><th>Mes</th><th>Publicaciones</th><th>Me gusta acumulados</th><th>Con medición</th></tr></thead>
                   <tbody>{data.monthly.map((m, i) => <tr key={m.month}>
@@ -92,7 +95,7 @@ export default function PublicationStatistics({ campaignId }) {
         })}
       </div>
       <p className="mt-4 text-xs leading-relaxed text-on-surface-variant">{data.note}</p>
-      <p className="mt-2 text-xs text-on-surface-variant">Me gusta por mes agrupa el último contador acumulado de cada publicación según su mes de registro. No indica cuándo se recibió cada like; los totales pueden cambiar al consultar nuevas mediciones. Se muestra solo la suma de publicaciones con dato, con su cobertura en «Ver cifras mensuales».</p>
+      <p className="mt-2 text-xs text-on-surface-variant">Me gusta por mes agrupa el último contador acumulado de cada publicación según su mes de registro. No indica cuándo se recibió cada like; los totales pueden cambiar al consultar nuevas mediciones. Se muestra solo la suma de publicaciones con dato, con su cobertura en la tabla mensual.</p>
       {notice && <p role="status" className="my-3 text-sm">{notice}</p>}
       {data.publications.length === 0 ? <p className="mt-5 text-sm">Aún no hay publicaciones confirmadas para mostrar.</p> :
         <div className="mt-6 overflow-x-auto"><table className="w-full text-left text-sm">
