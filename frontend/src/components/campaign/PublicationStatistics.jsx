@@ -6,7 +6,7 @@ import PlatformIcon from './PlatformIcon'
 import { monthLabel, monthlyChartData } from '@/services/publicationStatistics'
 
 const labels = { facebook: 'Facebook', instagram: 'Instagram', twitter: 'Twitter / X', tiktok: 'TikTok', google_ads: 'Google Ads' }
-const metrics = { likes: 'Me gusta', comments: 'Comentarios', shares: 'Compartidos', views: 'Vistas' }
+const metrics = { likes: 'Me gusta', shares: 'Compartidos', views: 'Vistas' }
 const number = value => value == null ? 'No disponible' : value.toLocaleString('es-PE')
 
 export default function PublicationStatistics({ campaignId }) {
@@ -44,7 +44,7 @@ export default function PublicationStatistics({ campaignId }) {
         <h2 className="text-xl font-semibold text-on-surface">Estadísticas de publicaciones</h2>
         <p className="mt-1 text-sm text-on-surface-variant">Publicaciones e interacciones registradas, separadas por plataforma.</p>
       </div>
-      <label className="text-sm text-on-surface-variant">Año de las gráficas <select aria-label="Año de estadísticas"
+      <label className="text-sm text-on-surface-variant">Año de estadísticas <select aria-label="Año de estadísticas"
         className="ml-2 rounded-lg border border-outline-variant p-2" value={year} onChange={e => setYear(Number(e.target.value))}>
         {[0, 1, 2, 3, 4].map(n => new Date().getFullYear() - n).map(y => <option key={y}>{y}</option>)}
       </select></label>
@@ -57,12 +57,12 @@ export default function PublicationStatistics({ campaignId }) {
           const group = data.platforms[platform]
           return <article key={platform} className="min-w-0 rounded-xl bg-surface-container-low p-5">
             <div className="mb-4 flex items-center gap-3"><PlatformIcon platform={platform} className="!h-10 !w-10" /><h3 className="text-lg font-semibold">{label}</h3></div>
-            <p className="mb-4 text-xs text-on-surface-variant">{platform === 'google_ads' ? 'Anuncios · distinto de publicaciones orgánicas' : 'Totales históricos · todas las publicaciones confirmadas'}</p>
+            <p className="mb-4 text-xs text-on-surface-variant">{platform === 'google_ads' ? 'Anuncios · distinto de publicaciones orgánicas' : `Totales acumulados · publicaciones de ${data.year}`}</p>
             {group.pending > 0 && <p className="mb-4 text-sm text-on-surface-variant">{group.pending} envío(s) sin confirmación de publicación. No se incluyen en el total confirmado.</p>}
             {platform === 'google_ads' ? <p className="text-sm text-on-surface-variant">No integrado. Clics, impresiones y conversiones: integración pendiente.</p> : <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <div><dt className="text-sm text-on-surface-variant">Publicaciones</dt><dd className="text-2xl font-bold tabular-nums">{number(group.publications)}</dd></div>
               {Object.entries(metrics).map(([key, text]) => <div key={key}>
-                <dt className="text-sm text-on-surface-variant">{platform === 'twitter' && key === 'views' ? 'Impresiones' : platform === 'twitter' && key === 'shares' ? 'Reposts' : platform === 'twitter' && key === 'comments' ? 'Respuestas' : text}</dt>
+                <dt className="text-sm text-on-surface-variant">{platform === 'twitter' && key === 'views' ? 'Impresiones' : platform === 'twitter' && key === 'shares' ? 'Reposts' : text}</dt>
                 <dd className="font-semibold tabular-nums">{number(group.metrics[key].value)}</dd>
                 <dd className="text-xs text-on-surface-variant">{group.metrics[key].covered}/{group.publications} publicaciones con dato</dd>
               </div>)}
@@ -98,13 +98,13 @@ export default function PublicationStatistics({ campaignId }) {
         <div className="mt-6 overflow-x-auto"><table className="w-full text-left text-sm">
           <caption className="mb-3 text-left font-semibold">Historial de publicaciones · incluye versiones anteriores</caption>
           <thead><tr className="border-b border-outline-variant">
-            <th className="p-2">Publicación</th><th className="p-2">Me gusta</th><th className="p-2">Comentarios</th><th className="p-2">Compartidos</th><th className="p-2">Medición</th>
+            <th className="p-2">Publicación</th><th className="p-2">Me gusta</th><th className="p-2">Compartidos / Reposts</th><th className="p-2">Medición</th>
           </tr></thead>
           <tbody>{data.publications.map(row => <tr key={`${row.platform}-${row.publication_id}`} className="border-b border-outline-variant">
             <td className="p-2"><span className="flex items-center gap-2"><PlatformIcon platform={row.platform} />{labels[row.platform]} · {row.destination}</span>
               <Link className="underline" to={`/campaigns/${row.campaign_id}`}>{row.title}</Link><p className="text-xs">Versión {row.version}</p>
               {row.publication_count > 1 && <p className="text-xs">{row.publication_count} posts públicos confirmados para este envío · contadores sumados</p>}</td>
-            {['likes', 'comments', 'shares'].map(k => <td className="p-2 tabular-nums" key={k}>{number(row.metrics[k])}</td>)}
+            {['likes', 'shares'].map(k => <td className="p-2 tabular-nums" key={k}>{number(row.metrics[k])}</td>)}
             <td className="p-2"><p className="mb-1 text-xs">{row.measured_at ? new Date(row.measured_at).toLocaleString('es-PE') : 'Sin consultar'}</p>
               {row.refresh_cost_note && <p className="mb-2 max-w-xs text-xs text-on-surface-variant">{row.refresh_cost_note}</p>}
               {row.can_refresh ? <button disabled={!!busy} onClick={() => update(row)} className="rounded-lg border border-outline-variant px-3 py-2 disabled:opacity-50">

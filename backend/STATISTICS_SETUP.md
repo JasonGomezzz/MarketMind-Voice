@@ -3,9 +3,12 @@
 Referencia: asesoría de Google Drive del 29 de septiembre, transcripción 4:17–9:38
 y fotogramas revisados directamente en 7:48 y 8:52. Dos columnas por plataforma,
 totales arriba, gráficos mensuales debajo; detalle por publicación dentro de campaña.
-Tras aclaración visual del usuario: totales históricos arriba, dos gráficos de barras
-lado a lado por plataforma, meses Ene–Dic en el eje. El selector de año solo cambia
-las gráficas; no existe selector de mes. La semántica de las mediciones sigue limitada
+Tras aclaraciones visuales del usuario: dos gráficos de barras lado a lado por plataforma,
+meses Ene–Dic en el eje, sin selector de mes. Actualización del 12 de octubre:
+el año seleccionado filtra las gráficas y los totales superiores de publicaciones e
+interacciones. El historial detallado conserva todos los años y revisiones. Comentarios
+se retiraron de las tarjetas y del historial visible de todas las redes, sin borrar snapshots.
+La semántica de las mediciones sigue limitada
 como se explica debajo, sin usar cifras simuladas del esquema como datos reales.
 
 ## Implementado
@@ -37,7 +40,9 @@ como se explica debajo, sin usar cifras simuladas del esquema como datos reales.
   registradas en cada mes. Funciona desde la primera medición, sin exigir dos meses.
   No representa el mes en que ocurrió cada like: una publicación de enero puede acumular
   nuevos likes posteriormente. Se informa cobertura por mes y no se inventan ceros
-  donde faltan mediciones. Los totales históricos siguen independientes del año seleccionado.
+  donde faltan mediciones. Los totales superiores suman los últimos contadores de las
+  publicaciones registradas en el año seleccionado, incluyendo revisiones anteriores.
+  NO son interacciones recibidas durante ese año: los contadores son acumulados de por vida.
 - Admin lee agregados; no consulta con credenciales ajenas. API cliente no habilitada;
   el frontend cliente/Spring y móvil necesitan integración posterior con autorización propia.
 

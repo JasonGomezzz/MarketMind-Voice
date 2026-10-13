@@ -174,9 +174,11 @@ class PublicationStatisticsView(APIView):
         if not re.fullmatch(r'20[0-9]{2}', year):
             raise ValidationError('El año debe estar entre 2000 y 2099.')
         rows = publication_rows(campaigns)
-        platforms = summary(rows)
+        year_rows = [row for row in rows if publication_month(row).startswith(f'{year}-')]
+        platforms = summary(year_rows)
         for platform, model in MODELS.items():
             platforms[platform]['pending'] = model.objects.filter(campaign__in=campaigns,
+                created_at__year=int(year),
                 status__in=['publishing', 'preparing', 'processing', 'inbox', 'uncertain', 'sending']).count()
         if request.user.rol != 'marketero':
             for row in rows:
@@ -193,10 +195,12 @@ class PublicationStatisticsView(APIView):
             {'platforms': platforms, 'publications': rows, 'monthly': monthly,
              'monthly_likes': monthly_likes(rows, year), 'year': int(year),
              'monthly_likes_basis': 'latest_lifetime_likes_by_publication_month',
+             'totals_basis': 'latest_lifetime_counters_by_publication_year',
              'note': 'Contadores acumulados en la última medición; no interacciones ocurridas por mes. '
+                     'Los totales superiores suman las publicaciones registradas en el año seleccionado. '
                      'Los meses cuentan la fecha de registro del envío confirmado, incluyendo versiones anteriores. '
                      'Vistas y compartidos de Instagram requieren integración Insights adicional. '
-                     'X: respuestas, reposts (sin citas) e impresiones; consultas con presupuesto limitado. '
+                     'X: reposts (sin citas) e impresiones; consultas con presupuesto limitado. '
                      'TikTok requiere ID público y Display API; fotos pendientes de compatibilidad. Google Ads se deja para después. '
                      'No incluye publicaciones externas a NexoMark ni envíos sin confirmación.'}))
 

@@ -61,6 +61,30 @@ def test_first_measurement_already_appears_in_monthly_likes(api_client, publicat
     assert d['monthly_likes_basis'] == 'latest_lifetime_likes_by_publication_month'
 
 
+def test_selected_year_filters_top_totals_without_erasing_history(api_client, publication):
+    from datetime import datetime
+    InstagramPublication.objects.filter(pk=publication.pk).update(created_at=timezone.make_aware(datetime(2025, 6, 10)))
+    PublicationMetricSnapshot.objects.create(campaign=publication.campaign, platform='instagram',
+        publication_id=publication.pk, day=timezone.localdate(), metrics={'likes': 7, 'shares': 3})
+    for year, publications, likes, shares in [('2025', 1, 7, 3), ('2026', 0, None, None)]:
+        data = api_client.get(BASE, {'year': year}).data['data']
+        group = data['platforms']['instagram']
+        assert group['publications'] == publications
+        assert group['metrics']['likes']['value'] == likes
+        assert group['metrics']['shares']['value'] == shares
+        assert len(data['publications']) == 1
+        assert data['totals_basis'] == 'latest_lifetime_counters_by_publication_year'
+        assert sum(m['instagram'] for m in data['monthly']) == publications
+
+
+def test_annual_totals_respect_lima_year_boundary(api_client, publication):
+    from datetime import datetime, timezone as tz
+    InstagramPublication.objects.filter(pk=publication.pk).update(created_at=datetime(2026, 1, 1, 0, 30, tzinfo=tz.utc))
+    with timezone.override('America/Lima'):
+        assert api_client.get(BASE, {'year': '2025'}).data['data']['platforms']['instagram']['publications'] == 1
+        assert api_client.get(BASE, {'year': '2026'}).data['data']['platforms']['instagram']['publications'] == 0
+
+
 def test_monthly_likes_preserves_unknown_zero_and_partial_coverage():
     from apps.campaigns.publication_statistics import monthly_likes
     rows = [{'platform': 'instagram', 'registered_at': '2026-02-01T00:30:00+00:00', 'metrics': {'likes': v}}
