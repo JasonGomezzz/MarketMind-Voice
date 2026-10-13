@@ -73,16 +73,17 @@ export default function PublicationStatistics({ campaignId }) {
                   rows={data.monthly} year={data.year} metric="Publicaciones"
                   description="Según la fecha de registro del envío confirmado." />
                 <MonthlyBars title="Me gusta por mes" label={label} platform={platform}
-                  rows={data.monthly_likes} year={data.year} metric="Variación neta de me gusta"
-                  description="Variación neta entre mediciones mensuales; no likes recibidos durante el mes."
-                  empty="Sin mediciones comparables. Los meses sin datos no equivalen a cero." />
+                  rows={data.monthly_likes} year={data.year} metric="Me gusta acumulados"
+                  description="Likes acumulados de las publicaciones registradas en cada mes."
+                  empty="Sin publicaciones con medición de likes. Los meses sin datos no equivalen a cero." />
               </div>
               <details className="mt-2 text-xs"><summary className="cursor-pointer">Ver cifras mensuales</summary>
                 <table className="mt-2 w-full text-left"><caption className="sr-only">Cifras mensuales de {label}</caption>
-                  <thead><tr><th>Mes</th><th>Publicaciones</th><th>Variación de me gusta</th></tr></thead>
+                  <thead><tr><th>Mes</th><th>Publicaciones</th><th>Me gusta acumulados</th><th>Con medición</th></tr></thead>
                   <tbody>{data.monthly.map((m, i) => <tr key={m.month}>
                     <td>{monthLabel(m.month)}</td><td>{m[platform]}</td>
                     <td>{data.monthly_likes[i]?.[platform] == null ? 'Sin datos' : data.monthly_likes[i][platform]}</td>
+                    <td>{data.monthly_likes[i]?.[`${platform}_covered`] ?? 0}/{m[platform]}</td>
                   </tr>)}</tbody>
                 </table>
               </details>
@@ -91,7 +92,7 @@ export default function PublicationStatistics({ campaignId }) {
         })}
       </div>
       <p className="mt-4 text-xs leading-relaxed text-on-surface-variant">{data.note}</p>
-      <p className="mt-2 text-xs text-on-surface-variant">La variación neta compara la última medición de dos meses consecutivos, solo para publicaciones con datos en ambos. No equivale a todos los likes recibidos durante el mes; puede bajar y no se rellena el historial faltante.</p>
+      <p className="mt-2 text-xs text-on-surface-variant">Me gusta por mes agrupa el último contador acumulado de cada publicación según su mes de registro. No indica cuándo se recibió cada like; los totales pueden cambiar al consultar nuevas mediciones. Se muestra solo la suma de publicaciones con dato, con su cobertura en «Ver cifras mensuales».</p>
       {notice && <p role="status" className="my-3 text-sm">{notice}</p>}
       {data.publications.length === 0 ? <p className="mt-5 text-sm">Aún no hay publicaciones confirmadas para mostrar.</p> :
         <div className="mt-6 overflow-x-auto"><table className="w-full text-left text-sm">
@@ -125,7 +126,10 @@ function MonthlyBars({ title, label, platform, rows, year, metric, description, 
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={42} tick={{ fontSize: 10 }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-          <Tooltip formatter={value => [value, metric]} />
+          <Tooltip formatter={(value, name, item) => [value,
+            metric === 'Me gusta acumulados'
+              ? `${metric} · ${item.payload[`${platform}_covered`]}/${item.payload[`${platform}_publications`]} publicaciones con dato`
+              : name]} />
           <Bar name={metric} dataKey={platform} fill={colors[platform]} radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>

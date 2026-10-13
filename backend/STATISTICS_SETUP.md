@@ -23,9 +23,11 @@ como se explica debajo, sin usar cifras simuladas del esquema como datos reales.
 - Una medición por día y publicación, actualizable; mínimo cinco minutos entre mediciones exitosas.
   Se conservan datos anteriores ante fallos. Reconexion: solo cuenta con mismo propietario y
   mismo identificador inmutable, sin alterar la FK histórica ni usar cuentas de otro usuario.
-- Comparación mensual de variación neta de likes entre últimas mediciones de meses consecutivos
-  de la misma publicación. Sin dos mediciones comparables se muestra ausencia, no un cero.
-  No son likes ocurridos en el mes ni analítica completa histórica. Puede ser negativa.
+- Me gusta por mes: suma de los últimos contadores acumulados de las publicaciones
+  registradas en cada mes. Funciona desde la primera medición, sin exigir dos meses.
+  No representa el mes en que ocurrió cada like: una publicación de enero puede acumular
+  nuevos likes posteriormente. Se informa cobertura por mes y no se inventan ceros
+  donde faltan mediciones. Los totales históricos siguen independientes del año seleccionado.
 - Admin lee agregados; no consulta con credenciales ajenas. API cliente no habilitada;
   el frontend cliente/Spring y móvil necesitan integración posterior con autorización propia.
 
@@ -53,9 +55,11 @@ No se añade scheduler ni sondeo de métricas: usar Consultar métricas tras rec
 La campaña de prueba tiene publicaciones confirmadas en Facebook, Instagram y X;
 el envío TikTok sigue inbox. No se republicó ni se cambió contenido/estado de campaña.
 La publicación Instagram quedó sin FK de cuenta tras reconectar, pero existe conexión
-autorizada coincidente: el lector reconoce esa conexión. Ambas lecturas reales de Meta
-retornaron HTTP400/error200; no hay ninguna medición real guardada. No afirmar éxito por mocks.
-Revisar permisos/configuración de Meta y probar hasta obtener contadores reales.
+autorizada coincidente: el lector reconoce esa conexión. Tras confirmar la cuenta de
+desarrollador, Instagram permite consultar contadores y guardar una medición real.
+Facebook sigue rechazando la lectura con error10, solicitando pages_read_user_content
+o Page Public Content Access. No afirmar que todas las plataformas funcionan por mocks.
+Revisar permisos/configuración de Meta y probar hasta obtener los contadores restantes.
 No modificar OAuth ni conceder permisos adicionales automáticamente.
 
 Vistas y compartidos de Instagram necesitan Insights adicional; lectura de interacciones

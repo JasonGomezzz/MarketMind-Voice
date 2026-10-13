@@ -40,15 +40,39 @@ def test_latest_snapshot_not_double_counted(api_client, publication):
     assert metrics['views']['value'] is None
 
 
-def test_monthly_net_likes_requires_matching_baseline(api_client, publication):
-    from datetime import date
+def test_monthly_likes_uses_latest_counter_and_publication_month(api_client, publication):
+    from datetime import date, datetime
+    InstagramPublication.objects.filter(pk=publication.pk).update(created_at=timezone.make_aware(datetime(2026, 1, 10)))
     for day, likes in [(date(2026, 1, 20), 7), (date(2026, 2, 20), 5)]:
         PublicationMetricSnapshot.objects.create(campaign=publication.campaign, platform='instagram',
             publication_id=publication.pk, day=day, metrics={'likes': likes})
     values = api_client.get(BASE, {'year': '2026'}).data['data']['monthly_likes']
-    assert values[0]['instagram'] is None
-    assert values[1]['instagram'] == -2 and values[1]['instagram_covered'] == 1
+    assert values[0]['instagram'] == 5 and values[0]['instagram_covered'] == 1
+    assert values[1]['instagram'] is None
     assert values[2]['instagram'] is None
+
+
+def test_first_measurement_already_appears_in_monthly_likes(api_client, publication):
+    PublicationMetricSnapshot.objects.create(campaign=publication.campaign, platform='instagram',
+        publication_id=publication.pk, day=timezone.localdate(), metrics={'likes': 2})
+    d = api_client.get(BASE).data['data']
+    m = d['monthly_likes'][timezone.localtime(publication.created_at).month - 1]
+    assert m['instagram'] == 2 and m['instagram_covered'] == 1
+    assert d['monthly_likes_basis'] == 'latest_lifetime_likes_by_publication_month'
+
+
+def test_monthly_likes_preserves_unknown_zero_and_partial_coverage():
+    from apps.campaigns.publication_statistics import monthly_likes
+    rows = [{'platform': 'instagram', 'registered_at': '2026-02-01T00:30:00+00:00', 'metrics': {'likes': v}}
+            for v in [2, 0, None]]
+    with timezone.override('America/Lima'):
+        m = monthly_likes(rows, '2026')
+    assert m[0]['instagram'] == 2 and m[0]['instagram_covered'] == 2
+    assert m[0]['instagram_publications'] == 3
+    assert m[1]['instagram'] is None
+    rows[0]['metrics']['likes'] = 0
+    with timezone.override('America/Lima'):
+        assert monthly_likes(rows, '2026')[0]['instagram'] == 0
 
 
 def test_scope_and_input_validation(api_client, publication, superadmin, cliente):

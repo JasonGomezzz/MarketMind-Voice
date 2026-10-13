@@ -106,21 +106,23 @@ def summary(rows):
         for platform in PLATFORMS for group in [[r for r in rows if r['platform'] == platform]]}
 
 
-def monthly_likes(campaigns, year):
-    """Net counter change between last samples in adjacent months, not event counts."""
-    samples = {}
-    for s in PublicationMetricSnapshot.objects.filter(campaign__in=campaigns).order_by('measured_at', 'id'):
-        samples[(s.platform, s.publication_id, s.day.strftime('%Y-%m'))] = count(s.metrics.get('likes'))
+def publication_month(row):
+    return timezone.localtime(timezone.datetime.fromisoformat(row['registered_at'])).strftime('%Y-%m')
+
+
+def monthly_likes(rows, year):
+    """Latest lifetime likes grouped by publication month, not time of each like."""
     result = []
     for month in range(1, 13):
         key = f'{year}-{month:02d}'
-        previous = f'{int(year)-1}-12' if month == 1 else f'{year}-{month-1:02d}'
         item = {'month': key}
         for platform in PLATFORMS:
-            deltas = [value - samples[(p, pk, previous)] for (p, pk, m), value in samples.items()
-                      if p == platform and m == key and value is not None and samples.get((p, pk, previous)) is not None]
-            item[platform] = sum(deltas) if deltas else None
-            item[f'{platform}_covered'] = len(deltas)
+            group = [row for row in rows if row['platform'] == platform and publication_month(row) == key]
+            values = [count(row['metrics'].get('likes')) for row in group]
+            known = [value for value in values if value is not None]
+            item[platform] = sum(known) if known else None
+            item[f'{platform}_covered'] = len(known)
+            item[f'{platform}_publications'] = len(group)
         result.append(item)
     return result
 
@@ -150,12 +152,13 @@ class PublicationStatisticsView(APIView):
             item = {'month': key}
             for platform in PLATFORMS:
                 item[platform] = sum(r['platform'] == platform and
-                                     timezone.localtime(timezone.datetime.fromisoformat(r['registered_at'])).strftime('%Y-%m') == key
+                                     publication_month(r) == key
                                      for r in rows)
             monthly.append(item)
         return Response(api_response(True, 'Publicaciones confirmadas registradas por NexoMark.',
             {'platforms': platforms, 'publications': rows, 'monthly': monthly,
-             'monthly_likes': monthly_likes(campaigns, year), 'year': int(year),
+             'monthly_likes': monthly_likes(rows, year), 'year': int(year),
+             'monthly_likes_basis': 'latest_lifetime_likes_by_publication_month',
              'note': 'Contadores acumulados en la última medición; no interacciones ocurridas por mes. '
                      'Los meses cuentan la fecha de registro del envío confirmado, incluyendo versiones anteriores. '
                      'Vistas y compartidos de Instagram requieren integración Insights adicional. '
