@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import api from '@/services/api'
 import PlatformIcon from './PlatformIcon'
-import { monthLabel, monthlyChartData } from '@/services/publicationStatistics'
+import { monthlyChartData } from '@/services/publicationStatistics'
 
 const labels = { facebook: 'Facebook', instagram: 'Instagram', twitter: 'Twitter / X', tiktok: 'TikTok', google_ads: 'Google Ads' }
 const metrics = { likes: 'Me gusta', shares: 'Compartidos', views: 'Vistas' }
@@ -77,25 +77,12 @@ export default function PublicationStatistics({ campaignId }) {
                   description="Likes acumulados de las publicaciones registradas en cada mes."
                   empty="Sin publicaciones con medición de likes. Los meses sin datos no equivalen a cero." />
               </div>
-              <details className="group mt-2 text-xs"><summary className="cursor-pointer">
-                <span className="group-open:hidden">Ver tabla mensual</span>
-                <span className="hidden group-open:inline">Ocultar tabla mensual</span>
-              </summary>
-                <table className="mt-2 w-full text-left"><caption className="sr-only">Cifras mensuales de {label}</caption>
-                  <thead><tr><th>Mes</th><th>Publicaciones</th><th>Me gusta acumulados</th><th>Con medición</th></tr></thead>
-                  <tbody>{data.monthly.map((m, i) => <tr key={m.month}>
-                    <td>{monthLabel(m.month)}</td><td>{m[platform]}</td>
-                    <td>{data.monthly_likes[i]?.[platform] == null ? 'Sin datos' : data.monthly_likes[i][platform]}</td>
-                    <td>{data.monthly_likes[i]?.[`${platform}_covered`] ?? 0}/{m[platform]}</td>
-                  </tr>)}</tbody>
-                </table>
-              </details>
             </>}
           </article>
         })}
       </div>
       <p className="mt-4 text-xs leading-relaxed text-on-surface-variant">{data.note}</p>
-      <p className="mt-2 text-xs text-on-surface-variant">Me gusta por mes agrupa el último contador acumulado de cada publicación según su mes de registro. No indica cuándo se recibió cada like; los totales pueden cambiar al consultar nuevas mediciones. Se muestra solo la suma de publicaciones con dato, con su cobertura en la tabla mensual.</p>
+      <p className="mt-2 text-xs text-on-surface-variant">Me gusta por mes agrupa el último contador acumulado de cada publicación según su mes de registro. No indica cuándo se recibió cada like; los totales pueden cambiar al consultar nuevas mediciones. Se muestra solo la suma de publicaciones con dato; al pasar el cursor por las barras puedes consultar la cifra exacta y la cobertura de medición de likes.</p>
       {notice && <p role="status" className="my-3 text-sm">{notice}</p>}
       {data.publications.length === 0 ? <p className="mt-5 text-sm">Aún no hay publicaciones confirmadas para mostrar.</p> :
         <div className="mt-6 overflow-x-auto"><table className="w-full text-left text-sm">
