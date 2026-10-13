@@ -35,6 +35,16 @@ def connect(api_client):
     return parse_qs(urlsplit(response.data['data']['authorization_url']).query)['state'][0]
 
 
+def test_metrics_scope_is_opt_in_without_requiring_it_for_old_upload_tokens(api_client, tiktok_settings):
+    tiktok_settings.TIKTOK_METRICS_PERMISSIONS = True
+    query = parse_qs(urlsplit(api_client.post('/api/auth/tiktok/connect/').data['data']['authorization_url']).query)
+    assert set(query['scope'][0].split(',')) == {'user.info.basic', 'video.upload', 'video.list'}
+    with patch('apps.authentication.tiktok.requests.post') as post:
+        post.return_value.status_code = 200
+        post.return_value.json.return_value = tokens()
+        assert token_request({'grant_type': 'refresh_token'})['scope'] == 'user.info.basic,video.upload'
+
+
 def test_connect_config_origin_and_state(api_client, tiktok_settings):
     state = connect(api_client)
     ticket = TikTokAuthorization.objects.get()

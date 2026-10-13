@@ -17,6 +17,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .tiktok_post_ids import public_post_id
 
 from apps.authentication.models import TikTokAccount
 from apps.authentication.permissions import IsMarketero
@@ -161,7 +162,8 @@ class TikTokUploadStatusView(APIView):
         with transaction.atomic():
             upload = TikTokUpload.objects.select_for_update().filter(campaign=campaign,
                 open_id=account.open_id, campaign_version=campaign.version).first()
-            if not upload or not upload.publish_id or upload.status in ('published', 'failed'):
+            if (not upload or not upload.publish_id or upload.status == 'failed'
+                    or upload.status == 'published' and upload.public_post_ids):
                 return result(upload)
             if upload.checked_at and timezone.now() - upload.checked_at < timedelta(seconds=30):
                 return result(upload)
@@ -173,15 +175,23 @@ class TikTokUploadStatusView(APIView):
                 next_status = statuses.get(data.get('status'))
                 if not next_status:
                     raise ValueError('Estado desconocido.')
-                upload.status = next_status
+                if upload.status != 'published':
+                    upload.status = next_status
                 if next_status == 'published':
                     upload.confirmation_source = 'status_api'
                     upload.published_at = upload.published_at or timezone.now()
+                    # Provider spelling is intentional. An inbox receipt is not
+                    # a public post ID and must never be used for Display API.
+                    ids = data.get('publicaly_available_post_id')
+                    if isinstance(ids, list) and len(ids) <= 20:
+                        normalized = [public_post_id(i) for i in ids]
+                        if all(normalized):
+                            upload.public_post_ids = sorted(set(upload.public_post_ids + normalized))
             except (requests.RequestException, ValueError, UnicodeError, InvalidToken, TypeError, KeyError, ObjectDoesNotExist):
                 # Keep last known result; no resend or downgrade on a failed read.
                 upload.save(update_fields=['checked_at'])
                 return Response(api_response(False, 'No se pudo consultar TikTok. Espera 30 segundos; no reenvíes la campaña.'), status=503)
-            upload.save(update_fields=['status', 'checked_at', 'confirmation_source', 'published_at'])
+            upload.save(update_fields=['status', 'checked_at', 'confirmation_source', 'published_at', 'public_post_ids'])
         return result(upload)
 
 

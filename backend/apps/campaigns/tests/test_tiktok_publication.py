@@ -47,6 +47,20 @@ def send(client, setup, **extra):
         {'account_id': account.pk, 'version': campaign.version, 'confirm': True, **extra}, format='json')
 
 
+def test_status_backfills_confirmed_numeric_public_ids_without_resending(api_client, tt_setup):
+    campaign, account = tt_setup
+    upload = TikTokUpload.objects.create(campaign=campaign, account=account, open_id=account.open_id,
+        display_name='Test', campaign_version=campaign.version, caption='test', image_jpeg='',
+        image_expires_at=timezone.now(), status='published', publish_id='p')
+    with patch('apps.campaigns.tiktok_publication.provider_request', return_value={
+            'status': 'PUBLISH_COMPLETE', 'publicaly_available_post_id': [123, '456']}) as query:
+        response = api_client.post(f'/api/campaigns/{campaign.pk}/tiktok-status/', {'account_id': account.pk}, format='json')
+    assert response.status_code == 200
+    upload.refresh_from_db()
+    assert upload.public_post_ids == ['123', '456'] and upload.status == 'published'
+    assert query.call_args.args[0] == 'status/fetch/'
+
+
 @patch('apps.campaigns.tiktok_publication.send_upload', return_value='publish-1')
 def test_confirmed_approved_snapshot_and_duplicate_protection(mock_send, api_client, tt_setup):
     response = send(api_client, tt_setup, caption='not approved')

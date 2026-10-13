@@ -44,6 +44,15 @@ def test_disabled_until_configured(api_client, settings):
     assert api_client.post('/api/auth/facebook/connect/').status_code == 503
 
 
+def test_metrics_permission_is_opt_in_and_business_config_remains_authoritative(api_client, fb_settings):
+    fb_settings.FACEBOOK_METRICS_PERMISSIONS = True
+    query = parse_qs(urlsplit(api_client.post('/api/auth/facebook/connect/').data['data']['authorization_url']).query)
+    assert set(query['scope'][0].split(',')) == SCOPES | {'pages_read_user_content'}
+    fb_settings.FACEBOOK_LOGIN_CONFIG_ID = 'test-config'
+    query = parse_qs(urlsplit(api_client.post('/api/auth/facebook/connect/').data['data']['authorization_url']).query)
+    assert query['config_id'] == ['test-config'] and 'scope' not in query
+
+
 @pytest.mark.parametrize('uri', ['http://localhost:5173/settings', 'https://demo.example/wrong',
                                   'https://demo.example/api/auth/facebook/callback/?extra=true'])
 def test_invalid_callback_configuration(api_client, fb_settings, uri):

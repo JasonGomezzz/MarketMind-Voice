@@ -13,6 +13,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from .models import TikTokUpload, TikTokWebhookReceipt
+from .tiktok_post_ids import public_post_id
 
 EVENTS = {
     'post.publish.complete': 'published',
@@ -84,10 +85,14 @@ class TikTokWebhookView(APIView):
                 return JsonResponse({'received': True})
             target = EVENTS[event_name]
             if target == 'published':
+                post_id = public_post_id(content.get('post_id'))
+                if (event_name == 'post.publish.publicly_available' and post_id
+                        and post_id not in upload.public_post_ids):
+                    upload.public_post_ids = [*upload.public_post_ids, post_id]
                 upload.status = 'published'
                 upload.confirmation_source = 'webhook'
                 upload.published_at = upload.published_at or timezone.now()
-                upload.save(update_fields=['status', 'confirmation_source', 'published_at'])
+                upload.save(update_fields=['status', 'confirmation_source', 'published_at', 'public_post_ids'])
             elif upload.status != 'published' and not (upload.status == 'failed' and target == 'inbox'):
                 upload.status = target
                 upload.save(update_fields=['status'])

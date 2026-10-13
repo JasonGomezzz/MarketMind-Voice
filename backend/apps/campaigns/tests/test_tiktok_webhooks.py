@@ -40,6 +40,7 @@ def test_signed_completion_confirms_without_resending(api_client, upload):
         send.assert_not_called()
     upload.refresh_from_db()
     assert upload.status == 'published' and upload.confirmation_source == 'webhook'
+    assert upload.public_post_ids == []
     assert upload.published_at
     assert TikTokWebhookReceipt.objects.count() == 1
     assert CampaignSerializer(upload.campaign).data['publication_status']['tiktok'] == 'published'
@@ -94,6 +95,15 @@ def test_publicly_available_event_without_optional_publish_type(api_client, uplo
     assert notify(api_client, 'post.publish.publicly_available', content={'publish_id': 'publish-1', 'post_id': '123'}).status_code == 200
     upload.refresh_from_db()
     assert upload.status == 'published' and upload.confirmation_source == 'webhook'
+    assert upload.public_post_ids == ['123']
+
+
+def test_multiple_public_events_keep_identifiers_and_ignore_invalid_ids(api_client, upload):
+    for identifier in ['123', 456, True, 'https://invalid.example']:
+        assert notify(api_client, 'post.publish.publicly_available', content={
+            'publish_id': 'publish-1', 'post_id': identifier}).status_code == 200
+    upload.refresh_from_db()
+    assert upload.public_post_ids == ['123', '456']
 
 
 def test_polling_retains_webhook_confirmation(api_client, upload, user_marketero):
@@ -102,6 +112,8 @@ def test_polling_retains_webhook_confirmation(api_client, upload, user_marketero
         encrypted_access_token='unused', encrypted_refresh_token='unused', expires_at=timezone.now(),
         refresh_expires_at=timezone.now(), scopes=['video.upload'])
     notify(api_client)
+    upload.public_post_ids = ['123']
+    upload.save(update_fields=['public_post_ids'])
     with patch('apps.campaigns.tiktok_publication.provider_request') as query:
         response = api_client.post(f'/api/campaigns/{upload.campaign_id}/tiktok-status/', {'account_id': account.pk}, format='json')
     assert response.status_code == 200 and response.data['data']['status'] == 'published'

@@ -62,7 +62,7 @@ export default function PublicationStatistics({ campaignId }) {
             {platform === 'google_ads' ? <p className="text-sm text-on-surface-variant">No integrado. Clics, impresiones y conversiones: integración pendiente.</p> : <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <div><dt className="text-sm text-on-surface-variant">Publicaciones</dt><dd className="text-2xl font-bold tabular-nums">{number(group.publications)}</dd></div>
               {Object.entries(metrics).map(([key, text]) => <div key={key}>
-                <dt className="text-sm text-on-surface-variant">{text}</dt>
+                <dt className="text-sm text-on-surface-variant">{platform === 'twitter' && key === 'views' ? 'Impresiones' : platform === 'twitter' && key === 'shares' ? 'Reposts' : platform === 'twitter' && key === 'comments' ? 'Respuestas' : text}</dt>
                 <dd className="font-semibold tabular-nums">{number(group.metrics[key].value)}</dd>
                 <dd className="text-xs text-on-surface-variant">{group.metrics[key].covered}/{group.publications} publicaciones con dato</dd>
               </div>)}
@@ -102,12 +102,14 @@ export default function PublicationStatistics({ campaignId }) {
           </tr></thead>
           <tbody>{data.publications.map(row => <tr key={`${row.platform}-${row.publication_id}`} className="border-b border-outline-variant">
             <td className="p-2"><span className="flex items-center gap-2"><PlatformIcon platform={row.platform} />{labels[row.platform]} · {row.destination}</span>
-              <Link className="underline" to={`/campaigns/${row.campaign_id}`}>{row.title}</Link><p className="text-xs">Versión {row.version}</p></td>
+              <Link className="underline" to={`/campaigns/${row.campaign_id}`}>{row.title}</Link><p className="text-xs">Versión {row.version}</p>
+              {row.publication_count > 1 && <p className="text-xs">{row.publication_count} posts públicos confirmados para este envío · contadores sumados</p>}</td>
             {['likes', 'comments', 'shares'].map(k => <td className="p-2 tabular-nums" key={k}>{number(row.metrics[k])}</td>)}
             <td className="p-2"><p className="mb-1 text-xs">{row.measured_at ? new Date(row.measured_at).toLocaleString('es-PE') : 'Sin consultar'}</p>
+              {row.refresh_cost_note && <p className="mb-2 max-w-xs text-xs text-on-surface-variant">{row.refresh_cost_note}</p>}
               {row.can_refresh ? <button disabled={!!busy} onClick={() => update(row)} className="rounded-lg border border-outline-variant px-3 py-2 disabled:opacity-50">
                 {busy === `${row.platform}-${row.publication_id}` ? 'Consultando…' : 'Consultar métricas'}
-              </button> : <span className="text-xs">Consulta de interacciones pendiente</span>}</td>
+              </button> : <span className="text-xs">{row.refresh_note || 'Consulta de interacciones pendiente'}</span>}</td>
           </tr>)}</tbody>
         </table></div>}
     </>}

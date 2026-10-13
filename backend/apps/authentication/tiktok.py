@@ -167,7 +167,8 @@ class TikTokConnectView(APIView):
             state_hash=hashlib.sha256(state.encode()).hexdigest(), return_origin=origin,
             expires_at=timezone.now() + timedelta(minutes=10))
         query = urlencode({'client_key': settings.TIKTOK_CLIENT_KEY, 'response_type': 'code',
-            'redirect_uri': settings.TIKTOK_REDIRECT_URI, 'scope': ','.join(sorted(SCOPES)),
+            'redirect_uri': settings.TIKTOK_REDIRECT_URI,
+            'scope': ','.join(sorted(SCOPES | ({'video.list'} if settings.TIKTOK_METRICS_PERMISSIONS else set()))),
             'state': state, 'disable_auto_auth': 1})
         return Response(api_response(True, 'Autoriza TikTok.',
             {'authorization_url': 'https://www.tiktok.com/v2/auth/authorize/?' + query}))

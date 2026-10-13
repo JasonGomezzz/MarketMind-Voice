@@ -419,6 +419,7 @@ class TikTokUpload(models.Model):
     image_expires_at = models.DateTimeField()
     status = models.CharField(max_length=20, default='sending')
     publish_id = models.CharField(max_length=64, blank=True)
+    public_post_ids = models.JSONField(default=list)
     message = models.TextField(blank=True)
     checked_at = models.DateTimeField(null=True, blank=True)
     confirmation_source = models.CharField(max_length=20, blank=True)
@@ -450,6 +451,19 @@ class PublicationMetricSnapshot(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=['platform', 'publication_id', 'day'],
                                               name='unique_daily_publication_metrics')]
+
+
+class XMetricReadBudget(models.Model):
+    """Operator-authorized read allowance; never granted by a client request.
+
+    Reservations include failures/timeouts and are not refunded automatically.
+    This bounds calls, not an invoice from X (whose rates can change).
+    """
+    owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    request_limit = models.PositiveIntegerField(default=0)
+    requests_reserved = models.PositiveIntegerField(default=0)
+    unit_cost_usd = models.DecimalField(max_digits=8, decimal_places=4, default='0.0050')
+    authorized_at = models.DateTimeField(default=timezone.now)
 
 
 class CreditPurchase(models.Model):

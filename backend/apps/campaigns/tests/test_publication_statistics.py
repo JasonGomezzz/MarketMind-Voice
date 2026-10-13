@@ -118,7 +118,7 @@ def test_refresh_preserves_snapshot_on_failure(api_client, publication):
 
 def test_refresh_invalid_and_admin_cannot_use_other_credentials(api_client, publication, superadmin_client):
     url = f'/api/campaigns/{publication.campaign_id}/publication-statistics/refresh/'
-    assert api_client.post(url, {'platform': 'tiktok', 'publication_id': 1}).status_code == 400
+    assert api_client.post(url, {'platform': 'unsupported', 'publication_id': 1}).status_code == 400
     assert api_client.post(url, {'platform': 'instagram', 'publication_id': True}).status_code == 400
     assert superadmin_client.post(url, {'platform': 'instagram', 'publication_id': publication.pk}).status_code == 404
     assert superadmin_client.get(BASE).status_code == 200
