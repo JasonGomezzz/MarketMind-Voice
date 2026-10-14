@@ -5,6 +5,7 @@ import FeaturesBento from '@/components/landing/FeaturesBento'
 import ShowcaseMarquee from '@/components/landing/ShowcaseMarquee'
 import PricingSection from '@/components/landing/PricingSection'
 import LandingFooter from '@/components/landing/LandingFooter'
+import { MotionConfig } from 'motion/react'
 
 /**
  * Landing page pública (ruta /). Se ve antes del login.
@@ -12,7 +13,8 @@ import LandingFooter from '@/components/landing/LandingFooter'
  */
 export default function LandingPage() {
   return (
-    <div className="bg-background text-on-background">
+    <MotionConfig reducedMotion="user">
+    <div className="landing-page bg-background text-on-background">
       <LandingNav />
       <main>
         <HeroSection />
@@ -23,5 +25,6 @@ export default function LandingPage() {
       </main>
       <LandingFooter />
     </div>
+    </MotionConfig>
   )
 }

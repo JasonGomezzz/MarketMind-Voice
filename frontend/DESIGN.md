@@ -1,7 +1,7 @@
-# MarketMind IA — Sistema de diseño "Lumina Creative"
+# NexoMark IA — Sistema de diseño "Lumina Creative"
 
 > Fuente de verdad visual para TODO el frontend React.
-> Look **claro, moderno, premium, minimalista**. Acento indigo. Tipografía Inter.
+> Look **sobrio, profesional, claro u oscuro**. Azul marino y turquesa. Tipografía Inter.
 > Adaptado a **Tailwind v4 (config CSS-first `@theme`)** — NO existe `tailwind.config.js`.
 > Todos los tokens viven en `src/index.css` dentro de `@theme` y se usan como
 > utilidades Tailwind normales (`bg-primary`, `text-on-surface`, `rounded-xl`, …).
@@ -16,28 +16,36 @@ sea el foco. Profundidad por **sombras ambientales suaves**, no por bordes duros
 
 ## Color (tokens semánticos)
 
-Base blanca (#fcf8ff) para máximo brillo. El **indigo** es el acento de marca y
+Paleta derivada del icono aprobado: azul marino `#14283F`, turquesa `#17B8AD`
+y blanco `#FFFFFF`. Se conserva el icono original sin recolorearlo. En modo
+claro se usa turquesa oscuro `#087B75` para texto y botones con blanco;
+en modo oscuro, `primary` es `#17B8AD` con `on-primary` azul marino. Los pares
+de texto/acciones principales tienen pruebas de contraste mínimo 4.5:1.
+Los logos de plataformas conservan sus colores oficiales y los estados
+mantienen verde, rojo y ámbar; no usar la paleta de marca para ocultar alertas.
+
+Base blanca (#f5fafa) para máximo brillo. El **turquesa** es el acento de marca y
 de acciones primarias. Los colores de estado están calibrados para legibilidad
 alta sobre fondo claro (fondo container suave + texto del mismo tono).
 
 | Token Tailwind        | Hex       | Uso |
 |-----------------------|-----------|-----|
-| `background`          | `#fcf8ff` | Fondo global |
-| `surface`             | `#fcf8ff` | Superficie base |
-| `surface-container-low` | `#f5f2fe` | Sidebar, secciones anidadas, hover |
-| `surface-container`   | `#efecf8` | Tarjetas alternas |
-| `surface-container-high` | `#e9e6f3` | Chips, fondos sutiles |
-| `surface-container-highest` | `#e4e1ed` | Marquee, zonas grises |
-| `on-surface`          | `#1b1b23` | Texto primario |
-| `on-surface-variant`  | `#464554` | Texto secundario |
-| `outline`             | `#767586` | Íconos apagados |
-| `outline-variant`     | `#c7c4d7` | Bordes de tarjeta |
-| **`primary`**         | `#4648d4` | **Acento indigo — CTAs, marca** |
-| `primary-container`   | `#6063ee` | Hover del primary |
+| `background`          | `#f5fafa` | Fondo global |
+| `surface`             | `#f5fafa` | Superficie base |
+| `surface-container-low` | `#edf5f5` | Sidebar, secciones anidadas, hover |
+| `surface-container`   | `#e5efef` | Tarjetas alternas |
+| `surface-container-high` | `#dce9ea` | Chips, fondos sutiles |
+| `surface-container-highest` | `#d3e3e5` | Marquee, zonas grises |
+| `on-surface`          | `#14283f` | Texto primario |
+| `on-surface-variant`  | `#425c67` | Texto secundario |
+| `outline`             | `#607983` | Íconos apagados |
+| `outline-variant`     | `#b6cdd1` | Bordes de tarjeta |
+| **`primary`**         | `#087b75` | **Azul marino y turquesa — CTAs, marca** |
+| `primary-container`   | `#086a65` | Hover del primary |
 | `on-primary`          | `#ffffff` | Texto sobre primary |
-| `primary-fixed`       | `#e1e0ff` | Banners suaves, badges indigo |
-| `on-primary-fixed`    | `#07006c` | Texto sobre primary-fixed |
-| `secondary-container` | `#dae2fd` | Badges/eyebrows |
+| `primary-fixed`       | `#d1f4ee` | Banners suaves, badges turquesa |
+| `on-primary-fixed`    | `#14283f` | Texto sobre primary-fixed |
+| `secondary-container` | `#dce9ed` | Badges/eyebrows |
 | `tertiary`            | `#904900` | Ámbar — acento secundario, "más popular" |
 | `tertiary-container`  | `#ffe3c2` | Fondo ámbar suave |
 | **`success`**         | `#2e7d32` | Estado aprobado |
@@ -70,9 +78,9 @@ alta sobre fondo claro (fondo container suave + texto del mismo tono).
 
 | Elemento | Radio | Utilidad |
 |----------|-------|----------|
-| Botones, inputs | 8px | `rounded-lg` |
-| Tarjetas estándar | 16px | `rounded-xl` |
-| Feature cards, modales | 24px | `rounded-3xl` |
+| Botones, inputs | 4px | `rounded-lg` |
+| Tarjetas estándar | 4px | `rounded-xl` |
+| Feature cards, modales | 4px | `rounded-3xl` |
 | Badges de estado / chips | full (pill) | `rounded-full` |
 
 ## Elevación (sombras ambientales)
@@ -81,24 +89,21 @@ alta sobre fondo claro (fondo container suave + texto del mismo tono).
 - **Nivel 2 (hover/dropdown):** `shadow-lg`
 - **Nivel 3 (modal):** `shadow-xl`
 - **Nav fija:** `backdrop-blur` (12px) + fondo `surface/80`.
-- Efecto **`.glass-card`**: blanco 70% + blur 12px + borde `outline-variant/60`.
+- Efecto **`.glass-card`**: superficie sólida del tema, sin blur ni borde decorativo.
 
-### Liquid glass (iOS-style) — utilidades y regla de uso
+### Superficies y movimiento
 
-- **`.glass-liquid`**: blanco 72% + blur 18px + saturate 1.4 + borde luminoso +
-  reflejo interior. Para superficies FLOTANTES sobre fondo claro: modales,
-  drawer de historial.
-- **`.glass-liquid-dark`**: blanco 12% + blur 16px. Para flotantes sobre
-  color/imagen (panel indigo del login, tarjeta del hero).
-- **`.glass-soft`**: 75% sólido + blur 12px. Para avisos sobre fondo claro
-  donde la legibilidad manda (banner cuota, créditos sidebar, pro tips).
-- **`.glass-float`**: micro-interacción hover (elevación -3px + borde más
-  luminoso). SOLO en tarjetas glass flotantes decorativas — nunca en
-  modales/drawer (no reaccionan a hover) ni superficies de lectura.
-- **Toasts**: siempre via `components/ui/AppToaster` (receta glass-liquid
-  inline). No montar `<Toaster/>` de react-hot-toast directo.
-- **REGLA DURA**: glass SÍ en modales/drawer/flotantes; NO en tablas,
-  formularios/inputs ni editor de copy (contraste AA 4.5:1).
+- Tarjetas y paneles sólidos, sin borde decorativo; separación por espacio y tono.
+- Radios de 4px: esquinas discretas en tarjetas, botones y modales.
+- Se mantienen bordes de campos editables, anillos de foco y estados de selección.
+- Nombres CSS históricos `glass-*` / `liquid-*` se conservan por compatibilidad,
+  pero ya no aplican transparencias ni desenfoque ornamental.
+- Portada: demostración del flujo Brief → Contenido → Revisión → Publicación.
+  Animación de entrada de 8px y barras turquesa, una sola ejecución (menos de 5s).
+  Es un ejemplo visible, no llama a IA ni publica. Desactivada con movimiento reducido.
+- Galería estática, sin carrusel infinito. Botones sin rebote ni escala al pulsar.
+- Logos de redes sociales y fotografías no se recolorean.
+- Toaster usa superficie sólida del tema, sin borde, radio4px y sombra suave.
 
 ## Espaciado
 
@@ -109,11 +114,11 @@ alta sobre fondo claro (fondo container suave + texto del mismo tono).
 
 ## Componentes
 
-- **Botón primario:** `bg-primary text-on-primary rounded-lg`, hover `bg-primary-container`, `active:scale-95`.
+- **Botón primario:** `bg-primary text-on-primary rounded-lg`, hover `bg-primary-container`, sin rebote al pulsar.
 - **Botón secundario:** `border border-outline-variant bg-white`, hover `bg-surface-container-low`.
-- **Tarjeta:** blanca, `border-outline-variant`, `rounded-xl`, `shadow-sm`.
-- **Input:** borde `outline-variant`, foco → ring indigo 1px. Font 16px (evita zoom iOS).
-- **Bloques de contenido IA:** distinguir del input manual con tinte indigo suave o borde degradado.
+- **Tarjeta:** superficie sólida del tema, sin borde decorativo, radio4px y sombra suave.
+- **Input:** borde `outline-variant`, foco → ring turquesa 1px. Font 16px (evita zoom iOS).
+- **Bloques de contenido IA:** distinguir del input manual con tinte turquesa suave o borde degradado.
 
 ## Badges de estado FSM (crítico — usar SIEMPRE estos)
 
@@ -251,9 +256,9 @@ Vocabulario fijo y coherente con la acción (la acción "Aprobar" → toast "Apr
 
 ## Modal / Drawer
 
-- **Overlay**: `fixed inset-0 bg-on-surface/40 backdrop-blur-sm` (on-surface = #1b1b23 al 40%).
+- **Overlay**: `fixed inset-0 bg-on-surface/40 backdrop-blur-sm` (on-surface = #14283f al 40%).
 - **Modal** (centrado): tarjeta `rounded-3xl bg-white p-8 shadow-xl max-w-lg` con animación
-  de entrada (scale 0.96→1, opacity). Acción destructiva usa botón `error`, no indigo.
+  de entrada (scale 0.96→1, opacity). Acción destructiva usa botón `error`, no turquesa.
 - **Drawer** (lateral, p.ej. historial): entra desde la derecha, `w-full max-w-md h-full
   bg-white shadow-xl`, animación `x: 100% → 0`.
 - Cerrar con botón X (`ghost`), clic en overlay, y tecla Esc.

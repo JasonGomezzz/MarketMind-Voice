@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import BrandLogo from '@/components/BrandLogo'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 
 /**
  * Barra de navegación fija de la landing pública.
@@ -8,10 +9,10 @@ import BrandLogo from '@/components/BrandLogo'
  */
 export default function LandingNav() {
   return (
-    <header className="fixed top-0 left-0 z-50 w-full bg-surface/80 backdrop-blur-md shadow-sm">
+    <header className="fixed top-0 left-0 z-50 w-full bg-surface shadow-sm">
       <nav className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10">
         <div className="flex items-center gap-8">
-          <Link to="/" className="text-2xl">
+          <Link to="/" className="text-xl sm:text-2xl">
             <BrandLogo />
           </Link>
           <div className="hidden items-center gap-6 md:flex">
@@ -35,14 +36,15 @@ export default function LandingNav() {
             </a>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Link to="/login">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+          <Link to="/login" className="hidden sm:block">
             <Button variant="ghost" size="sm">
               Iniciar sesión
             </Button>
           </Link>
           <Link to="/login">
-            <Button size="sm">Empezar gratis</Button>
+            <Button size="sm">Empezar<span className="hidden sm:inline"> gratis</span></Button>
           </Link>
         </div>
       </nav>

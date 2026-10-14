@@ -65,10 +65,10 @@ import com.marketmind.mobile.data.remote.dto.CampaignDto
 import com.marketmind.mobile.ui.campaigns.formatEstado
 import com.marketmind.mobile.ui.campaigns.formatFecha
 
-private val BrandBlue = Color(0xFF4D4AF0)
-private val PageBackground = Color(0xFFFCF9FF)
-private val TextDark = Color(0xFF12132A)
-private val TextMuted = Color(0xFF74778A)
+private val BrandBlue = Color(0xFF087B75)
+private val PageBackground = Color(0xFFF5FAFA)
+private val TextDark = Color(0xFF14283F)
+private val TextMuted = Color(0xFF607983)
 
 @OptIn(ExperimentalMaterial3Api::class)
 private enum class ClientTab { Inicio, Cuenta }
@@ -184,7 +184,7 @@ private fun ClientBottomBar(selected: ClientTab, onSelected: (ClientTab) -> Unit
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = BrandBlue,
                 selectedTextColor = BrandBlue,
-                indicatorColor = Color(0xFFE7E6FF),
+                indicatorColor = Color(0xFFD1F4EE),
                 unselectedIconColor = TextMuted,
                 unselectedTextColor = TextMuted,
             ),
@@ -197,7 +197,7 @@ private fun ClientBottomBar(selected: ClientTab, onSelected: (ClientTab) -> Unit
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = BrandBlue,
                 selectedTextColor = BrandBlue,
-                indicatorColor = Color(0xFFE7E6FF),
+                indicatorColor = Color(0xFFD1F4EE),
                 unselectedIconColor = TextMuted,
                 unselectedTextColor = TextMuted,
             ),
@@ -224,7 +224,7 @@ private fun ClientAccountScreen(
                 .padding(top = 12.dp, bottom = 20.dp)
                 .size(88.dp),
             shape = CircleShape,
-            color = Color(0xFFE7E6FF),
+            color = Color(0xFFD1F4EE),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
@@ -245,7 +245,7 @@ private fun ClientAccountScreen(
                 .fillMaxWidth()
                 .height(56.dp)
                 .padding(top = 20.dp),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE23D3D)),
         ) {
             Text(
@@ -275,8 +275,8 @@ private fun AccountInfoField(label: String, value: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp),
-            shape = RoundedCornerShape(10.dp),
-            color = Color(0xFFF3F2FB),
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFFEDF5F5),
         ) {
             Text(
                 text = value,
@@ -325,7 +325,7 @@ private fun EmptyState(onRefresh: () -> Unit) {
         Button(
             onClick = onRefresh,
             colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(4.dp),
             modifier = Modifier.padding(top = 16.dp),
         ) {
             Text("Actualizar", color = Color.White, fontWeight = FontWeight.Bold)
@@ -359,7 +359,7 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(4.dp),
             modifier = Modifier.padding(top = 16.dp),
         ) {
             Text("Reintentar", color = Color.White, fontWeight = FontWeight.Bold)
@@ -404,10 +404,10 @@ private fun ClientCampaignCard(
     Card(
         onClick = { onClick(campaign.id) },
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        border = BorderStroke(1.dp, Color(0xFFEDEAF6)),
+        border = BorderStroke(1.dp, Color(0xFFB6CDD1)),
     ) {
         Row(
             modifier = Modifier
@@ -462,7 +462,7 @@ private fun ClientCampaignCard(
                     campaign.fechaCreacion?.let { iso ->
                         Text(
                             text = formatFecha(iso),
-                            color = Color(0xFF9A9CAD),
+                            color = Color(0xFF607983),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -479,8 +479,8 @@ private fun CampaignThumbnail(campaign: CampaignDto) {
     Box(
         modifier = Modifier
             .size(56.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .background(Color(0xFFF3F4FA)),
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFEDF5F5)),
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
@@ -489,7 +489,7 @@ private fun CampaignThumbnail(campaign: CampaignDto) {
                 contentDescription = "Imagen de la campaña",
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(9.dp)),
+                    .clip(RoundedCornerShape(4.dp)),
                 contentScale = ContentScale.Crop,
             )
         } else {
@@ -498,7 +498,7 @@ private fun CampaignThumbnail(campaign: CampaignDto) {
                     .fillMaxSize()
                     .background(
                         Brush.linearGradient(
-                            listOf(BrandBlue.copy(alpha = 0.85f), Color(0xFF6865F3)),
+                            listOf(BrandBlue.copy(alpha = 0.85f), Color(0xFF086A65)),
                         ),
                     ),
                 contentAlignment = Alignment.Center,
@@ -520,8 +520,8 @@ private fun StatePill(estado: String) {
         "aprobado" -> Color(0xFF087A44) to Color(0xFFCFF8E4)
         "rechazado" -> Color(0xFFD73737) to Color(0xFFFFE0E0)
         "pendiente_aprobacion" -> Color(0xFFA76525) to Color(0xFFF3E0C8)
-        "generado" -> BrandBlue to Color(0xFFE8E7FF)
-        else -> TextMuted to Color(0xFFECEAF5)
+        "generado" -> BrandBlue to Color(0xFFD1F4EE)
+        else -> TextMuted to Color(0xFFE5EFEF)
     }
     Text(
         text = formatEstado(estado),
@@ -529,7 +529,7 @@ private fun StatePill(estado: String) {
         fontSize = 10.sp,
         fontWeight = FontWeight.ExtraBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(bg)
             .padding(horizontal = 10.dp, vertical = 4.dp),
         maxLines = 1,

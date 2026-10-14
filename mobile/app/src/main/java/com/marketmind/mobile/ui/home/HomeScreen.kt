@@ -89,16 +89,16 @@ import com.marketmind.mobile.data.remote.dto.CampaignStatsDto
 import com.marketmind.mobile.data.repository.UserSession
 import com.marketmind.mobile.R
 
-private val BrandBlue = Color(0xFF4D4AF0)
-private val BrandBlueSoft = Color(0xFF6865F3)
-private val PageBackground = Color(0xFFFCF9FF)
-private val TextDark = Color(0xFF12132A)
-private val TextMuted = Color(0xFF74778A)
-private val SuccessBlue = Color(0xFF7077FF)
+private val BrandBlue = Color(0xFF087B75)
+private val BrandBlueSoft = Color(0xFF086A65)
+private val PageBackground = Color(0xFFF5FAFA)
+private val TextDark = Color(0xFF14283F)
+private val TextMuted = Color(0xFF607983)
+private val SuccessBlue = Color(0xFF087B75)
 private val WarningBrown = Color(0xFFA76525)
 private val DangerRed = Color(0xFFD73737)
-private val FieldBackground = Color(0xFFF4F1FB)
-private val FieldBorder = Color(0xFFE1DDF3)
+private val FieldBackground = Color(0xFFEDF5F5)
+private val FieldBorder = Color(0xFFB6CDD1)
 
 private val industryOptions = listOf(
     "tecnologia",
@@ -167,7 +167,7 @@ fun HomeScreen(
                     onClick = { selectedTab = AppTab.AiLab },
                     containerColor = BrandBlue,
                     contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(4.dp),
                     modifier = Modifier.size(58.dp),
                 ) {
                     Icon(
@@ -388,14 +388,14 @@ private fun AiLabScreen(
                     .padding(top = 8.dp)
                     .fillMaxWidth()
                     .height(6.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFE7E3F4)),
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFFDCE9EA)),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.28f)
                         .height(6.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .background(BrandBlue),
                 )
             }
@@ -493,7 +493,7 @@ private fun HomeTopBar(nombre: String?, onAvatarClick: () -> Unit) {
     ) {
         Text(
             text = "NexoMark IA",
-            color = Color(0xFF252166),
+            color = Color(0xFF14283F),
             fontSize = 22.sp,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.weight(1f),
@@ -569,7 +569,7 @@ private fun ProjectDetailTopBar(
         Button(
             onClick = { },
             colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(4.dp),
             modifier = Modifier.height(38.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
         ) {
@@ -632,7 +632,7 @@ private fun MetricCard(
 ) {
     Card(
         modifier = modifier.aspectRatio(1.48f),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(2.dp, color.copy(alpha = 0.68f)),
@@ -650,7 +650,7 @@ private fun MetricCard(
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .clip(RoundedCornerShape(7.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .background(color.copy(alpha = 0.13f)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -691,7 +691,7 @@ private fun AiInsightCard(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .height(146.dp),
-        shape = RoundedCornerShape(11.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = BrandBlue),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
     ) {
@@ -764,10 +764,10 @@ private fun CampaignBuilderCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        border = BorderStroke(1.dp, Color(0xFFEDEAF6)),
+        border = null,
     ) {
         Column(
             modifier = Modifier
@@ -804,7 +804,7 @@ private fun CampaignBuilderCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(4.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
             ) {
@@ -858,9 +858,9 @@ private fun CampaignField(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(4.dp),
             placeholder = {
-                Text(text = label, color = Color(0xFF8B8DA0), fontSize = 14.sp)
+                Text(text = label, color = Color(0xFF607983), fontSize = 14.sp)
             },
         )
     }
@@ -896,7 +896,7 @@ private fun CampaignDropdown(
                 modifier = Modifier
                     .menuAnchor()
                     .fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(4.dp),
             )
             ExposedDropdownMenu(
                 expanded = expanded,
@@ -959,7 +959,7 @@ private fun PlatformLogoButton(
             onClick = onClick,
             modifier = Modifier.size(72.dp),
             shape = CircleShape,
-            color = Color(0xFFF7F6FF),
+            color = Color(0xFFEDF5F5),
             border = BorderStroke(
                 width = if (selected) 3.dp else 2.dp,
                 color = if (selected) option.color else Color(0xFFD8D6E8),
@@ -1000,8 +1000,8 @@ private fun GeneratingImageStatus() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFECEBFF))
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFD1F4EE))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1027,7 +1027,7 @@ private fun AiPreviewCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(2.dp, Color(0xFFE3DDF9)),
@@ -1041,7 +1041,7 @@ private fun AiPreviewCard(
             ) {
                 CampaignImage(campaign)
                 Surface(
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(4.dp),
                     color = BrandBlue,
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -1074,7 +1074,7 @@ private fun AiPreviewCard(
             ) {
                 Text(
                     text = "GENERATED COPY",
-                    color = Color(0xFF7B74F2),
+                    color = Color(0xFF087B75),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,
@@ -1157,8 +1157,8 @@ private fun TagPill(text: String) {
         fontSize = 11.sp,
         fontWeight = FontWeight.ExtraBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(7.dp))
-            .background(Color(0xFFECEEFF))
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFD1F4EE))
             .padding(horizontal = 10.dp, vertical = 7.dp),
     )
 }
@@ -1187,8 +1187,8 @@ private fun ProjectDetailScreen(
             }
 
             Surface(
-                shape = RoundedCornerShape(9.dp),
-                color = Color(0xFFF7F5FE),
+                shape = RoundedCornerShape(4.dp),
+                color = Color(0xFFEDF5F5),
                 border = BorderStroke(1.dp, Color(0xFFDCD6F1)),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1237,7 +1237,7 @@ private fun DetailChip(
     text: String,
     selected: Boolean = false,
 ) {
-    val background = if (selected) Color(0xFFECEBFF) else Color(0xFFF4F1F8)
+    val background = if (selected) Color(0xFFD1F4EE) else Color(0xFFEDF5F5)
     val color = if (selected) BrandBlue else TextMuted
     Text(
         text = text,
@@ -1245,9 +1245,9 @@ private fun DetailChip(
         fontSize = 9.sp,
         fontWeight = FontWeight.ExtraBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(background)
-            .border(1.dp, Color(0xFFE0DCEE), RoundedCornerShape(14.dp))
+            .border(1.dp, Color(0xFFE0DCEE), RoundedCornerShape(4.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         maxLines = 1,
     )
@@ -1268,7 +1268,7 @@ private fun EditorCard(
     }
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, Color(0xFFE2DDF0)),
@@ -1349,7 +1349,7 @@ private fun EditorCard(
                         lineHeight = 21.sp,
                         color = TextDark,
                     ),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(4.dp),
                     minLines = 4,
                 )
                 Row(
@@ -1370,7 +1370,7 @@ private fun EditorCard(
                         },
                         enabled = !saving && editText.isNotBlank(),
                         modifier = Modifier.weight(1f).height(46.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(4.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
                     ) {
                         if (saving) {
@@ -1391,7 +1391,7 @@ private fun EditorCard(
                         ?: campaign.prompt
                         ?.takeIf { it.isNotBlank() }
                         ?: "La campaña todavía no tiene contenido generado.",
-                    color = Color(0xFF4A4D66),
+                    color = Color(0xFF425C67),
                     fontSize = 14.sp,
                     lineHeight = 21.sp,
                     fontWeight = FontWeight.Medium,
@@ -1440,7 +1440,7 @@ private fun EditorCard(
                     .fillMaxWidth()
                     .height(52.dp)
                     .padding(top = 12.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(4.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
             ) {
@@ -1484,7 +1484,7 @@ private fun CampaignPreviewCard(
     Card(
         onClick = { onClick(campaign.id) },
         modifier = modifier.height(72.dp),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
@@ -1546,7 +1546,7 @@ private fun ErrorPanel(
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(4.dp),
             modifier = Modifier.padding(top = 16.dp),
         ) {
             Text("Reintentar", color = Color.White, fontWeight = FontWeight.Bold)
@@ -1577,8 +1577,8 @@ private fun CampaignDto.statusColor(): Pair<Color, Color> = when (estado) {
     "aprobado" -> Color(0xFF087A44) to Color(0xFFCFF8E4)
     "rechazado" -> DangerRed to Color(0xFFFFE0E0)
     "pendiente_aprobacion" -> WarningBrown to Color(0xFFF3E0C8)
-    "generado" -> BrandBlue to Color(0xFFE8E7FF)
-    else -> TextMuted to Color(0xFFECEAF5)
+    "generado" -> BrandBlue to Color(0xFFD1F4EE)
+    else -> TextMuted to Color(0xFFE5EFEF)
 }
 
 private fun CampaignDto.hasReadyImage(): Boolean =
@@ -1599,16 +1599,16 @@ private fun CampaignThumbnail(accent: Color) {
     Box(
         modifier = Modifier
             .size(42.dp)
-            .clip(RoundedCornerShape(7.dp))
-            .background(Color(0xFFF3F4FA))
-            .border(1.dp, Color.White, RoundedCornerShape(7.dp)),
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFEDF5F5))
+            .border(1.dp, Color.White, RoundedCornerShape(4.dp)),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.linearGradient(
-                        listOf(accent.copy(alpha = 0.88f), Color.White, Color(0xFF1D1B25)),
+                        listOf(accent.copy(alpha = 0.88f), Color.White, Color(0xFF14283F)),
                     ),
                 ),
         )
@@ -1636,7 +1636,7 @@ private fun StatusPill(status: CampaignStatus) {
         fontSize = 9.sp,
         fontWeight = FontWeight.ExtraBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(colors.second)
             .padding(horizontal = 10.dp, vertical = 5.dp),
     )
@@ -1763,7 +1763,7 @@ private fun AccountScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
                     .padding(top = 26.dp, bottom = 18.dp),
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(4.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 border = BorderStroke(1.dp, Color(0xFFDAD4EA)),
@@ -1789,7 +1789,7 @@ private fun AccountScreen(
                             .fillMaxWidth()
                             .height(56.dp)
                             .padding(top = 4.dp),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(4.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE23D3D)),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
                     ) {
@@ -1831,7 +1831,7 @@ private fun SearchBox(
                 fontSize = 15.sp,
             )
         },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp),
@@ -1843,11 +1843,11 @@ private fun FilterPill(
     label: String,
     selected: Boolean = false,
 ) {
-    val background = if (selected) BrandBlue else Color(0xFFECEAF5)
+    val background = if (selected) BrandBlue else Color(0xFFE5EFEF)
     val color = if (selected) Color.White else TextDark
 
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(4.dp),
         color = background,
     ) {
         Text(
@@ -1870,7 +1870,7 @@ private fun ProjectSummaryCard(
     Card(
         onClick = { onClick(campaign) },
         modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, Color(0xFFDAD4EA)),
@@ -1927,7 +1927,7 @@ private fun ProjectSummaryCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color(0xFFECEAF3))
+                    .background(Color(0xFFE5EFEF))
                     .padding(top = 18.dp),
             )
 
@@ -1977,7 +1977,7 @@ private fun StatusBadge(
         fontSize = 11.sp,
         fontWeight = FontWeight.ExtraBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(5.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(background)
             .padding(horizontal = 9.dp, vertical = 5.dp),
     )
@@ -1989,7 +1989,7 @@ private fun PlatformBubble(icon: ImageVector, color: Color) {
         modifier = Modifier
             .size(23.dp)
             .clip(CircleShape)
-            .background(Color(0xFFE8E7FF)),
+            .background(Color(0xFFD1F4EE)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -2031,7 +2031,7 @@ private fun ProfileAvatar() {
             modifier = Modifier
                 .size(86.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFECEAFF))
+                .background(Color(0xFFD1F4EE))
                 .border(1.dp, Color(0xFFD3CFF0), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -2067,9 +2067,9 @@ private fun AccountField(label: String, value: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp)
-                .clip(RoundedCornerShape(9.dp))
+                .clip(RoundedCornerShape(4.dp))
                 .background(FieldBackground)
-                .border(1.dp, Color(0xFFD7D0E8), RoundedCornerShape(9.dp))
+                .border(1.dp, Color(0xFFB6CDD1), RoundedCornerShape(4.dp))
                 .padding(horizontal = 16.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -2122,7 +2122,7 @@ private fun NavItem(
         modifier = modifier
             .height(58.dp)
             .padding(horizontal = 3.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         color = background,
     ) {
         Column(

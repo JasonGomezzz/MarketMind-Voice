@@ -215,7 +215,7 @@ export default function ClientDashboardPage() {
             ))}
           </div>
         ) : !error && pending.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant bg-white/50 p-12 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-high text-outline">
               <Inbox className="h-7 w-7" />
             </div>

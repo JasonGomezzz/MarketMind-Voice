@@ -11,13 +11,11 @@ export default function AppToaster() {
       position="top-right"
       toastOptions={{
         style: {
-          background: 'rgba(255, 255, 255, 0.72)',
-          backdropFilter: 'blur(18px) saturate(1.4)',
-          WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-          border: '1px solid rgba(255, 255, 255, 0.55)',
-          boxShadow:
-            '0 8px 32px rgba(45, 40, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-          color: '#1b1b21',
+          background: 'var(--color-surface-container-lowest)',
+          border: 'none',
+          borderRadius: 4,
+          boxShadow: 'var(--shadow-sm)',
+          color: 'var(--color-on-surface)',
           fontWeight: 500,
         },
       }}

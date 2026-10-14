@@ -61,10 +61,10 @@ import com.marketmind.mobile.data.remote.dto.CampaignDto
 import com.marketmind.mobile.ui.campaigns.formatEstado
 import com.marketmind.mobile.ui.campaigns.formatFecha
 
-private val BrandBlue = Color(0xFF4D4AF0)
-private val PageBackground = Color(0xFFFCF9FF)
-private val TextDark = Color(0xFF12132A)
-private val TextMuted = Color(0xFF74778A)
+private val BrandBlue = Color(0xFF087B75)
+private val PageBackground = Color(0xFFF5FAFA)
+private val TextDark = Color(0xFF14283F)
+private val TextMuted = Color(0xFF607983)
 private val DangerRed = Color(0xFFD73737)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -193,7 +193,7 @@ private fun DetailActionsBar(
         OutlinedButton(
             onClick = onRejectClick,
             enabled = canAct,
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(4.dp),
             border = BorderStroke(1.dp, DangerRed),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
             modifier = Modifier.weight(1f),
@@ -211,7 +211,7 @@ private fun DetailActionsBar(
         Button(
             onClick = onApproveClick,
             enabled = canAct,
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
             modifier = Modifier.weight(1f),
         ) {
@@ -264,7 +264,7 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(4.dp),
             modifier = Modifier.padding(top = 16.dp),
         ) {
             Text("Reintentar", color = Color.White, fontWeight = FontWeight.Bold)
@@ -288,10 +288,10 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(4.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            border = BorderStroke(1.dp, Color(0xFFEDEAF6)),
+            border = null,
         ) {
             Column(
                 modifier = Modifier
@@ -301,7 +301,7 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
             ) {
                 Text(
                     text = "TEXTO GENERADO",
-                    color = Color(0xFF7B74F2),
+                    color = Color(0xFF087B75),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,
@@ -312,7 +312,7 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
                         ?: campaign.prompt
                             ?.takeIf { it.isNotBlank() }
                         ?: "Sin contenido generado.",
-                    color = Color(0xFF4A4D66),
+                    color = Color(0xFF425C67),
                     fontSize = 15.sp,
                     lineHeight = 22.sp,
                     fontWeight = FontWeight.Medium,
@@ -323,7 +323,7 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
         campaign.feedbackRechazo?.takeIf { it.isNotBlank() }?.let { feedback ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(4.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F1)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 border = BorderStroke(1.dp, Color(0xFFF3C9C9)),
@@ -358,10 +358,10 @@ private fun CampaignDetailBody(campaign: CampaignDto) {
 private fun MetadataCard(campaign: CampaignDto) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, Color(0xFFEDEAF6)),
+        border = null,
     ) {
         Column(
             modifier = Modifier
@@ -431,7 +431,7 @@ private fun CampaignImage(campaign: CampaignDto) {
                 contentDescription = "Imagen generada",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(4.dp)),
                 contentScale = ContentScale.FillWidth,
             )
             return
@@ -439,10 +439,10 @@ private fun CampaignImage(campaign: CampaignDto) {
     }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, Color(0xFFEDEAF6)),
+        border = null,
     ) {
         Text(
             text = "Imagen no generada aún",
@@ -460,8 +460,8 @@ private fun StatePill(estado: String) {
         "aprobado" -> Color(0xFF087A44) to Color(0xFFCFF8E4)
         "rechazado" -> DangerRed to Color(0xFFFFE0E0)
         "pendiente_aprobacion" -> Color(0xFFA76525) to Color(0xFFF3E0C8)
-        "generado" -> BrandBlue to Color(0xFFE8E7FF)
-        else -> TextMuted to Color(0xFFECEAF5)
+        "generado" -> BrandBlue to Color(0xFFD1F4EE)
+        else -> TextMuted to Color(0xFFE5EFEF)
     }
     Text(
         text = formatEstado(estado),
@@ -469,7 +469,7 @@ private fun StatePill(estado: String) {
         fontSize = 10.sp,
         fontWeight = FontWeight.ExtraBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(bg)
             .padding(horizontal = 10.dp, vertical = 5.dp),
         maxLines = 1,
@@ -517,7 +517,7 @@ private fun RejectFeedbackSheet(
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 4,
                 maxLines = 6,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(4.dp),
                 isError = feedbackText.isNotEmpty() && feedbackText.trim().length < 10,
             )
 
@@ -542,7 +542,7 @@ private fun RejectFeedbackSheet(
                 Button(
                     onClick = { onConfirm(feedbackText.trim()) },
                     enabled = isValid,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(4.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
                 ) {
                     Text("Confirmar rechazo", color = Color.White, fontWeight = FontWeight.ExtraBold)

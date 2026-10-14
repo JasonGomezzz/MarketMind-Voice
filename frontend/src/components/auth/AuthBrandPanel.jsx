@@ -3,7 +3,7 @@ import testimonialImg from '@/assets/landing/testimonial.png'
 
 /**
  * Panel de marca derecho compartido por Login y Register.
- * Degradado indigo + blobs flotantes + panel glass-liquid-dark con features + testimonial.
+ * Degradado azul marino/turquesa + panel glass con features y testimonial.
  * `highlights` y `badgeIcon` los provee cada pantalla.
  */
 export default function AuthBrandPanel({
@@ -30,20 +30,10 @@ export default function AuthBrandPanel({
             backgroundSize: '40px 40px',
           }}
         />
-        <motion.div
-          className="absolute -left-[10%] -top-[10%] h-[60%] w-[60%] rounded-full bg-white/10 blur-[120px]"
-          animate={{ y: [0, -20, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute -bottom-[5%] -right-[5%] h-[40%] w-[40%] rounded-full bg-secondary-container/20 blur-[100px]"
-          animate={{ y: [0, -20, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: -2 }}
-        />
       </div>
 
       {/* Contenido */}
-      <div className="relative z-10 w-full max-w-lg text-on-primary">
+      <div className="relative z-10 w-full max-w-lg text-white">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -107,7 +97,7 @@ export default function AuthBrandPanel({
       </div>
 
       {/* Pie */}
-      <div className="absolute bottom-8 left-12 right-12 z-10 flex items-center justify-between text-xs text-on-primary/60">
+      <div className="absolute bottom-8 left-12 right-12 z-10 flex items-center justify-between text-xs text-white/80">
         <span>© {new Date().getFullYear()} NexoMark IA</span>
         <div className="flex gap-6">
           <a href="#" className="transition-colors hover:text-white">Privacidad</a>

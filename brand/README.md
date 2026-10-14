@@ -16,12 +16,17 @@ cliente.
 
 | Uso | Color |
 |---|---|
-| Fondo del icono aprobado | Azul oscuro |
-| Pieza izquierda | Blanco |
-| Pieza derecha | Turquesa |
+| Fondo del icono aprobado | Azul oscuro `#14283F` |
+| Pieza izquierda | Blanco `#FFFFFF` |
+| Pieza derecha | Turquesa `#17B8AD` |
 
-Los colores exactos se conservan en el PNG maestro; la paleta de la interfaz
-no cambia al sustituir el icono.
+Colores extraídos de los píxeles del PNG maestro. La interfaz web, Flutter,
+Android y el sitio legal usan esta identidad. En modo claro, enlaces y botones
+con texto blanco usan turquesa oscuro `#087B75` (hover `#086A65`) por contraste;
+en modo oscuro, el turquesa original lleva texto azul marino. Superficies claras
+`#F5FAFA` y oscuras `#0B1929` complementan la paleta sin modificar el icono.
+Se conservan colores semánticos de error/advertencia y logos de redes sociales.
+Los temas Android usan la marca por defecto en lugar del color del dispositivo.
 
 La tipografía recomendada es **Inter**, con peso 800 para el nombre y pesos
 400–600 para textos de interfaz.

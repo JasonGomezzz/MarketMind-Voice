@@ -250,7 +250,7 @@ export default function ClientReviewPage() {
           {puedeRevisar && (
             <div className="glass-soft space-y-3 rounded-xl p-5 shadow-sm">
               <p className="text-sm font-semibold text-on-surface">¿Qué decides?</p>
-              <div className="rounded-lg border border-outline-variant bg-white/70 p-3">
+              <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
                   Valoración
                 </p>

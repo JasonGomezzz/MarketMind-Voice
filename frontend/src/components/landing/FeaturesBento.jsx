@@ -1,6 +1,5 @@
 import { motion } from 'motion/react'
-import { Brain, BarChart3, Smartphone } from 'lucide-react'
-import featureCopy from '@/assets/landing/feature-copy.png'
+import { PenLine, BarChart3, Smartphone } from 'lucide-react'
 import featureImage from '@/assets/landing/feature-image.png'
 
 /**
@@ -26,21 +25,21 @@ export default function FeaturesBento() {
           >
             <div>
               <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Brain className="h-6 w-6 text-primary" />
+                <PenLine className="h-6 w-6 text-primary" />
               </div>
               <h3 className="mb-4 text-3xl font-semibold text-on-surface">
-                Copywriting cognitivo
+                Texto con intención
               </h3>
               <p className="text-base text-on-surface-variant">
-                Genera textos que convierten, con IA calibrada por industria, tono
-                y plataforma para cada campaña.
+                Prepara el mensaje de tu negocio según su público, tono y canal.
+                Revísalo y ajústalo antes de enviarlo al cliente.
               </p>
             </div>
-            <img
-              src={featureCopy}
-              alt="Variantes de copy generadas por IA"
-              className="mt-8 rounded-xl border border-outline-variant"
-            />
+            <blockquote className="mt-8 bg-surface-container p-5 text-sm leading-relaxed text-on-surface">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">Ejemplo de texto</p>
+              Un buen café también es una buena pausa. Descubre el sabor que
+              acompaña tus mañanas y compártelo con alguien especial.
+            </blockquote>
           </motion.div>
 
           {/* Imágenes IA — tarjeta ancha */}

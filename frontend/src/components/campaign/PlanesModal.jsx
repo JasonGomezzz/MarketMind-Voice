@@ -111,7 +111,7 @@ export default function PlanesModal({ open, onClose }) {
                   className={`relative flex flex-col items-center rounded-2xl p-8 ${
                     plan.popular
                       ? 'border-2 border-primary bg-white shadow-xl'
-                      : 'border border-outline-variant/60 bg-white/80 shadow-sm'
+                      : 'border border-outline-variant/60 bg-surface-container-lowest shadow-sm'
                   }`}
                 >
                   {plan.popular && (
@@ -180,7 +180,7 @@ export default function PlanesModal({ open, onClose }) {
               ← Volver a los planes
             </button>
 
-            <div className="mb-6 flex items-center justify-between rounded-xl border border-outline-variant bg-white/80 px-5 py-4">
+            <div className="mb-6 flex items-center justify-between rounded-xl border border-outline-variant bg-surface-container-lowest px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-on-surface">Plan {checkoutPlan.nombre}</p>
                 <p className="text-sm text-on-surface-variant">{checkoutPlan.creditos} Créditos de IA</p>

@@ -25,23 +25,61 @@ class _MarketMindAppState extends State<MarketMindApp> {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF625BFF);
+    const seed = Color(0xFF17B8AD);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'NexoMark IA',
+      themeMode: ThemeMode.system,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: seed,
-          brightness: Brightness.dark,
+          brightness: Brightness.light,
+          primary: const Color(0xFF087B75),
+          onPrimary: Colors.white,
+          primaryContainer: const Color(0xFFD1F4EE),
+          onPrimaryContainer: const Color(0xFF14283F),
+          surface: Colors.white,
+          onSurface: const Color(0xFF14283F),
         ),
-        scaffoldBackgroundColor: const Color(0xFF0D0E19),
-        cardTheme: const CardThemeData(color: Color(0xFF171927), elevation: 0),
+        scaffoldBackgroundColor: const Color(0xFFF5FAFA),
+        cardTheme: const CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+        ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFF171927),
+          fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFFB6CDD1)),
+          ),
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: seed,
+          brightness: Brightness.dark,
+          primary: seed,
+          onPrimary: const Color(0xFF14283F),
+          primaryContainer: const Color(0xFF173F47),
+          onPrimaryContainer: const Color(0xFFD1F4EE),
+          surface: const Color(0xFF14283F),
+          onSurface: const Color(0xFFF3FAFB),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0B1929),
+        cardTheme: const CardThemeData(
+          color: Color(0xFF14283F),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF14283F),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(4),
             borderSide: BorderSide.none,
           ),
         ),

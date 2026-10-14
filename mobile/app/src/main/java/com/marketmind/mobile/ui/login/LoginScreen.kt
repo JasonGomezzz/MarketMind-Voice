@@ -78,13 +78,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
-private val BrandBlue = Color(0xFF4D4AF0)
-private val TextDark = Color(0xFF20213A)
-private val TextMuted = Color(0xFF74778D)
-private val PanelBorder = Color(0xFFE0E2EE)
-private val FieldBorder = Color(0xFFD6D9E6)
-private val PageTop = Color(0xFFF6F2FF)
-private val PageBottom = Color(0xFFFFFBFF)
+private val BrandBlue = Color(0xFF087B75)
+private val TextDark = Color(0xFF14283F)
+private val TextMuted = Color(0xFF607983)
+private val PanelBorder = Color(0xFFB6CDD1)
+private val FieldBorder = Color(0xFFB6CDD1)
+private val PageTop = Color(0xFFEDF5F5)
+private val PageBottom = Color(0xFFF5FAFA)
 
 @Composable
 fun LoginScreen(
@@ -140,7 +140,7 @@ fun LoginScreen(
                 )
                 Text(
                     text = "Impulsa tu crecimiento con inteligencia.",
-                    color = Color(0xFF40435A),
+                    color = Color(0xFF425C67),
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
                     textAlign = TextAlign.Center,
@@ -219,7 +219,7 @@ fun LoginScreen(
 private fun AppLogo() {
     Surface(
         modifier = Modifier.size(58.dp),
-        shape = RoundedCornerShape(17.dp),
+        shape = RoundedCornerShape(4.dp),
         color = BrandBlue,
         shadowElevation = 12.dp,
     ) {
@@ -260,7 +260,7 @@ private fun LoginCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         border = BorderStroke(1.dp, PanelBorder),
@@ -355,7 +355,7 @@ private fun LoginCard(
                     .height(58.dp)
                     .padding(top = 4.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(4.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
             ) {
                 if (loading) {
@@ -386,7 +386,7 @@ private fun LoginCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color(0xFFE9EAF3)),
+                    .background(Color(0xFFDCE9EA)),
             )
 
             Row(
@@ -395,7 +395,7 @@ private fun LoginCard(
             ) {
                 Text(
                     text = if (mode == AuthMode.Login) "¿No tienes una cuenta? " else "¿Ya tienes una cuenta? ",
-                    color = Color(0xFF7B7E91),
+                    color = Color(0xFF607983),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -422,8 +422,8 @@ private fun AuthTabs(
         modifier = Modifier
             .fillMaxWidth()
             .height(44.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF0F1F8))
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFEDF5F5))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -479,7 +479,7 @@ private fun RoleOption(
     Surface(
         onClick = onClick,
         modifier = modifier.height(48.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         color = if (selected) BrandBlue.copy(alpha = 0.1f) else Color.White,
         border = BorderStroke(1.dp, if (selected) BrandBlue else FieldBorder),
     ) {
@@ -518,7 +518,7 @@ private fun AuthTab(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(9.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(if (selected) Color.White else Color.Transparent)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -607,7 +607,7 @@ private enum class AuthMode {
 private fun FieldLabel(text: String) {
     Text(
         text = text,
-        color = Color(0xFF777A8A),
+        color = Color(0xFF607983),
         fontSize = 12.sp,
         fontWeight = FontWeight.ExtraBold,
     )
@@ -633,7 +633,7 @@ private fun StyledTextField(
         placeholder = {
             Text(
                 text = placeholder,
-                color = Color(0xFFBCC0CD),
+                color = Color(0xFFB6CDD1),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -642,7 +642,7 @@ private fun StyledTextField(
             Icon(
                 imageVector = leadingIcon,
                 contentDescription = null,
-                tint = Color(0xFF9BA0B2),
+                tint = Color(0xFF607983),
                 modifier = Modifier.size(20.dp),
             )
         },
@@ -652,7 +652,7 @@ private fun StyledTextField(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = Color(0xFF9BA0B2),
+                        tint = Color(0xFF607983),
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -661,7 +661,7 @@ private fun StyledTextField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        shape = RoundedCornerShape(13.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = BrandBlue.copy(alpha = 0.7f),
             unfocusedBorderColor = FieldBorder,
@@ -683,7 +683,7 @@ private fun SecurityBadge(icon: ImageVector) {
         modifier = Modifier
             .size(26.dp)
             .clip(CircleShape)
-            .border(1.dp, Color(0xFFD3D6E3), CircleShape),
+            .border(1.dp, Color(0xFFB6CDD1), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

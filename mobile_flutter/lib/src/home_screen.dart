@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
     appBar: AppBar(
       title: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: Color(0xFF938EFF)),
+          Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 10),
           Text(tab == 0 ? 'Mis campañas' : 'Laboratorio IA'),
         ],
@@ -140,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final item = items[index];
         return Card(
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(4),
             onTap: () => showCampaign(item),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -338,7 +338,7 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
         Card(
-          color: const Color(0xFF242044),
+          color: Theme.of(context).colorScheme.primaryContainer,
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Row(
@@ -346,7 +346,7 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
                 Icon(
                   listening ? Icons.graphic_eq : Icons.mic,
                   size: 34,
-                  color: const Color(0xFFA7A3FF),
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -489,7 +489,7 @@ class _CreateCampaignViewState extends State<CreateCampaignView> {
               message!,
               style: TextStyle(
                 color: listening
-                    ? const Color(0xFFA7A3FF)
+                    ? Theme.of(context).colorScheme.primary
                     : Theme.of(context).colorScheme.error,
               ),
             ),
@@ -606,7 +606,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
           const SizedBox(height: 16),
           if (campaign.imageBase64?.isNotEmpty == true)
             ClipRRect(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(4),
               child: Image.memory(
                 base64Decode(
                   campaign.imageBase64!.contains(',')
@@ -654,7 +654,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       padding: const EdgeInsets.only(top: 14),
                       child: Text(
                         voiceMessage!,
-                        style: const TextStyle(color: Color(0xFFA7A3FF)),
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                 ],
@@ -718,7 +718,7 @@ class _StatusChip extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.primaryContainer,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(4),
     ),
     child: Text(
       status.replaceAll('_', ' '),

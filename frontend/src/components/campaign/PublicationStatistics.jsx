@@ -109,17 +109,19 @@ export default function PublicationStatistics({ campaignId }) {
 
 function MonthlyBars({ title, label, platform, rows, year, metric, description, empty }) {
   const hasData = rows.some(row => row[platform] != null)
-  const colors = { facebook: '#1877F2', instagram: '#C13584', twitter: '#8b8bf5', tiktok: '#14b8a6' }
-  return <section className="min-w-0 rounded-lg border border-outline-variant p-3">
+  const colors = { facebook: 'var(--color-primary)', instagram: 'var(--color-primary)', twitter: 'var(--color-primary)', tiktok: 'var(--color-primary)' }
+  return <section className="min-w-0 rounded-lg bg-surface-container-low p-3">
     <h4 className="text-sm font-semibold">{title} · {year}</h4>
     <p className="mt-1 min-h-10 text-xs text-on-surface-variant">{description}</p>
     <div className="mt-3 h-52" role="img" aria-label={`${title} de ${label}, ${year}${hasData ? '' : ': sin datos'}`}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={monthlyChartData(rows)} margin={{ top: 8, right: 0, left: -20, bottom: 16 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={42} tick={{ fontSize: 10 }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-          <Tooltip formatter={(value, name, item) => [value,
+          <CartesianGrid stroke="var(--color-outline-variant)" strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={42} stroke="var(--color-outline)" tick={{ fontSize: 10, fill: 'var(--color-on-surface-variant)' }} />
+          <YAxis allowDecimals={false} stroke="var(--color-outline)" tick={{ fontSize: 10, fill: 'var(--color-on-surface-variant)' }} />
+          <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface-container-lowest)', color: 'var(--color-on-surface)', border: 'none', borderRadius: 4 }}
+            labelStyle={{ color: 'var(--color-on-surface)' }} cursor={{ fill: 'var(--color-surface-container-high)' }}
+            formatter={(value, name, item) => [value,
             metric === 'Me gusta acumulados'
               ? `${metric} · ${item.payload[`${platform}_covered`]}/${item.payload[`${platform}_publications`]} publicaciones con dato`
               : name]} />
