@@ -71,6 +71,12 @@ RESULTADO_OK = meta_graph.ResultadoPublicacion(
 
 
 class TestTokens:
+
+    def test_sin_token_configurado_el_evento_interno_se_rechaza(self, settings):
+        settings.INTERNAL_EVENT_TOKEN = ""
+        respuesta = APIClient().post(APPROVED_URL, {"campaignId": 1}, format="json", HTTP_X_INTERNAL_EVENT_TOKEN="")
+        assert respuesta.status_code == 403
+
     def test_cifrar_y_descifrar(self, settings):
         cifrado = cifrar("EAAG-secreto")
         assert "EAAG" not in cifrado

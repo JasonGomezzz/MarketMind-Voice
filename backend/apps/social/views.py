@@ -291,7 +291,9 @@ class InternalApprovedEventView(APIView):
 
     def post(self, request: Request) -> Response:
         token = request.headers.get("X-Internal-Event-Token", "")
-        if not hmac.compare_digest(token.encode(), settings.INTERNAL_EVENT_TOKEN.encode()):
+        esperado = settings.INTERNAL_EVENT_TOKEN
+        # Un token vacío nunca autentica (compare_digest("", "") sería verdadero).
+        if not esperado or not hmac.compare_digest(token.encode(), esperado.encode()):
             return Response(api_response(False, "Token interno inválido.", {}), status=status.HTTP_403_FORBIDDEN)
         try:
             campaign_id = int(request.data.get("campaignId"))

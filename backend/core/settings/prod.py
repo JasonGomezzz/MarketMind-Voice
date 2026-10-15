@@ -4,6 +4,8 @@ Extiende base.py con configuraciones para Render.com.
 Uso: DJANGO_SETTINGS_MODULE=core.settings.prod
 """
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F401, F403
 
 # ─────────────────────────────────────────────
@@ -26,6 +28,12 @@ CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+
+# El token interno Spring ↔ Django no puede quedar en el valor de desarrollo
+# (está en el repositorio): en producción es obligatorio y distinto.
+INTERNAL_EVENT_TOKEN = config("INTERNAL_EVENT_TOKEN")  # noqa: F405
+if INTERNAL_EVENT_TOKEN in ("", "dev-internal-event-token"):
+    raise ImproperlyConfigured("INTERNAL_EVENT_TOKEN debe definirse con un valor propio en producción.")
 
 # ─────────────────────────────────────────────
 # LOGGING — errores a archivo en producción
