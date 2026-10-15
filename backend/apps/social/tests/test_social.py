@@ -506,6 +506,13 @@ class TestMetricas:
         assert detalle["copy_aprobado"] == "Copy aprobado"
         assert detalle["imagen_url"].startswith("http://testserver/api/public/media/")
 
+    def test_imagen_usa_la_direccion_publica_si_esta_configurada(self, publicada, settings):
+        from services import public_media
+        settings.PUBLIC_BASE_URL = "https://tunel.example.dev/"
+        assert public_media.url_publica(publicada.id).startswith("https://tunel.example.dev/api/public/media/")
+        settings.PUBLIC_BASE_URL = ""
+        assert public_media.url_publica(publicada.id).startswith("http://testserver/api/public/media/")
+
     def test_stats_sin_imagen_aprobada_no_da_url(self, publicada, api_client):
         detalle = api_client.get(f"/api/social/publications/{publicada.id}/stats/").data["data"]["publicacion"]
         assert detalle["imagen_url"] is None

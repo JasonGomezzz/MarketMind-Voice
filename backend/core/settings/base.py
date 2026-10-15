@@ -257,6 +257,10 @@ N8N_WEBHOOK_BASE_URL = config(
 )
 N8N_WEBHOOK_TIMEOUT = 5             # segundos — "Respond Immediately" debe responder < 500ms
 DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://localhost:8000")
+# Dirección pública solo para las imágenes que descarga Meta (p. ej. un túnel
+# HTTPS en local). Vacía = DJANGO_BASE_URL. Los callbacks de n8n siguen usando
+# DJANGO_BASE_URL para no depender del túnel.
+PUBLIC_BASE_URL = config("PUBLIC_BASE_URL", default="")
 SPRINGBOOT_INTERNAL_URL = config("SPRINGBOOT_INTERNAL_URL", default="http://localhost:8080")
 INTERNAL_EVENT_TOKEN = config("INTERNAL_EVENT_TOKEN", default="dev-internal-event-token")
 

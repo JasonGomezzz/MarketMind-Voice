@@ -46,5 +46,7 @@ PASSWORD_HASHERS = [
 
 # ── Meta: valores ficticios; los tests simulan la Graph API ──
 META_APP_ID = "test-app"
+META_LOGIN_CONFIG_ID = ""  # los tests no deben depender del .env local
+PUBLIC_BASE_URL = ""
 META_APP_SECRET = "test-secret"
 FRONTEND_URL = "http://frontend.test"

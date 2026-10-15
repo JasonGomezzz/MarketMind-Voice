@@ -32,7 +32,8 @@ def leer_firma(token: str) -> int:
 
 
 def url_publica(publication_id: int) -> str:
-    return f"{settings.DJANGO_BASE_URL.rstrip('/')}/api/public/media/{firmar(publication_id)}.jpg"
+    base = settings.PUBLIC_BASE_URL or settings.DJANGO_BASE_URL
+    return f"{base.rstrip('/')}/api/public/media/{firmar(publication_id)}.jpg"
 
 
 def a_jpeg(imagen_b64: str | None) -> bytes:
