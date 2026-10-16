@@ -1,8 +1,8 @@
 import { Toaster } from 'react-hot-toast'
 
 /**
- * Toaster único de la app con la receta liquid glass de Lumina (los toasts
- * FLOTAN sobre el contenido — es exactamente donde el glass corresponde).
+ * Toaster único de la app. Los toasts flotan sobre el contenido: superficie
+ * sólida del tema, borde fino y sombra de elemento flotante (claro y oscuro).
  * Reemplaza a los <Toaster/> sueltos por página para garantizar consistencia.
  */
 export default function AppToaster() {
@@ -11,15 +11,15 @@ export default function AppToaster() {
       position="top-right"
       toastOptions={{
         style: {
-          background: 'rgba(255, 255, 255, 0.72)',
-          backdropFilter: 'blur(18px) saturate(1.4)',
-          WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-          border: '1px solid rgba(255, 255, 255, 0.55)',
-          boxShadow:
-            '0 8px 32px rgba(45, 40, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-          color: '#1b1b21',
+          background: 'var(--color-surface-container-lowest)',
+          color: 'var(--color-on-surface)',
+          border: '1px solid var(--color-outline-variant)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-lg)',
           fontWeight: 500,
         },
+        success: { iconTheme: { primary: 'var(--color-success)', secondary: 'var(--color-surface-container-lowest)' } },
+        error: { iconTheme: { primary: 'var(--color-error)', secondary: 'var(--color-surface-container-lowest)' } },
       }}
     />
   )

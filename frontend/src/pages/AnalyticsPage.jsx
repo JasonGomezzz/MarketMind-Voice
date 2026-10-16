@@ -36,16 +36,16 @@ const PERIODS = [
   { value: 'quarter', label: 'Trimestre' },
 ]
 
-// Colores FSM para los charts — paleta validada con dataviz (chroma floor,
-// banda de luminosidad, separación CVD y contraste ≥3:1 sobre card blanca).
-// Recharts no acepta clases Tailwind; los hex viven solo aquí.
+// Colores FSM para los charts: tokens del tema (claro y oscuro), cada uno con
+// contraste ≥3:1 sobre la tarjeta; la leyenda nombra cada estado.
+// Recharts no acepta clases Tailwind, así que recibe var(--color-*).
 const ESTADO_COLORS = {
-  borrador: '#8678c8',
-  pendiente_ia: '#7c7ff2',
-  generado: '#3a3cb8',
-  pendiente_aprobacion: '#b55d00',
-  aprobado: '#2e7d32',
-  rechazado: '#ba1a1a',
+  borrador: 'var(--color-outline)',
+  pendiente_ia: 'var(--color-primary)',
+  generado: 'var(--color-secondary)',
+  pendiente_aprobacion: 'var(--color-warning)',
+  aprobado: 'var(--color-success)',
+  rechazado: 'var(--color-error)',
 }
 
 
@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
         .map((e) => ({
           name: STATES[e.estado]?.label ?? e.estado,
           value: e.total,
-          color: ESTADO_COLORS[e.estado] ?? '#cbd5e1',
+          color: ESTADO_COLORS[e.estado] ?? 'var(--color-outline-variant)',
         }))
     : []
 
@@ -174,31 +174,33 @@ export default function AnalyticsPage() {
                     data={data.campanas_por_marketero}
                     margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e9e6f3" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-outline-variant)" vertical={false} />
                     <XAxis
                       dataKey="marketero"
-                      tick={{ fontSize: 12, fill: '#464554' }}
+                      tick={{ fontSize: 12, fill: 'var(--color-on-surface-variant)' }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
                       allowDecimals={false}
-                      tick={{ fontSize: 12, fill: '#464554' }}
+                      tick={{ fontSize: 12, fill: 'var(--color-on-surface-variant)' }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <Tooltip
-                      cursor={{ fill: 'rgba(70, 72, 212, 0.06)' }}
+                      cursor={{ fill: 'rgb(23 184 173 / 0.1)' }}
                       contentStyle={{
                         borderRadius: 12,
-                        border: '1px solid #c7c4d7',
+                        border: '1px solid var(--color-outline-variant)',
+                        backgroundColor: 'var(--color-surface-container-lowest)',
+                        color: 'var(--color-on-surface)',
                         fontSize: 13,
                       }}
                     />
                     <Bar
                       dataKey="total"
                       name="Campañas"
-                      fill="#4648d4"
+                      fill="var(--color-primary)"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={36}
                     />
@@ -234,13 +236,15 @@ export default function AnalyticsPage() {
                       labelLine={false}
                     >
                       {pieData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
+                        <Cell key={i} fill={entry.color} stroke="var(--color-surface-container-lowest)" strokeWidth={2} />
                       ))}
                     </Pie>
                     <Tooltip
                       contentStyle={{
                         borderRadius: 12,
-                        border: '1px solid #c7c4d7',
+                        border: '1px solid var(--color-outline-variant)',
+                        backgroundColor: 'var(--color-surface-container-lowest)',
+                        color: 'var(--color-on-surface)',
                         fontSize: 13,
                       }}
                     />
