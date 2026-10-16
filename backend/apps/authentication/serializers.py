@@ -8,8 +8,10 @@ from typing import Any
 
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.tokens import Token
+from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.settings import api_settings as jwt_settings
+from rest_framework_simplejwt.tokens import RefreshToken, Token
 
 from .models import AuthBrandContent, User, UserRole
 
@@ -191,6 +193,29 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data["nombre"] = self.user.nombre
 
         return data
+
+
+class VersionedTokenRefreshSerializer(TokenRefreshSerializer):
+    """
+    Renovación del access token que respeta token_version (HU18).
+
+    Sin esto, un refresh emitido antes de suspender la cuenta o de restablecer
+    la contraseña seguía generando access tokens nuevos hasta su caducidad
+    (7 días): el access nuevo fallaba después, pero la renovación no.
+    Si la cuenta está inactiva o su token_version cambió → 401.
+    """
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        # TokenError (firma, caducidad o blacklist) lo convierte la vista en 401.
+        refresh = RefreshToken(attrs["refresh"])
+        user = (
+            User.objects.filter(pk=refresh.get(jwt_settings.USER_ID_CLAIM), is_active=True)
+            .only("token_version")
+            .first()
+        )
+        if user is None or user.token_version != refresh.get("token_version", 0):
+            raise InvalidToken("La sesión ya no es válida. Inicia sesión nuevamente.")
+        return super().validate(attrs)
 
 
 class UserResponseSerializer(serializers.ModelSerializer):

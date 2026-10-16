@@ -184,6 +184,8 @@ SIMPLE_JWT = {
 
     # Claims adicionales — campo "role" en payload (criterio HU2)
     "TOKEN_OBTAIN_SERIALIZER": "apps.authentication.serializers.CustomTokenObtainPairSerializer",
+    # El refresh también valida token_version e is_active contra la BD.
+    "TOKEN_REFRESH_SERIALIZER": "apps.authentication.serializers.VersionedTokenRefreshSerializer",
 
     # Headers
     "AUTH_HEADER_TYPES": ("Bearer",),
