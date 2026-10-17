@@ -48,6 +48,7 @@ from services.publication_service import (
     conexiones_disponibles,
     publicar_campana_aprobada,
     reintentar_publicacion,
+    una_por_cuenta,
 )
 from services.social_tokens import cifrar
 
@@ -243,7 +244,9 @@ class SocialConnectionViewSet(viewsets.GenericViewSet):
                 api_response(False, "Solo el marketero elige destinos.", {}),
                 status=status.HTTP_403_FORBIDDEN,
             )
-        conexiones = conexiones_disponibles(request.user, request.query_params.get("cliente_email"))
+        cliente_email = request.query_params.get("cliente_email")
+        # La misma cuenta conectada por cliente y marketero se ofrece una vez (la del cliente).
+        conexiones = una_por_cuenta(conexiones_disponibles(request.user, cliente_email), cliente_email)
         return Response(api_response(True, "Destinos disponibles.", {
             "conexiones": SocialConnectionSerializer(conexiones, many=True).data,
         }))

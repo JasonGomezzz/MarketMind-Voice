@@ -11,6 +11,7 @@ después o su historial de versiones rote.
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 from apps.campaigns.models import Campaign
 
@@ -131,6 +132,15 @@ class Publication(models.Model):
         related_name="publicaciones",
     )
     red = models.CharField(max_length=20, choices=RedSocial.choices)
+    cuenta_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=(
+            "ID en Meta de la cuenta destino (copia de la conexión). Si cliente y marketero "
+            "conectaron la misma cuenta, la campaña se publica una sola vez en ella."
+        ),
+    )
     cuenta_nombre = models.CharField(max_length=150, help_text="Copia para mostrar aunque la cuenta se desconecte.")
     estado = models.CharField(
         max_length=30,
@@ -172,6 +182,12 @@ class Publication(models.Model):
             models.UniqueConstraint(
                 fields=["campaign", "conexion"],
                 name="uniq_publicacion_campana_conexion",
+            ),
+            # Vacío = filas antiguas duplicadas que la migración 0005 dejó como historial.
+            models.UniqueConstraint(
+                fields=["campaign", "red", "cuenta_id"],
+                condition=~Q(cuenta_id=""),
+                name="uniq_publicacion_campana_red_cuenta",
             ),
         ]
         indexes = [

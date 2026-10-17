@@ -3,7 +3,8 @@ MarketMind Voice — Programar y publicar campañas aprobadas en Meta.
 
 Flujo:
 1. Al enviar al cliente, el marketero elige destinos → Publication en
-   'esperando_aprobacion' (programar_publicaciones).
+   'esperando_aprobacion' (programar_publicaciones). Una sola por cuenta de
+   Meta: si cliente y marketero conectaron la misma, se usa la del cliente.
 2. Cuando el cliente aprueba en Spring, Spring avisa a Django tras su commit
    → publicar_campana_aprobada congela copy + imagen y publica.
 3. Si algo falla, el marketero puede reintentar (reintentar_publicacion).
@@ -59,8 +60,36 @@ def conexiones_disponibles(marketero: User, cliente_email: str | None) -> list[S
     )
 
 
+def _es_del_cliente(conexion: SocialConnection, cliente_email: str | None) -> bool:
+    return (
+        bool(cliente_email)
+        and conexion.usuario.rol == UserRole.CLIENTE
+        and conexion.usuario.email.lower() == cliente_email.lower()
+    )
+
+
+def una_por_cuenta(conexiones: list[SocialConnection], cliente_email: str | None) -> list[SocialConnection]:
+    """
+    Una conexión por cuenta de Meta (red + id externo), en el orden recibido.
+    Si cliente y marketero conectaron la misma cuenta, gana la del cliente (su dueño).
+    """
+    elegidas: dict[tuple[str, str], SocialConnection] = {}
+    for conexion in conexiones:
+        clave = (conexion.red, conexion.cuenta_id)
+        actual = elegidas.get(clave)
+        if actual is None or (
+            _es_del_cliente(conexion, cliente_email) and not _es_del_cliente(actual, cliente_email)
+        ):
+            elegidas[clave] = conexion
+    return list(elegidas.values())
+
+
 def programar_publicaciones(campaign: Campaign, conexion_ids: list[int], marketero: User) -> list[Publication]:
-    """Crea (o reutiliza) una Publication por destino elegido. Llamar dentro de la transacción de submit."""
+    """
+    Crea (o reutiliza) una Publication por cuenta de Meta elegida. Llamar dentro
+    de la transacción de submit. Dos conexiones a la misma cuenta (del cliente y
+    del marketero) generan una sola publicación: nunca dos posts iguales.
+    """
     if not conexion_ids:
         return []
     permitidas = {c.id: c for c in conexiones_disponibles(marketero, campaign.cliente_email)}
@@ -69,19 +98,23 @@ def programar_publicaciones(campaign: Campaign, conexion_ids: list[int], markete
         raise DestinoInvalido(
             "Alguna cuenta destino no existe, está desconectada o no pertenece al cliente ni al marketero."
         )
+    elegidas = una_por_cuenta([permitidas[cid] for cid in dict.fromkeys(conexion_ids)], campaign.cliente_email)
     publicaciones = []
-    for cid in dict.fromkeys(conexion_ids):
-        conexion = permitidas[cid]
-        publicacion, _ = Publication.objects.get_or_create(
-            campaign=campaign,
-            conexion=conexion,
-            defaults={
-                "red": conexion.red,
-                "cuenta_nombre": conexion.cuenta_nombre,
-                "solicitada_por": marketero,
-            },
+    for conexion in elegidas:
+        existente = (
+            Publication.objects.filter(campaign=campaign, red=conexion.red, cuenta_id=conexion.cuenta_id).first()
+            or Publication.objects.filter(campaign=campaign, conexion=conexion).first()
         )
-        publicaciones.append(publicacion)
+        if existente is None:
+            existente = Publication.objects.create(
+                campaign=campaign,
+                conexion=conexion,
+                red=conexion.red,
+                cuenta_id=conexion.cuenta_id,
+                cuenta_nombre=conexion.cuenta_nombre,
+                solicitada_por=marketero,
+            )
+        publicaciones.append(existente)
     return publicaciones
 
 
