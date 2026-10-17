@@ -23,6 +23,8 @@
   --color-turquoise-soft: #79ddd3;
   --color-on-navy: #ffffff;
   --color-on-navy-muted: #b9cbd8;
+  --color-on-navy-error: #ffb4ab;
+  --color-paper: #ffffff;
 
   /* --- Color: superficies --- */
   --color-background: #f5fafa;
@@ -295,8 +297,8 @@ html[data-theme='dark'] select option {
   gap: 0.3em;
   border-radius: 999px;
   padding: 0.15rem 0.55rem;
-  font-size: 0.75rem;
-  line-height: 1.1rem;
+  font-size: 0.8125rem;
+  line-height: 1.15rem;
   font-weight: 600;
   letter-spacing: 0;
   white-space: nowrap;
