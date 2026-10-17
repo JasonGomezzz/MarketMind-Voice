@@ -714,7 +714,8 @@ class IaResultCallbackView(APIView):
     Endpoint de callback para n8n. Recibe el resultado de la generación IA
     (éxito o fallo) y actualiza el estado de la campaña en consecuencia.
 
-    Autenticación: N8nCallbackPermission (valida n8n_callback_token UUID).
+    Autenticación: N8nCallbackPermission (secreto X-NexoMark-Token +
+    n8n_callback_token de la campaña).
     No requiere JWT — diseñado para llamadas machine-to-machine desde n8n.
 
     Body éxito:
@@ -806,10 +807,11 @@ class EmailSentCallbackView(APIView):
     POST /api/campaigns/webhook/email-sent/
 
     Callback de n8n tras enviar email vía Resend (HU16). Solo el evento
-    pendiente_aprobacion persiste flag (email_enviado=True); HU17 no incluye
-    callback_url en el payload disparador y por lo tanto nunca llega aquí.
+    pendiente_aprobacion persiste flag (email_enviado=True); el workflow solo
+    llama aquí para ese evento, así que HU17 (aprobado/rechazado) nunca llega.
 
-    Autenticación: N8nCallbackPermission (valida n8n_callback_token UUID).
+    Autenticación: N8nCallbackPermission (secreto X-NexoMark-Token +
+    n8n_callback_token de la campaña).
 
     Body:
         {n8n_callback_token: str, success: bool, event_type: str}

@@ -35,6 +35,14 @@ INTERNAL_EVENT_TOKEN = config("INTERNAL_EVENT_TOKEN")  # noqa: F405
 if INTERNAL_EVENT_TOKEN in ("", "dev-internal-event-token"):
     raise ImproperlyConfigured("INTERNAL_EVENT_TOKEN debe definirse con un valor propio en producción.")
 
+# Secreto compartido con n8n: sin él cualquiera que conozca la URL podría
+# disparar generaciones (cuota de Gemini) o enviar resultados falsos a los callbacks.
+N8N_WEBHOOK_TOKEN = config("N8N_WEBHOOK_TOKEN", default="")  # noqa: F405
+if N8N_WEBHOOK_TOKEN == "dev-n8n-webhook-token" or len(N8N_WEBHOOK_TOKEN) < 32:
+    raise ImproperlyConfigured(
+        "N8N_WEBHOOK_TOKEN debe definirse en producción con un valor propio de al menos 32 caracteres."
+    )
+
 # ─────────────────────────────────────────────
 # LOGGING — errores a archivo en producción
 # ─────────────────────────────────────────────

@@ -37,6 +37,7 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
 # ── Sin llamadas reales a n8n ──
 USE_MOCK_AI = True
 N8N_WEBHOOK_BASE_URL = "http://mock-n8n"
+N8N_WEBHOOK_TOKEN = "test-n8n-webhook-token"  # no depende del .env local
 DJANGO_BASE_URL = "http://testserver"
 
 # ── Password hasher más rápido en tests ──

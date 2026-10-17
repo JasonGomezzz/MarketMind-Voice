@@ -22,6 +22,7 @@ def main():
         "N8N_WEBHOOK_URL": "http://127.0.0.1:1",
         "SPRINGBOOT_INTERNAL_URL": "http://127.0.0.1:1",
         "INTERNAL_EVENT_TOKEN": "ci-only-internal-placeholder",
+        "N8N_WEBHOOK_TOKEN": "ci-only-n8n-webhook-placeholder-0123456789",
     }
     commands = [
         ["manage.py", "check", "--settings=core.settings.ci_checks"],

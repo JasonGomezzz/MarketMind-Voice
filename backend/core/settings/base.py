@@ -263,6 +263,10 @@ DJANGO_BASE_URL = config("DJANGO_BASE_URL", default="http://localhost:8000")
 PUBLIC_BASE_URL = config("PUBLIC_BASE_URL", default="")
 SPRINGBOOT_INTERNAL_URL = config("SPRINGBOOT_INTERNAL_URL", default="http://localhost:8080")
 INTERNAL_EVENT_TOKEN = config("INTERNAL_EVENT_TOKEN", default="dev-internal-event-token")
+# Secreto compartido Django ↔ n8n (encabezado X-NexoMark-Token): Django lo envía
+# al disparar los webhooks de n8n y lo exige en los callbacks; n8n hace lo mismo
+# al revés. El valor por defecto solo sirve en desarrollo: prod.py exige uno propio.
+N8N_WEBHOOK_TOKEN = config("N8N_WEBHOOK_TOKEN", default="dev-n8n-webhook-token")
 
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 GEMINI_MODEL = "gemini-2.5-flash"
