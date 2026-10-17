@@ -9,6 +9,7 @@ from apps.authentication.admin_views import (
     AdminUserDetailView,
     AdminUsersListView,
 )
+from apps.authentication.credit_views import AdminCreditRequestDetailView, AdminCreditRequestListView
 from apps.campaigns.views import AdminAnalyticsView
 from apps.social.views import InternalApprovedEventView, PublicMediaView
 
@@ -44,6 +45,8 @@ urlpatterns = [
     path('api/admin/users/', AdminUsersListView.as_view(), name='admin-users-list'),
     path('api/admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-users-detail'),
     path('api/admin/users/<int:pk>/reset-quota/', AdminResetQuotaView.as_view(), name='admin-users-reset-quota'),
+    path('api/admin/credit-requests/', AdminCreditRequestListView.as_view(), name='admin-credit-requests'),
+    path('api/admin/credit-requests/<int:pk>/', AdminCreditRequestDetailView.as_view(), name='admin-credit-requests-detail'),
 ]
 
 if settings.DEBUG:

@@ -184,6 +184,8 @@ SIMPLE_JWT = {
 
     # Claims adicionales — campo "role" en payload (criterio HU2)
     "TOKEN_OBTAIN_SERIALIZER": "apps.authentication.serializers.CustomTokenObtainPairSerializer",
+    # El refresh también valida token_version e is_active contra la BD.
+    "TOKEN_REFRESH_SERIALIZER": "apps.authentication.serializers.VersionedTokenRefreshSerializer",
 
     # Headers
     "AUTH_HEADER_TYPES": ("Bearer",),
@@ -277,6 +279,27 @@ USE_MOCK_AI = config("USE_MOCK_AI", cast=bool, default=False)
 # Resend (activo en Sprint 4)
 RESEND_API_KEY = config("RESEND_API_KEY", default="")
 RESEND_FROM_EMAIL = config("RESEND_FROM_EMAIL", default="noreply@marketmind.ai")
+
+# ─────────────────────────────────────────────
+# CORREO DE DJANGO — recuperación de contraseña
+# ─────────────────────────────────────────────
+# SMTP de Resend (https://resend.com/docs/send-with-smtp): host smtp.resend.com,
+# STARTTLS en 587, usuario "resend" y la API key como contraseña. dev.py usa la
+# consola y los tests locmem, así que en local no se gasta cuota del proveedor.
+EMAIL_BACKEND = config("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.resend.com")
+EMAIL_PORT = config("EMAIL_PORT", cast=int, default=587)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="resend")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default=RESEND_API_KEY)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", cast=bool, default=True)
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default=f"NexoMark IA <{RESEND_FROM_EMAIL}>")
+
+# Enlace de recuperación: 30 min y de un solo uso. Límites por correo e IP.
+PASSWORD_RESET_TIMEOUT = 1800
+RECOVERY_EMAIL_COOLDOWN_SECONDS = 60
+RECOVERY_EMAIL_HOURLY_LIMIT = 5
+RECOVERY_IP_HOURLY_LIMIT = 20
 
 # ─────────────────────────────────────────────
 # META — publicación en Instagram y Facebook (Fase 3)

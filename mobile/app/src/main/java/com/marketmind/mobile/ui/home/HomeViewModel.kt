@@ -192,10 +192,11 @@ class HomeViewModel @Inject constructor(
     fun editText(
         campaignId: Long,
         texto: String,
+        version: Int,
         onResult: (com.marketmind.mobile.data.remote.dto.CampaignDto?) -> Unit,
     ) {
         viewModelScope.launch {
-            campaignRepository.editText(campaignId, texto)
+            campaignRepository.editText(campaignId, texto, version)
                 .onSuccess { updated ->
                     onResult(updated)
                     fetch(markRefreshing = true)

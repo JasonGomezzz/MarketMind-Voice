@@ -243,3 +243,94 @@ class AuthBrandContent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.screen}: {self.person_name}"
+
+
+class PasswordResetToken(models.Model):
+    """
+    Enlace de recuperación de contraseña de un solo uso.
+
+    En la BD solo se guarda el SHA-256 del token: quien lea la tabla no puede
+    usar los enlaces. El token en claro solo viaja en el correo. Caduca a los
+    PASSWORD_RESET_TIMEOUT segundos y se marca como usado al cambiar la
+    contraseña; pedir un enlace nuevo invalida los anteriores sin usar.
+    """
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="tokens_recuperacion",
+    )
+    token_hash = models.CharField(max_length=64, unique=True)
+    fecha_creacion = models.DateTimeField(default=timezone.now)
+    expira_en = models.DateTimeField()
+    usado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Token de recuperación"
+        verbose_name_plural = "Tokens de recuperación"
+        db_table = "password_reset_tokens"
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self) -> str:
+        estado = "usado" if self.usado_en else "vigente"
+        return f"Recuperación de {self.usuario_id} ({estado})"
+
+
+class CreditRequestStatus(models.TextChoices):
+    PENDIENTE = "pendiente", "Pendiente"
+    APROBADA = "aprobada", "Aprobada"
+    RECHAZADA = "rechazada", "Rechazada"
+
+
+class CreditRequest(models.Model):
+    """
+    Solicitud de créditos de un marketero, resuelta por un superadmin.
+
+    Queda auditada: quién la resolvió, cuándo, cuántos créditos sumó y con qué
+    saldo quedó la cuenta. Solo puede haber una pendiente por marketero.
+    Aprobar no es un pago: la compra simulada (CreditPurchase) sigue aparte.
+    """
+
+    solicitante = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="solicitudes_creditos",
+    )
+    motivo = models.CharField(max_length=300, blank=True, default="")
+    estado = models.CharField(
+        max_length=10,
+        choices=CreditRequestStatus.choices,
+        default=CreditRequestStatus.PENDIENTE,
+    )
+    creditos_otorgados = models.PositiveIntegerField(default=0)
+    saldo_resultante = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="tokens_disponibles del solicitante justo después de aprobar.",
+    )
+    nota_resolucion = models.CharField(max_length=300, blank=True, default="")
+    resuelta_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="solicitudes_creditos_resueltas",
+    )
+    resuelta_en = models.DateTimeField(null=True, blank=True)
+    fecha_creacion = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Solicitud de créditos"
+        verbose_name_plural = "Solicitudes de créditos"
+        db_table = "credit_requests"
+        ordering = ["-fecha_creacion", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["solicitante"],
+                condition=models.Q(estado="pendiente"),
+                name="una_solicitud_pendiente_por_usuario",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Solicitud {self.pk} de {self.solicitante_id} [{self.estado}]"

@@ -62,6 +62,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "rechazos_cliente_count",
             "marketero",
             "fecha_creacion",
+            "version",
         ]
         read_only_fields = [
             "id",
@@ -78,6 +79,7 @@ class CampaignSerializer(serializers.ModelSerializer):
             "rechazos_cliente_count",
             "marketero",
             "fecha_creacion",
+            "version",
         ]
 
     def validate_titulo(self, value: str) -> str:

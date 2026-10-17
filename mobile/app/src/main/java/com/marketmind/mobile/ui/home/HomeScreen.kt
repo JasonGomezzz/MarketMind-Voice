@@ -269,7 +269,7 @@ fun HomeScreen(
                             }
                         },
                         onEditText = { nuevoTexto, onDone ->
-                            viewModel.editText(it.id, nuevoTexto) { updated ->
+                            viewModel.editText(it.id, nuevoTexto, it.version) { updated ->
                                 if (updated != null) selectedProject = updated
                                 onDone()
                             }
