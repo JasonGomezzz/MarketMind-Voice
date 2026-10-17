@@ -23,7 +23,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from weasyprint import HTML as WeasyHTML
 
 from apps.authentication.permissions import IsSuperAdmin
 from core.exceptions import api_response
@@ -1109,6 +1108,20 @@ class CampaignVersionRestoreView(APIView):
         )
 
 
+def _cargar_weasyprint():
+    """
+    Importa WeasyPrint solo al exportar. Si la librería o sus dependencias del
+    sistema (Pango, cairo) no cargan, devuelve None: el resto de la API sigue
+    funcionando y el export responde 503 en vez de tumbar el módulo de vistas.
+    """
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError) as exc:
+        logger.warning("WeasyPrint no disponible; export PDF deshabilitado: %s", exc)
+        return None
+    return HTML
+
+
 class CampaignExportPDFView(APIView):
     """
     GET /api/campaigns/{campaign_id}/export-pdf/
@@ -1146,13 +1159,27 @@ class CampaignExportPDFView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        weasy_html = _cargar_weasyprint()
+        if weasy_html is None:
+            return Response(
+                api_response(
+                    success=False,
+                    message=(
+                        "La exportación a PDF no está disponible en este servidor "
+                        "(falta WeasyPrint o sus librerías del sistema). Intenta más tarde."
+                    ),
+                    data={},
+                ),
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         context = {
             "campaign": campaign,
             "fecha_exportacion": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
         }
         html_string = render_to_string("campaigns/campaign_pdf.html", context)
         try:
-            pdf_bytes = WeasyHTML(
+            pdf_bytes = weasy_html(
                 string=html_string,
                 base_url=request.build_absolute_uri("/"),
             ).write_pdf()
@@ -1169,7 +1196,7 @@ class CampaignExportPDFView(APIView):
                 "campaigns/campaign_pdf.html", context
             )
             campaign.imagen_b64 = original_imagen  # restaurar en memoria
-            pdf_bytes = WeasyHTML(
+            pdf_bytes = weasy_html(
                 string=html_string_sin_imagen,
                 base_url=request.build_absolute_uri("/"),
             ).write_pdf()
