@@ -386,7 +386,9 @@ class TestClienteGraph:
 class TestEdicionYVersion:
     def test_editar_sube_la_version(self, api_client, campana):
         version = campana.version
-        api_client.patch(f"/api/campaigns/{campana.id}/", {"texto_generado": "Nuevo copy"}, format="json")
+        api_client.patch(
+            f"/api/campaigns/{campana.id}/", {"texto_generado": "Nuevo copy", "version": version}, format="json"
+        )
         campana.refresh_from_db()
         assert campana.version == version + 1
 

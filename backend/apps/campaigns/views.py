@@ -44,6 +44,49 @@ logger = logging.getLogger(__name__)
 # aprueba, sin procesador real). Debe mantenerse en sincronía manual con
 # frontend/src/lib/credits.js (PLANS). El cliente solo envía la key del
 # plan; el monto/créditos SIEMPRE se leen de aquí, nunca del body.
+# Estados en que el marketero puede cambiar el contenido (PATCH, improve-text).
+# pendiente_ia: n8n está generando y pisaría el cambio. pendiente_aprobacion:
+# el cliente está revisando. aprobado/fracaso: finales (se publica lo aprobado).
+ESTADOS_EDITABLES = (
+    CampaignStatus.BORRADOR,
+    CampaignStatus.GENERADO,
+    CampaignStatus.RECHAZADO,
+)
+MENSAJE_VERSION_DESACTUALIZADA = (
+    "La campaña cambió desde que la abriste (otra pestaña, la IA o una restauración). "
+    "Recarga para ver la versión actual antes de guardar."
+)
+
+
+def _no_editable(campaign: Campaign) -> Response:
+    return Response(
+        api_response(
+            success=False,
+            message=(
+                f"No se puede modificar una campaña en estado '{campaign.estado}'. "
+                "Solo se editan en borrador, generado o rechazado."
+            ),
+            data={"estado": campaign.estado},
+        ),
+        status=status.HTTP_409_CONFLICT,
+    )
+
+
+def _version_desactualizada(campaign: Campaign) -> Response:
+    return Response(
+        api_response(
+            success=False,
+            message=MENSAJE_VERSION_DESACTUALIZADA,
+            data={"version_actual": campaign.version},
+        ),
+        status=status.HTTP_409_CONFLICT,
+    )
+
+
+def _es_entero(valor: Any) -> bool:
+    return isinstance(valor, int) and not isinstance(valor, bool)
+
+
 CREDIT_PLAN_MAP = {
     "basico": {"nombre": "Básico", "precio": 49, "creditos": 500},
     "pro": {"nombre": "Pro", "precio": 129, "creditos": 1500},
@@ -348,35 +391,45 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         """
-        PATCH /api/campaigns/{id}/
+        PATCH /api/campaigns/{id}/  {prompt?, texto_generado?, version}
 
-        Actualiza texto_generado. Bloqueado si estado es aprobado o rechazado.
+        Edita el contenido con bloqueo optimista: `version` es obligatoria y debe
+        ser la que el cliente leyó; si otra edición, la IA o una restauración la
+        subió antes → 409 sin guardar. Solo en ESTADOS_EDITABLES (si no, 409).
+        Al guardar, la versión sube una sola vez (_subir_version).
         """
-        campaign = self.get_object()
+        version = request.data.get("version")
+        with transaction.atomic():
+            campaign = get_object_or_404(self.get_queryset().select_for_update(), pk=kwargs["pk"])
 
-        if campaign.estado in [CampaignStatus.APROBADO, CampaignStatus.FRACASO]:
-            return Response(
-                api_response(
-                    success=False,
-                    message=f"No se puede editar una campaña en estado '{campaign.estado}'.",
-                    data={},
-                ),
-                status=status.HTTP_409_CONFLICT,
-            )
+            if campaign.estado not in ESTADOS_EDITABLES:
+                return _no_editable(campaign)
 
-        serializer = CampaignEditSerializer(campaign, data=request.data, partial=True)
-        if not serializer.is_valid():
-            return Response(
-                api_response(
-                    success=False,
-                    message="Error de validación.",
-                    data={"errors": serializer.errors},
-                ),
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if not _es_entero(version):
+                return Response(
+                    api_response(
+                        success=False,
+                        message="Falta la versión de la campaña. Recarga la página e intenta de nuevo.",
+                        data={"errors": {"version": ["Envía la 'version' que leíste de la campaña."]}},
+                    ),
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if version != campaign.version:
+                return _version_desactualizada(campaign)
 
-        serializer.save()
-        _subir_version(campaign)
+            serializer = CampaignEditSerializer(campaign, data=request.data, partial=True)
+            if not serializer.is_valid():
+                return Response(
+                    api_response(
+                        success=False,
+                        message="Error de validación.",
+                        data={"errors": serializer.errors},
+                    ),
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            serializer.save()
+            _subir_version(campaign)
         return Response(
             api_response(
                 success=True,
@@ -394,12 +447,15 @@ class CampaignViewSet(viewsets.ModelViewSet):
         Mejora SOLO el copy (texto_generado) con Gemini, sin tocar la imagen.
         Guarda una versión previa (historial LRU-5) antes de reemplazar. No
         consume tokens de cuota: es una edición asistida, no una generación
-        nueva. Solo el marketero, y solo si ya hay texto generado.
+        nueva. Solo el marketero, solo en ESTADOS_EDITABLES y solo si ya hay
+        texto generado. `version` en el body es opcional; si llega, debe
+        coincidir. Gemini se llama fuera de la transacción: si mientras tanto
+        la campaña cambió de versión o de estado, no se guarda nada (409).
 
         Returns:
             HTTP 200 — {campaign} con el texto mejorado.
             HTTP 403 — rol no autorizado.
-            HTTP 409 — no hay texto para mejorar.
+            HTTP 409 — estado no editable, versión desactualizada o sin texto.
         """
         if request.user.rol != "marketero":
             return Response(
@@ -409,15 +465,12 @@ class CampaignViewSet(viewsets.ModelViewSet):
 
         campaign = self.get_object()
 
-        if campaign.estado in [CampaignStatus.APROBADO, CampaignStatus.FRACASO]:
-            return Response(
-                api_response(
-                    success=False,
-                    message=f"No se puede modificar una campaña en estado '{campaign.estado}'.",
-                    data={},
-                ),
-                status=status.HTTP_409_CONFLICT,
-            )
+        if campaign.estado not in ESTADOS_EDITABLES:
+            return _no_editable(campaign)
+
+        version = request.data.get("version")
+        if version is not None and (not _es_entero(version) or version != campaign.version):
+            return _version_desactualizada(campaign)
 
         if not (campaign.texto_generado or "").strip():
             return Response(
@@ -429,18 +482,24 @@ class CampaignViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Preservar el copy actual en el historial antes de reemplazarlo.
-        save_campaign_version(campaign)
-
+        # Fuera de la transacción: no se bloquea la fila mientras responde Gemini.
         mejorado = improve_copy(
             texto_actual=campaign.texto_generado,
             industria=campaign.industria,
             tono=campaign.tono,
             plataforma=campaign.plataforma,
         )
-        campaign.texto_generado = mejorado
-        campaign.save(update_fields=["texto_generado", "fecha_actualizacion"])
-        _subir_version(campaign)
+
+        with transaction.atomic():
+            actual = get_object_or_404(self.get_queryset().select_for_update(), pk=campaign.pk)
+            if actual.version != campaign.version or actual.estado != campaign.estado:
+                return _version_desactualizada(actual)
+            # Preservar el copy actual en el historial antes de reemplazarlo.
+            save_campaign_version(actual)
+            actual.texto_generado = mejorado
+            actual.save(update_fields=["texto_generado", "fecha_actualizacion"])
+            _subir_version(actual)
+        campaign = actual
 
         return Response(
             api_response(
