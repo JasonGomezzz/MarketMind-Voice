@@ -1,7 +1,6 @@
 # NexoMark IA — Sistema visual "Nexo"
 
-> Fuente de verdad visual del frontend React. Reemplaza a "Lumina Creative"
-> (índigo + liquid glass), que queda como antecedente.
+> Fuente de verdad visual del frontend React y única identidad del producto.
 > Identidad tomada del icono aprobado (`brand/nexomark-icon-approved-1024.png`,
 > traído de la rama `piero` y verificado): **azul marino `#14283F`**,
 > **turquesa `#17B8AD`** y blanco. Tipografía **Inter**. Modo **claro y oscuro**.

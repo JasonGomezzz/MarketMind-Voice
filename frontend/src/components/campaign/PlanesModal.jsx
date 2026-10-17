@@ -8,9 +8,8 @@ import CreditRequestButton from '@/components/campaign/CreditRequestButton'
 import { PLANS } from '@/lib/credits'
 
 /**
- * Modal de planes de créditos — réplica fiel de Stitch
- * planes_de_cr_ditos_consistencia_lumina (overlay liquid glass a pantalla
- * completa con 3 cards de precio). Pasarela de pago SIMULADA: "Seleccionar
+ * Modal de planes de créditos (overlay a pantalla completa con 3 cards de
+ * precio). Pasarela de pago SIMULADA: "Seleccionar
  * Plan" abre un checkout ficticio (tarjeta no validada contra ningún
  * procesador real) que llama a POST /api/campaigns/credits/purchase/,
  * el cual siempre aprueba y suma créditos reales al usuario.

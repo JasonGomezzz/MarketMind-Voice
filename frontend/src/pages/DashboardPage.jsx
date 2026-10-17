@@ -17,7 +17,7 @@ import { STATES } from '@/lib/campaignStates'
 import { getAuthItem } from '../services/session'
 
 /**
- * Dashboard de MARKETERO / SUPERADMIN (Lumina Creative).
+ * Dashboard de MARKETERO / SUPERADMIN (diseño NexoMark).
  * El rol CLIENTE usa ClientDashboardPage (ruteado por rol en App.jsx).
  * LÓGICA INTACTA: fetch de /api/campaigns/stats/ + /api/auth/me/, cálculos por
  * estado FSM, loading/error/retry, re-fetch por location.key.

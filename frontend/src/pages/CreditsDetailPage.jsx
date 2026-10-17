@@ -25,7 +25,7 @@ import CreditRequestButton from '@/components/campaign/CreditRequestButton'
  * el producto no tiene: SIN fecha de renovación automática, SIN nombre de
  * "plan" comercial — eso no existe en el modelo User, ver CLAUDE.md).
  * Diseño: réplica fiel de Downloads/creditosia (donut de uso + bento de
- * KPIs + tabla), sistema Lumina Creative. Glass SOLO en el modal de planes.
+ * KPIs + tabla), diseño NexoMark. Glass SOLO en el modal de planes.
  */
 const QUOTA_DEFAULT = 100 // tokens_disponibles default del modelo User
 

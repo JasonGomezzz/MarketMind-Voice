@@ -17,7 +17,7 @@ import api from '../services/api'
 import { STATES } from '@/lib/campaignStates'
 
 /**
- * Analytics del SuperAdmin (Lumina Creative). Consume Django /api/admin/analytics/.
+ * Analytics del SuperAdmin (diseño NexoMark). Consume Django /api/admin/analytics/.
  * LÓGICA INTACTA: fetch por period, estados_globales, campanas_por_marketero, kpi.
  * Gráficos con datos REALES del backend (no inventa series que no existen).
  * Colores de estado alineados con StatusBadge / DESIGN.md.

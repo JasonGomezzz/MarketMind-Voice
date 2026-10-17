@@ -26,7 +26,7 @@ function wordCount(text) {
 }
 
 /**
- * Detalle de campaña (Lumina Creative). Marketero edita copy, envía a aprobación,
+ * Detalle de campaña (diseño NexoMark). Marketero edita copy, envía a aprobación,
  * exporta PDF. LÓGICA INTACTA: fetch, autosave debounce 30s, guardar, submit+modal,
  * export PDF (blob + 402), imagen b64 + descarga, estados readonly, historial.
  * Agrega: stepper FSM del estado.

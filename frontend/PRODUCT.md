@@ -41,7 +41,7 @@ Todo el ciclo en un solo flujo: dictar la idea → la IA crea copy e imagen → 
 
 - Nombre del producto: **NexoMark IA** (confirmado el 2026-10-06). Reemplaza a "MarketMind IA" / "MarketMind Voice" en la interfaz visible. Los identificadores de código y el repositorio siguen llamándose `marketmind`.
 - La marca de la cuenta de demostración es la misma: Instagram `@nexomarkia` ("NexoMarkAI").
-- Sistema visual vigente: "Lumina Creative" (`DESIGN.md`). Si se rediseña, ese aspecto es evidencia, no obligación.
+- Sistema visual vigente: identidad **NexoMark** (azul marino y turquesa, logo aprobado, modo claro y oscuro), descrita en `DESIGN.md`. Es la única identidad del producto.
 
 ## Evidence on Hand
 
