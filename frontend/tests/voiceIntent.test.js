@@ -2,11 +2,17 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   appendDictation,
+  avisoProcesamiento,
   briefError,
   buildTranscript,
   camposParaFormulario,
   dictationSupport,
   getSpeechRecognition,
+  idiomasLocales,
+  planDictado,
+  PROCESAMIENTO,
+  reaccionErrorDictado,
+  soportaDictadoLocal,
   speechErrorMessage,
   MAX_BRIEF,
   unsupportedMessage,
@@ -89,4 +95,90 @@ test('dictationSupport rules out Brave even though it exposes the constructor', 
   assert.equal(dictationSupport({ navigator: {} }).reason, 'unsupported')
   assert.match(unsupportedMessage('brave'), /Brave/)
   assert.match(unsupportedMessage('unsupported'), /Chrome/)
+})
+
+/** Doble de SpeechRecognition con available()/install() según un mapa idioma → estado. */
+function reconocedorConIdiomas(estados, { conInstall = true } = {}) {
+  const consultas = []
+  class Doble {}
+  Doble.available = async (opciones) => {
+    consultas.push(opciones)
+    return estados[opciones.langs[0]] ?? 'unavailable'
+  }
+  if (conInstall) Doble.install = async () => true
+  return { Doble, consultas }
+}
+
+test('local dictation is only offered by browsers that expose SpeechRecognition.available', () => {
+  class ConDisponible {
+    static available() {}
+  }
+  assert.equal(soportaDictadoLocal({ SpeechRecognition: ConDisponible }), true)
+  assert.equal(soportaDictadoLocal({ webkitSpeechRecognition: class {} }), false)
+  assert.equal(soportaDictadoLocal({}), false)
+})
+
+test('idiomasLocales asks for es-PE first and then close Spanish variants without repeating', () => {
+  assert.deepEqual(idiomasLocales('es-PE'), ['es-PE', 'es-419', 'es-US', 'es-MX', 'es-ES'])
+  assert.deepEqual(idiomasLocales('es-US'), ['es-US', 'es-419', 'es-MX', 'es-ES'])
+})
+
+test('planDictado asks for on-device dictation and picks the closest installed Spanish', async () => {
+  const { Doble, consultas } = reconocedorConIdiomas({ 'es-US': 'available', 'es-ES': 'available' })
+  const plan = await planDictado(Doble, idiomasLocales('es-PE'))
+  assert.deepEqual(plan, { modo: PROCESAMIENTO.LOCAL, lang: 'es-US', descargable: null, descargando: false })
+  assert.ok(consultas.every((opciones) => opciones.processLocally === true && opciones.quality === 'dictation'))
+})
+
+test('planDictado falls back to the server and offers a download when a pack can be installed', async () => {
+  const { Doble } = reconocedorConIdiomas({ 'es-ES': 'downloadable' })
+  assert.deepEqual(await planDictado(Doble, idiomasLocales()), {
+    modo: PROCESAMIENTO.SERVIDOR,
+    lang: 'es-PE',
+    descargable: 'es-ES',
+    descargando: false,
+  })
+
+  const sinInstall = reconocedorConIdiomas({ 'es-ES': 'downloadable' }, { conInstall: false })
+  assert.equal((await planDictado(sinInstall.Doble, idiomasLocales())).descargable, null)
+
+  const bajando = reconocedorConIdiomas({ 'es-PE': 'downloading', 'es-ES': 'downloadable' })
+  const plan = await planDictado(bajando.Doble, idiomasLocales())
+  assert.equal(plan.descargando, true)
+  assert.equal(plan.descargable, null)
+})
+
+test('planDictado treats a blocked or missing availability check as server dictation', async () => {
+  class Bloqueado {
+    static available() {
+      throw new DOMException('bloqueado por Permissions-Policy', 'NotAllowedError')
+    }
+  }
+  assert.equal((await planDictado(Bloqueado, idiomasLocales())).modo, PROCESAMIENTO.SERVIDOR)
+  assert.equal((await planDictado(class {}, idiomasLocales())).modo, PROCESAMIENTO.SERVIDOR)
+  assert.equal((await planDictado(null, idiomasLocales())).modo, PROCESAMIENTO.SERVIDOR)
+})
+
+test('the processing notice never promises more privacy than the browser gives', () => {
+  assert.match(avisoProcesamiento(PROCESAMIENTO.LOCAL), /en este equipo/)
+  assert.doesNotMatch(avisoProcesamiento(PROCESAMIENTO.LOCAL), /servidores/)
+  assert.match(avisoProcesamiento(PROCESAMIENTO.SERVIDOR), /puede enviar el audio a sus servidores/)
+  for (const modo of [PROCESAMIENTO.LOCAL, PROCESAMIENTO.SERVIDOR]) {
+    assert.match(avisoProcesamiento(modo), /NexoMark solo recibe el texto/)
+  }
+})
+
+test('a missing local language pack switches to server mode without restarting on its own', () => {
+  assert.equal(reaccionErrorDictado('language-not-supported', PROCESAMIENTO.LOCAL), 'pasar-a-servidor')
+  assert.equal(reaccionErrorDictado('language-not-supported', PROCESAMIENTO.SERVIDOR), 'mostrar')
+  assert.equal(reaccionErrorDictado('no-speech', PROCESAMIENTO.LOCAL), 'mostrar')
+  assert.match(speechErrorMessage('language-not-supported'), /español/)
+})
+
+test('Brave stays blocked even if it exposes the on-device API', () => {
+  class ConDisponible {
+    static available() {}
+  }
+  const scope = { navigator: { brave: {} }, SpeechRecognition: ConDisponible }
+  assert.deepEqual(dictationSupport(scope), { supported: false, reason: 'brave' })
 })

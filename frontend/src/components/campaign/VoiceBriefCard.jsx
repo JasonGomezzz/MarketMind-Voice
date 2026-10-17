@@ -1,9 +1,16 @@
 import { useCallback, useState } from 'react'
-import { Mic, Square, Wand2, Loader2, TriangleAlert, CircleCheck } from 'lucide-react'
+import { Mic, Square, Wand2, Loader2, TriangleAlert, CircleCheck, Cloud, Laptop } from 'lucide-react'
 import api from '../../services/api'
 import { Button } from '@/components/ui/button'
 import useSpeechRecognition from '../../hooks/useSpeechRecognition'
-import { appendDictation, briefError, MAX_BRIEF, unsupportedMessage } from '../../services/voiceIntent'
+import {
+  appendDictation,
+  avisoProcesamiento,
+  briefError,
+  MAX_BRIEF,
+  PROCESAMIENTO,
+  unsupportedMessage,
+} from '../../services/voiceIntent'
 
 /**
  * Paso previo al formulario: el marketero dicta (o escribe) el brief y la IA
@@ -88,7 +95,7 @@ export default function VoiceBriefCard({ onInterpreted, resumen, disabled }) {
             type="button"
             variant={voz.listening ? 'secondary' : 'outline'}
             onClick={voz.listening ? voz.stop : voz.start}
-            disabled={ocupado}
+            disabled={ocupado || voz.procesamiento === PROCESAMIENTO.COMPROBANDO}
             aria-pressed={voz.listening}
           >
             {voz.listening ? (
@@ -120,6 +127,33 @@ export default function VoiceBriefCard({ onInterpreted, resumen, disabled }) {
           {texto.length}/{MAX_BRIEF}
         </span>
       </div>
+
+      {voz.supported && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant">
+          <p className="flex items-start gap-1.5">
+            {voz.procesamiento === PROCESAMIENTO.LOCAL ? (
+              <Laptop className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            ) : (
+              <Cloud className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            )}
+            {avisoProcesamiento(voz.procesamiento)}
+          </p>
+          {voz.descargando ? (
+            <span>Descargando español para dictar en este equipo…</span>
+          ) : (
+            voz.idiomaDescargable && (
+              <button
+                type="button"
+                onClick={voz.instalarIdioma}
+                disabled={ocupado || voz.listening}
+                className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                Descargar español para dictar sin enviar audio
+              </button>
+            )
+          )}
+        </div>
+      )}
 
       {(error || voz.error) && (
         <p role="alert" className="mt-3 rounded-lg border border-error/20 bg-error-container px-4 py-3 text-sm text-on-error-container">

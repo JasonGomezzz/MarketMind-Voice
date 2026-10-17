@@ -1,8 +1,9 @@
 /**
  * Lógica pura del dictado de campañas (sin React ni DOM, para poder probarla).
  *
- * El navegador transcribe la voz; aquí solo se arma el texto y se decide qué
- * campos interpretados por el backend pueden volcarse al formulario.
+ * El navegador transcribe la voz (en el equipo si lo permite); aquí solo se
+ * arma el texto, se decide cómo dictar y qué campos interpretados por el
+ * backend pueden volcarse al formulario. Nunca se sube audio.
  */
 
 export const CAMPOS_INTENT = [
@@ -44,6 +45,99 @@ export function unsupportedMessage(reason) {
 }
 
 /**
+ * Dónde transcribe la voz el navegador. A NexoMark solo llega el texto en
+ * todos los casos; lo que cambia es si el audio sale del equipo.
+ *
+ * - local: `processLocally = true`. El navegador transcribe en el equipo
+ *   (Chrome y Edge 139+ de escritorio, con el paquete de idioma instalado).
+ * - servidor: el navegador puede enviar el audio a sus servidores (Chrome
+ *   lo hace así por defecto).
+ * - comprobando: se está preguntando al navegador; no se dicta todavía.
+ *
+ * Fuentes (MDN, consultadas el 2026-10-16): SpeechRecognition.processLocally,
+ * SpeechRecognition.available() y SpeechRecognition.install().
+ */
+export const PROCESAMIENTO = {
+  LOCAL: 'local',
+  SERVIDOR: 'servidor',
+  COMPROBANDO: 'comprobando',
+}
+
+/** Variantes de español aceptables para dictar en el equipo, de más a menos cercana a es-PE. */
+export const ESPANOL_CERCANO = ['es-419', 'es-US', 'es-MX', 'es-ES']
+
+/** Idiomas a consultar para el dictado local: el pedido primero y luego variantes cercanas. */
+export function idiomasLocales(lang = 'es-PE') {
+  return [lang, ...ESPANOL_CERCANO.filter((variante) => variante !== lang)]
+}
+
+/** ¿El navegador permite pedir reconocimiento en el equipo? */
+export function soportaDictadoLocal(scope = globalThis) {
+  return typeof getSpeechRecognition(scope)?.available === 'function'
+}
+
+/**
+ * Decide cómo dictar preguntando a `SpeechRecognition.available()` por cada idioma.
+ *
+ * @param {Function|null} SpeechRecognition  constructor del navegador (o un doble en tests)
+ * @param {string[]} idiomas  en orden de preferencia; el primero es el que se usa en servidor
+ * @returns {Promise<{ modo: string, lang: string, descargable: string|null, descargando: boolean }>}
+ */
+export async function planDictado(SpeechRecognition, idiomas = idiomasLocales()) {
+  const preferido = idiomas[0]
+  const enServidor = { modo: PROCESAMIENTO.SERVIDOR, lang: preferido, descargable: null, descargando: false }
+  if (typeof SpeechRecognition?.available !== 'function') return enServidor
+
+  const estados = await Promise.all(
+    idiomas.map(async (lang) => {
+      try {
+        return await SpeechRecognition.available({ langs: [lang], processLocally: true, quality: 'dictation' })
+      } catch {
+        // Lo bloquea un Permissions-Policy o la etiqueta no es válida: se trata como no disponible.
+        return 'unavailable'
+      }
+    }),
+  )
+
+  const listo = estados.indexOf('available')
+  if (listo >= 0) return { modo: PROCESAMIENTO.LOCAL, lang: idiomas[listo], descargable: null, descargando: false }
+
+  const descargando = estados.includes('downloading')
+  const descargable = estados.indexOf('downloadable')
+  const puedeInstalar = typeof SpeechRecognition.install === 'function'
+  return {
+    ...enServidor,
+    descargando,
+    descargable: !descargando && puedeInstalar && descargable >= 0 ? idiomas[descargable] : null,
+  }
+}
+
+/** Aviso breve y honesto de dónde se transcribe la voz. */
+export function avisoProcesamiento(modo) {
+  switch (modo) {
+    case PROCESAMIENTO.LOCAL:
+      return 'Tu navegador transcribe la voz en este equipo. NexoMark solo recibe el texto.'
+    case PROCESAMIENTO.COMPROBANDO:
+      return 'Comprobando si tu navegador puede transcribir en este equipo…'
+    default:
+      return 'Tu navegador puede enviar el audio a sus servidores para transcribirlo (Chrome lo hace así por defecto). NexoMark solo recibe el texto.'
+  }
+}
+
+/**
+ * Qué hacer ante un error del reconocimiento. Si el dictado local no tiene el
+ * idioma listo se pasa al modo servidor, pero no se reinicia solo: el usuario
+ * vuelve a pulsar Dictar sabiendo que el audio puede salir del equipo.
+ */
+export function reaccionErrorDictado(code, modo) {
+  if (modo === PROCESAMIENTO.LOCAL && code === 'language-not-supported') return 'pasar-a-servidor'
+  return 'mostrar'
+}
+
+export const MENSAJE_LOCAL_NO_LISTO =
+  'El español no está listo para dictar en este equipo. Pulsa Dictar otra vez: tu navegador puede enviar el audio a sus servidores para transcribirlo.'
+
+/**
  * Separa lo ya confirmado por el navegador de lo que aún está reconociendo.
  * `results` es un SpeechRecognitionResultList (o un arreglo con la misma forma).
  */
@@ -79,6 +173,8 @@ export function speechErrorMessage(code) {
       return 'No se encontró un micrófono. Puedes escribir el brief.'
     case 'network':
       return 'El servicio de dictado del navegador no respondió. Revisa la conexión o usa Chrome o Edge; también puedes escribir el brief.'
+    case 'language-not-supported':
+      return 'Tu navegador no puede dictar en español. Escribe el brief.'
     case 'aborted':
       return ''
     default:
