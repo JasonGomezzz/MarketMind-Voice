@@ -13,7 +13,13 @@ import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
 import CampaignStepper from '@/components/CampaignStepper'
 
-const READONLY_STATES = ['aprobado', 'fracaso']
+// El backend solo acepta cambios de contenido en borrador, generado o rechazado.
+const READONLY_STATES = ['pendiente_aprobacion', 'aprobado', 'fracaso']
+const READONLY_MESSAGES = {
+  pendiente_aprobacion: 'El cliente está revisando esta campaña. No se puede editar hasta que decida.',
+  aprobado: 'Esta campaña fue aprobada. El texto está bloqueado.',
+  fracaso: 'Esta campaña fue rechazada dos veces y quedó en fracaso. Ya no puede modificarse ni regenerarse.',
+}
 
 function wordCount(text) {
   return text.trim() ? text.trim().split(/\s+/).length : 0
@@ -131,6 +137,7 @@ export default function CampaignDetailPage() {
       const { data } = await api.patch(`/api/campaigns/${id}/`, {
         prompt: promptText,
         texto_generado: text,
+        version: campaign.version,
       })
       setCampaign(data.data.campaign)
       setPromptText(data.data.campaign.prompt || '')
@@ -139,6 +146,12 @@ export default function CampaignDetailPage() {
       toast.success('Cambios guardados')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error al guardar')
+      if (err.response?.status === 409) {
+        // Otra pestaña, la IA o una restauración cambió la campaña: se guarda lo
+        // escrito como borrador local y se recarga la versión del servidor.
+        localStorage.setItem(draftKey, text)
+        fetchCampaign({ useDraft: true }).catch(() => {})
+      }
     } finally {
       setSaving(false)
     }
@@ -318,12 +331,12 @@ export default function CampaignDetailPage() {
               className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${
                 campaign.estado === 'aprobado'
                   ? 'border-success/20 bg-success-container text-success'
-                  : 'border-error/20 bg-error-container text-on-error-container'
+                  : campaign.estado === 'pendiente_aprobacion'
+                    ? 'border-primary/20 bg-primary/5 text-on-surface'
+                    : 'border-error/20 bg-error-container text-on-error-container'
               }`}
             >
-              {campaign.estado === 'aprobado'
-                ? 'Esta campaña fue aprobada. El texto está bloqueado.'
-                : 'Esta campaña fue rechazada dos veces y quedó en fracaso. Ya no puede modificarse ni regenerarse.'}
+              {READONLY_MESSAGES[campaign.estado]}
             </div>
           )}
 
@@ -416,7 +429,7 @@ export default function CampaignDetailPage() {
               <div className="flex gap-2">
                 {!isReadonly && (
                   <>
-                    <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+                    <Button variant="outline" size="sm" onClick={handleSave} disabled={saving || isGenerating}>
                       {saving ? 'Guardando…' : 'Guardar cambios'}
                     </Button>
                     {canSubmit && (
