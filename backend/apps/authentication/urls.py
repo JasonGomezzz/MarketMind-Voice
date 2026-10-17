@@ -7,6 +7,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import AuthBrandContentView, ChangePasswordView, LogoutView, MeView, RegisterView
+from .credit_views import MyCreditRequestsView
 from .password_reset import PasswordResetConfirmView, PasswordResetRequestView
 from .token_views import CustomTokenObtainPairView
 
@@ -37,6 +38,9 @@ urlpatterns = [
         PasswordResetConfirmView.as_view(),
         name="auth-password-reset-confirm",
     ),
+
+    # Solicitudes de créditos del marketero (las resuelve el superadmin)
+    path("credit-requests/", MyCreditRequestsView.as_view(), name="auth-credit-requests"),
 
     # Contenido público para panel Login/Register
     path("brand-content/", AuthBrandContentView.as_view(), name="auth-brand-content"),
