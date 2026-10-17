@@ -792,8 +792,11 @@ class IaResultCallbackView(APIView):
         """
         Procesa el resultado de generación IA enviado por n8n.
 
-        Éxito: PENDIENTE_IA → GENERADO, guarda texto_generado.
+        Éxito: PENDIENTE_IA → GENERADO, guarda texto_generado y sube la versión
+        (contenido nuevo: una pestaña con el copy anterior ya no puede pisarlo).
         Fallo: PENDIENTE_IA → BORRADOR, devuelve 1 token al marketero.
+        Si la campaña ya no está en PENDIENTE_IA (callback repetido o tardío),
+        responde 409 sin tocar contenido, créditos ni historial.
         Todo en transaction.atomic() para consistencia.
         """
         token = request.data.get("n8n_callback_token")
@@ -826,6 +829,7 @@ class IaResultCallbackView(APIView):
                     campaign.imagen_b64 = imagen_b64
                     campaign.save(update_fields=["texto_generado", "imagen_b64", "fecha_actualizacion"])
                     save_campaign_version(campaign)
+                    _subir_version(campaign)
                     campaign.transition_to(CampaignStatus.GENERADO)
 
                     return Response(

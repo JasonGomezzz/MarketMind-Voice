@@ -105,6 +105,57 @@ class TestIaResultCallbackFailure:
 
 
 @pytest.mark.django_db
+class TestIaResultCallbackVersion:
+    """El resultado de la IA sube la versión una vez; un callback fuera de pendiente_ia no la toca."""
+
+    def _callback(self, client, campaign, **body):
+        return client.post(
+            CALLBACK_URL, {"n8n_callback_token": str(campaign.n8n_callback_token), **body}, format="json"
+        )
+
+    def test_exito_sube_la_version_una_sola_vez(self, campaign_pendiente_ia, n8n_client):
+        version = campaign_pendiente_ia.version
+        assert self._callback(n8n_client, campaign_pendiente_ia, success=True, copy="Copy nuevo").status_code == 200
+        campaign_pendiente_ia.refresh_from_db()
+        assert campaign_pendiente_ia.version == version + 1
+
+    def test_fallo_no_sube_la_version(self, campaign_pendiente_ia, n8n_client):
+        version = campaign_pendiente_ia.version
+        self._callback(n8n_client, campaign_pendiente_ia, success=False, error="timeout")
+        campaign_pendiente_ia.refresh_from_db()
+        assert campaign_pendiente_ia.version == version
+
+    def test_callback_repetido_no_pisa_lo_editado_ni_la_version(self, campaign_pendiente_ia, n8n_client):
+        assert self._callback(n8n_client, campaign_pendiente_ia, success=True, copy="Primer resultado").status_code == 200
+        Campaign.objects.filter(pk=campaign_pendiente_ia.pk).update(texto_generado="Editado por el marketero")
+        campaign_pendiente_ia.refresh_from_db()
+        version = campaign_pendiente_ia.version
+
+        repetido = self._callback(n8n_client, campaign_pendiente_ia, success=True, copy="Resultado repetido")
+
+        assert repetido.status_code == 409
+        campaign_pendiente_ia.refresh_from_db()
+        assert campaign_pendiente_ia.texto_generado == "Editado por el marketero"
+        assert campaign_pendiente_ia.version == version
+        assert CampaignVersion.objects.filter(campaign=campaign_pendiente_ia).count() == 1
+
+    @pytest.mark.parametrize("estado", [
+        CampaignStatus.BORRADOR,
+        CampaignStatus.PENDIENTE_APROBACION,
+        CampaignStatus.APROBADO,
+        CampaignStatus.RECHAZADO,
+        CampaignStatus.FRACASO,
+    ])
+    def test_ignora_campanas_fuera_de_pendiente_ia(self, campaign_generada, n8n_client, estado):
+        Campaign.objects.filter(pk=campaign_generada.pk).update(estado=estado)
+        assert self._callback(n8n_client, campaign_generada, success=True, copy="Tarde").status_code == 409
+        campaign_generada.refresh_from_db()
+        assert campaign_generada.texto_generado == "Copy generado de prueba."
+        assert campaign_generada.estado == estado
+        assert campaign_generada.version == 1
+
+
+@pytest.mark.django_db
 class TestIaResultCallbackInvalidToken:
     def test_invalid_token_returns_403(self, n8n_client):
         client = n8n_client
