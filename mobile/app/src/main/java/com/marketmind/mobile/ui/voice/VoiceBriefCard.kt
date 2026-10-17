@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -29,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -77,6 +80,7 @@ fun VoiceBriefCard(
     var escuchando by remember { mutableStateOf(false) }
     var porVoz by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var estadoActualizado by remember { mutableStateOf<EstadoDictado?>(null) }
 
     val dictado = remember {
         SpeechDictation(
@@ -91,9 +95,12 @@ fun VoiceBriefCard(
                 escuchando = false
                 parcial = ""
             },
+            onEstado = { estadoActualizado = it },
         )
     }
     DisposableEffect(dictado) { onDispose { dictado.destroy() } }
+    val voz = estadoActualizado ?: dictado.estado
+    val puedeDictar = voz.modo != ModoDictado.NO_DISPONIBLE
 
     fun empezar() {
         error = null
@@ -165,7 +172,7 @@ fun VoiceBriefCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (dictado.available) {
+                if (puedeDictar) {
                     OutlinedButton(
                         onClick = {
                             when {
@@ -226,7 +233,12 @@ fun VoiceBriefCard(
                 }
             }
 
-            if (!dictado.available) {
+            AvisoDictado(
+                estado = voz,
+                descargaHabilitada = !ocupado && !escuchando,
+                onDescargar = { dictado.descargarIdioma() },
+            )
+            if (!puedeDictar) {
                 Text(
                     text = "Este teléfono no tiene reconocimiento de voz disponible. Escribe el brief.",
                     color = TextMuted,
@@ -291,6 +303,64 @@ fun VoiceBriefCard(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Dice dónde se transcribe la voz según el reconocedor que de verdad se usa
+ * y, si el teléfono puede bajar español para dictar sin enviar audio, lo ofrece.
+ */
+@Composable
+private fun AvisoDictado(
+    estado: EstadoDictado,
+    descargaHabilitada: Boolean,
+    onDescargar: () -> Unit,
+) {
+    val aviso = SeleccionDictado.avisoPrivacidad(estado.modo)
+    if (aviso != null) {
+        Row(
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = if (estado.modo == ModoDictado.EN_DISPOSITIVO) {
+                    Icons.Outlined.PhoneAndroid
+                } else {
+                    Icons.Outlined.Cloud
+                },
+                contentDescription = null,
+                tint = TextMuted,
+                modifier = Modifier
+                    .padding(top = 1.dp)
+                    .size(14.dp),
+            )
+            Text(
+                text = aviso,
+                color = TextMuted,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+    when {
+        estado.descargando -> Text(
+            text = "Descargando español para dictar sin enviar audio. Mientras tanto se usa el reconocedor de Google.",
+            color = TextMuted,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+        )
+        estado.idiomaDescargable -> TextButton(
+            onClick = onDescargar,
+            enabled = descargaHabilitada,
+        ) {
+            Text(
+                text = "Descargar español para dictar sin enviar audio",
+                color = BrandBlue,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
