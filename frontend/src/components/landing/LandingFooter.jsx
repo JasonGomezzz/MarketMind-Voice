@@ -1,58 +1,74 @@
 import { Link } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { Button } from '@/components/ui/button'
+import { ArrowRight } from 'lucide-react'
+import { ButtonLink } from '@/components/ui/button'
+
+const LINKS = [
+  { href: '#como-funciona', label: 'Cómo funciona' },
+  { href: '#funciones', label: 'Funciones' },
+  { href: '#ejemplos', label: 'Ejemplos' },
+  { href: '#precios', label: 'Precios' },
+]
 
 /**
- * CTA final + footer. El HTML de Stitch no traía footer;
- * se construye coherente con el sistema Lumina Creative.
+ * Cierre de la portada: una acción final y el nombre de la marca a todo lo
+ * ancho sobre el azul marino del icono.
  */
 export default function LandingFooter() {
   return (
-    <footer>
-      {/* CTA final */}
-      <section className="mx-auto max-w-[1440px] px-6 pb-16 md:px-10">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.6 }}
-          className="step-gradient overflow-hidden rounded-3xl px-8 py-16 text-center text-white md:px-16"
+    <footer className="px-2 pb-2 sm:px-3 sm:pb-3">
+      <div className="mx-auto max-w-[1440px]">
+        {/* Acción final */}
+        <section
+          aria-labelledby="cta-title"
+          className="grid gap-8 rounded-2xl bg-primary px-6 py-14 text-on-primary sm:px-10 lg:grid-cols-12 lg:items-end lg:px-14 lg:py-20"
         >
-          <h2 className="mx-auto mb-4 max-w-2xl text-4xl font-bold tracking-tight text-balance">
-            Empieza a crear campañas con IA hoy mismo
-          </h2>
-          <p className="mx-auto mb-8 max-w-xl text-lg text-white/85">
-            Regístrate gratis y genera tu primera campaña en minutos.
-          </p>
-          <Link to="/login">
-            <Button variant="light" size="lg">
-              Empezar gratis
-            </Button>
-          </Link>
-        </motion.div>
-      </section>
-
-      {/* Pie */}
-      <div className="border-t border-outline-variant bg-surface-container-low">
-        <div className="mx-auto flex max-w-[1440px] flex-col items-center gap-4 px-6 py-10 text-center md:px-10">
-          <span className="text-xl font-bold text-primary">NexoMark IA</span>
-          <p className="max-w-md text-sm text-on-surface-variant">
-            Automatización de campañas publicitarias con IA para agencias digitales.
-          </p>
-          <div className="flex gap-6 text-sm text-on-surface-variant">
-            <a href="#precios" className="transition-colors hover:text-primary">
-              Precios
-            </a>
-            <a href="#funciones" className="transition-colors hover:text-primary">
-              Funciones
-            </a>
-            <Link to="/login" className="transition-colors hover:text-primary">
-              Iniciar sesión
-            </Link>
+          <div className="lg:col-span-8">
+            <h2 id="cta-title" className="text-[clamp(2rem,4.2vw,3.75rem)] font-extrabold leading-[1.02] tracking-[-0.03em]">
+              Dicta tu primera campaña hoy
+            </h2>
+            <p className="mt-4 max-w-[36rem] text-lg leading-relaxed">
+              Crea tu cuenta, conecta las redes de tu cliente y prueba el flujo completo con 100 créditos de IA.
+            </p>
           </div>
-          <p className="mt-2 text-xs text-outline">
-            © {new Date().getFullYear()} NexoMark IA. Todos los derechos reservados.
-          </p>
+          <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
+            <ButtonLink to="/register" variant="onBrand" size="lg">
+              Crear cuenta
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </ButtonLink>
+          </div>
+        </section>
+
+        {/* Pie */}
+        <div className="mt-2 overflow-hidden rounded-2xl bg-navy px-6 pt-12 text-on-navy sm:mt-3 sm:px-10 lg:px-14 lg:pt-16">
+          <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
+            <p className="max-w-sm text-[15px] leading-relaxed text-on-navy-muted">
+              Campañas creadas desde la voz, aprobadas por el cliente y publicadas en Instagram y Facebook.
+            </p>
+            <nav aria-label="Pie de página" className="grid grid-cols-2 gap-x-10 gap-y-3 text-[15px] sm:grid-cols-3">
+              {LINKS.map((link) => (
+                <a key={link.href} href={link.href} className="text-on-navy-muted transition-colors hover:text-on-navy">
+                  {link.label}
+                </a>
+              ))}
+              <Link to="/login" className="text-on-navy-muted transition-colors hover:text-on-navy">
+                Iniciar sesión
+              </Link>
+              <Link to="/register" className="text-on-navy-muted transition-colors hover:text-on-navy">
+                Crear cuenta
+              </Link>
+            </nav>
+          </div>
+
+          {/* El nombre, construido a lo ancho */}
+          <div className="mt-14 flex items-end gap-[1.5vw] lg:mt-20" aria-hidden="true">
+            <img src="/nexomark-icon-192.png" alt="" className="h-[11vw] max-h-40 w-[11vw] max-w-40 translate-y-[6%]" />
+            <span className="text-[clamp(3.5rem,15.5vw,14.5rem)] font-extrabold leading-[0.78] tracking-[-0.05em]">
+              NexoMark
+            </span>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 pb-8 pt-4 text-[13px] text-on-navy-muted">
+            <span>© {new Date().getFullYear()} NexoMark IA</span>
+          </div>
         </div>
       </div>
     </footer>

@@ -1,48 +1,42 @@
 import { Link } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import { ButtonLink } from '@/components/ui/button'
+import BrandLogo from '@/components/BrandLogo'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 
-/**
- * Barra de navegación fija de la landing pública.
- * Glass + blur al hacer scroll. Navega a /login (no hay /register aún).
- */
+const LINKS = [
+  { href: '#como-funciona', label: 'Cómo funciona' },
+  { href: '#funciones', label: 'Funciones' },
+  { href: '#ejemplos', label: 'Ejemplos' },
+  { href: '#precios', label: 'Precios' },
+]
+
+/** Barra de la portada: logo, cuatro anclas, tema, acceso y una acción. */
 export default function LandingNav() {
   return (
-    <header className="fixed top-0 left-0 z-50 w-full bg-surface/80 backdrop-blur-md shadow-sm">
-      <nav className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6 md:px-10">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="text-2xl font-bold text-primary tracking-tight">
-            NexoMark IA
+    <header className="sticky top-0 z-50 w-full bg-background">
+      <nav aria-label="Principal" className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
+        <div className="flex items-center gap-10">
+          <Link to="/" aria-label="NexoMark IA, inicio" className="text-lg sm:text-xl">
+            <BrandLogo />
           </Link>
-          <div className="hidden items-center gap-6 md:flex">
-            <a
-              href="#como-funciona"
-              className="text-base text-on-surface-variant transition-colors hover:text-primary"
-            >
-              Cómo funciona
-            </a>
-            <a
-              href="#funciones"
-              className="text-base text-on-surface-variant transition-colors hover:text-primary"
-            >
-              Funciones
-            </a>
-            <a
-              href="#precios"
-              className="text-base text-on-surface-variant transition-colors hover:text-primary"
-            >
-              Precios
-            </a>
-          </div>
+          <ul className="hidden items-center gap-7 lg:flex">
+            {LINKS.map((link) => (
+              <li key={link.href}>
+                <a href={link.href} className="text-[15px] font-medium text-on-surface-variant transition-colors hover:text-on-surface">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="flex items-center gap-3">
-          <Link to="/login">
-            <Button variant="ghost" size="sm">
-              Iniciar sesión
-            </Button>
-          </Link>
-          <Link to="/login">
-            <Button size="sm">Empezar gratis</Button>
-          </Link>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+          <ButtonLink to="/login" variant="ghost" size="sm" className="hidden sm:inline-flex">
+            Iniciar sesión
+          </ButtonLink>
+          <ButtonLink to="/register" size="sm">
+            Empezar gratis
+          </ButtonLink>
         </div>
       </nav>
     </header>

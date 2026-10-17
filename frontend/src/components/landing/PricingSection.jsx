@@ -1,134 +1,179 @@
-import { Link } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { Check, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Info } from 'lucide-react'
+import { ButtonLink } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 /**
- * Precios por CUOTA DE TOKENS de IA (1 crédito = 1 generación).
- * Coherente con el backend: sin video AI, sin features inventadas.
+ * Planes por créditos de IA (1 crédito = 1 generación). Los precios son de
+ * EJEMPLO: los planes aún no están definidos (PRODUCT.md). Por decisión de
+ * Jason no se borran, se rotulan de forma visible.
  */
 const PLANS = [
-  {
-    nombre: 'Starter',
-    precio: 'S/ 99',
-    periodo: '/mes',
-    destacado: false,
-    features: [
-      { txt: '500 créditos de IA al mes', ok: true },
-      { txt: 'Copy con IA ilimitado', ok: true },
-      { txt: '1 usuario marketero', ok: true },
-      { txt: 'Analytics avanzado', ok: false },
-    ],
-    cta: 'Elegir Starter',
-  },
-  {
-    nombre: 'Pro',
-    precio: 'S/ 299',
-    periodo: '/mes',
-    destacado: true,
-    features: [
-      { txt: '2,000 créditos de IA al mes', ok: true },
-      { txt: 'Copy e imágenes con IA', ok: true },
-      { txt: 'Hasta 5 usuarios', ok: true },
-      { txt: 'App de aprobación para clientes', ok: true },
-    ],
-    cta: 'Empezar con Pro',
-  },
-  {
-    nombre: 'Enterprise',
-    precio: 'A medida',
-    periodo: '',
-    destacado: false,
-    features: [
-      { txt: 'Créditos de IA ilimitados', ok: true },
-      { txt: 'Analytics completo', ok: true },
-      { txt: 'Usuarios ilimitados', ok: true },
-      { txt: 'Soporte prioritario', ok: true },
-    ],
-    cta: 'Contactar ventas',
-  },
+  { nombre: 'Starter', precio: 'S/ 99', periodo: 'al mes', cta: 'Elegir Starter' },
+  { nombre: 'Pro', precio: 'S/ 299', periodo: 'al mes', cta: 'Empezar con Pro', destacado: true },
+  { nombre: 'Enterprise', precio: 'A medida', periodo: '', cta: 'Contactar ventas' },
 ]
+
+// Cada fila compara lo que listaba cada plan de ejemplo. null = el ejemplo no lo define ("Sin definir").
+const ROWS = [
+  { label: 'Créditos de IA', values: ['500 al mes', '2000 al mes', 'Ilimitados'] },
+  { label: 'Contenido con IA', values: ['Copy ilimitado', 'Copy e imágenes', null] },
+  { label: 'Usuarios', values: ['1 marketero', 'Hasta 5', 'Ilimitados'] },
+  { label: 'App de aprobación para clientes', values: [null, 'Incluida', null] },
+  { label: 'Analítica', values: ['Avanzado no incluido', null, 'Completo'] },
+  { label: 'Soporte prioritario', values: [null, null, 'Incluido'] },
+]
+
+function Value({ value, onNavy = false }) {
+  if (value) return value
+  return <span className={onNavy ? 'text-on-navy-muted' : 'text-on-surface-variant'}>Sin definir</span>
+}
+
+function DemoPrice() {
+  return (
+    <span className="demo-tag">
+      <Info className="h-3 w-3" aria-hidden="true" />
+      Precio de ejemplo
+    </span>
+  )
+}
 
 export default function PricingSection() {
   return (
-    <section id="precios" className="mx-auto max-w-[1440px] px-6 py-24 md:px-10">
-      <div className="mb-16 text-center">
-        <h2 className="mb-4 text-4xl font-bold tracking-tight text-on-surface text-balance">
-          Planes flexibles por créditos
-        </h2>
-        <p className="mx-auto max-w-xl text-base text-on-surface-variant">
-          Pagas solo por lo que generas. Cada crédito equivale a una generación de
-          IA. Sin contratos complicados.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        {PLANS.map((plan, i) => (
-          <motion.div
-            key={plan.nombre}
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.5, delay: i * 0.08 }}
-            className={
-              plan.destacado
-                ? 'relative flex scale-105 flex-col items-center rounded-3xl bg-primary p-10 text-on-primary shadow-2xl'
-                : 'glass-card flex flex-col items-center rounded-3xl border border-outline-variant p-10'
-            }
+    <section id="precios" aria-labelledby="precios-title" className="scroll-mt-16 bg-surface-container-low px-4 py-24 sm:px-6 lg:px-10 lg:py-36">
+      <div className="mx-auto max-w-[1440px]">
+        <div className="grid gap-6 lg:grid-cols-12">
+          <h2
+            id="precios-title"
+            className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold leading-[1.05] tracking-[-0.03em] text-on-surface lg:col-span-5"
           >
-            {plan.destacado && (
-              <div className="absolute -top-4 rounded-full bg-tertiary px-4 py-1 text-xs font-bold uppercase tracking-wider text-on-tertiary">
-                Más popular
-              </div>
-            )}
-            <h3
-              className={
-                plan.destacado
-                  ? 'mb-2 text-2xl font-semibold'
-                  : 'mb-2 text-2xl font-semibold text-on-surface'
-              }
-            >
-              {plan.nombre}
-            </h3>
-            <div className="mb-6 flex items-baseline gap-1">
-              <span className="text-4xl font-bold tabular-nums">{plan.precio}</span>
-              <span className={plan.destacado ? 'text-on-primary/80' : 'text-on-surface-variant'}>
-                {plan.periodo}
-              </span>
-            </div>
-            <ul className="mb-10 w-full space-y-4">
-              {plan.features.map((f) => (
-                <li
-                  key={f.txt}
-                  className={
-                    f.ok
-                      ? 'flex items-center gap-3'
-                      : plan.destacado
-                        ? 'flex items-center gap-3 opacity-60'
-                        : 'flex items-center gap-3 text-outline-variant'
-                  }
-                >
-                  {f.ok ? (
-                    <Check
-                      className={plan.destacado ? 'h-5 w-5 shrink-0' : 'h-5 w-5 shrink-0 text-primary'}
-                    />
-                  ) : (
-                    <X className="h-5 w-5 shrink-0" />
-                  )}
-                  <span className="text-sm">{f.txt}</span>
-                </li>
+            Planes por créditos
+          </h2>
+          <div className="lg:col-span-6 lg:col-start-7 lg:pt-2">
+            <p className="max-w-[34rem] text-lg leading-relaxed text-on-surface">
+              Cada crédito equivale a una generación de copy e imagen. Mejorar el texto y restaurar versiones no gastan
+              créditos.
+            </p>
+            <p className="mt-4 inline-flex items-start gap-2 rounded-lg bg-tertiary-container px-3 py-2 text-[15px] font-medium text-on-tertiary-container">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              Precios y planes de ejemplo: todavía no están definidos.
+            </p>
+          </div>
+        </div>
+
+        {/* Escritorio: tabla comparativa */}
+        <div className="mt-16 hidden overflow-hidden rounded-2xl bg-background lg:block">
+          <table className="w-full table-fixed border-collapse text-left">
+            <caption className="sr-only">Comparación de planes de ejemplo</caption>
+            <thead>
+              <tr>
+                <th scope="col" className="w-[28%] p-8 align-bottom text-base font-medium text-on-surface-variant">
+                  Plan
+                </th>
+                {PLANS.map((plan) => (
+                  <th
+                    key={plan.nombre}
+                    scope="col"
+                    className={cn('p-8 align-top font-normal', plan.destacado && 'bg-navy text-on-navy')}
+                  >
+                    <span className="block text-2xl font-bold">
+                      {plan.nombre}
+                      {plan.destacado && <span className="font-normal text-turquoise-soft"> · recomendado</span>}
+                    </span>
+                    <span className="mt-3 flex items-baseline gap-2">
+                      <span className="text-4xl font-bold tabular-nums tracking-[-0.02em]">{plan.precio}</span>
+                      {plan.periodo && (
+                        <span className={plan.destacado ? 'text-on-navy-muted' : 'text-on-surface-variant'}>{plan.periodo}</span>
+                      )}
+                    </span>
+                    {plan.precio.startsWith('S/') && (
+                      <span className="mt-3 block">
+                        {plan.destacado ? (
+                          <span className="demo-tag demo-tag-on-navy">
+                            <Info className="h-3 w-3" aria-hidden="true" />
+                            Precio de ejemplo
+                          </span>
+                        ) : (
+                          <DemoPrice />
+                        )}
+                      </span>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ROWS.map((row, r) => (
+                <tr key={row.label} className={r % 2 === 0 ? 'bg-surface-container-low/60' : ''}>
+                  <th scope="row" className="px-8 py-5 text-[17px] font-medium text-on-surface">
+                    {row.label}
+                  </th>
+                  {row.values.map((value, i) => (
+                    <td
+                      key={PLANS[i].nombre}
+                      className={cn(
+                        'px-8 py-5 text-[17px]',
+                        PLANS[i].destacado ? 'bg-navy text-on-navy' : 'text-on-surface',
+                        !value && !PLANS[i].destacado && 'text-on-surface-variant',
+                      )}
+                    >
+                      <Value value={value} onNavy={PLANS[i].destacado} />
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </ul>
-            <Link to="/login" className="mt-auto w-full">
-              <Button
-                variant={plan.destacado ? 'light' : 'outline'}
-                className="w-full"
-              >
+              <tr>
+                <td className="p-8" />
+                {PLANS.map((plan) => (
+                  <td key={plan.nombre} className={cn('p-8', plan.destacado && 'bg-navy')}>
+                    <ButtonLink to="/register" variant={plan.destacado ? 'onBrand' : 'outline'} className="w-full">
+                      {plan.cta}
+                    </ButtonLink>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Teléfono y tableta: un bloque por plan */}
+        <div className="mt-12 grid gap-2 sm:gap-3 md:grid-cols-3 lg:hidden">
+          {PLANS.map((plan, p) => (
+            <article
+              key={plan.nombre}
+              className={cn('rounded-2xl p-6', plan.destacado ? 'bg-navy text-on-navy' : 'bg-background text-on-surface')}
+            >
+              <h3 className="text-2xl font-bold">
+                {plan.nombre}
+                {plan.destacado && <span className="font-normal text-turquoise-soft"> · recomendado</span>}
+              </h3>
+              <p className="mt-2 flex items-baseline gap-2">
+                <span className="text-4xl font-bold tabular-nums tracking-[-0.02em]">{plan.precio}</span>
+                {plan.periodo && <span className={plan.destacado ? 'text-on-navy-muted' : 'text-on-surface-variant'}>{plan.periodo}</span>}
+              </p>
+              {plan.precio.startsWith('S/') && (
+                <p className="mt-2">
+                  <span className={cn('demo-tag', plan.destacado && 'demo-tag-on-navy')}>
+                    <Info className="h-3 w-3" aria-hidden="true" />
+                    Precio de ejemplo
+                  </span>
+                </p>
+              )}
+              <dl className="mt-6 space-y-3">
+                {ROWS.map((row) => (
+                  <div key={row.label}>
+                    <dt className={cn('text-[15px]', plan.destacado ? 'text-on-navy-muted' : 'text-on-surface-variant')}>{row.label}</dt>
+                    <dd className="text-[17px] font-medium">
+                      <Value value={row.values[p]} onNavy={plan.destacado} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <ButtonLink to="/register" variant={plan.destacado ? 'onBrand' : 'outline'} className="mt-6 w-full">
                 {plan.cta}
-              </Button>
-            </Link>
-          </motion.div>
-        ))}
+              </ButtonLink>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   )
