@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   LayoutDashboard,
   Megaphone,
@@ -12,13 +13,20 @@ import {
   Lightbulb,
   ClipboardList,
   ChartColumnIncreasing,
+  Menu,
+  X,
 } from 'lucide-react'
 import api from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+import { useVerifiedUser } from '../hooks/useVerifiedUser'
+import BrandLogo from '@/components/BrandLogo'
+import ThemeToggle from '@/components/ui/ThemeToggle'
+import { cn } from '@/lib/utils'
 
 /**
- * Navegación por rol. Etiquetas en español, sin nav pública dentro del panel.
- * (Se conserva la separación de roles que ya existía en la lógica.)
+ * Marco del panel: barra lateral marina (el contenedor del icono de marca) con
+ * la navegación de cada rol. En pantallas pequeñas la barra se vuelve un cajón
+ * que se abre desde la barra superior.
  */
 const NAV_ITEMS = {
   marketero: [
@@ -51,18 +59,127 @@ const ROLE_LABEL = {
   cliente: 'Cliente',
 }
 
+function SidebarContent({ role, nombre, tokens, showCredits, onNavigate, onLogout, onCredits }) {
+  const navItems = NAV_ITEMS[role] ?? NAV_ITEMS.cliente
+  const iniciales =
+    nombre
+      .split(' ')
+      .filter(Boolean)
+      .map((p) => p[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'U'
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 shrink-0 items-center px-6">
+        <BrandLogo tone="navy" className="text-lg" />
+      </div>
+
+      <nav aria-label="Navegación del panel" className="flex-1 space-y-0.5 overflow-y-auto px-3 pt-2">
+        {navItems.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/dashboard' || to === '/admin'}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition-colors duration-150',
+                'focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-turquoise',
+                isActive
+                  ? 'bg-turquoise/15 text-on-navy'
+                  : 'text-on-navy-muted hover:bg-white/[0.07] hover:text-on-navy',
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon
+                  className={cn('h-[18px] w-[18px] shrink-0', isActive ? 'text-turquoise' : 'text-on-navy-muted group-hover:text-on-navy')}
+                  aria-hidden="true"
+                />
+                {label}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      {showCredits && (
+        <div className="px-3 pb-3">
+          <button
+            type="button"
+            onClick={onCredits}
+            aria-label={`Créditos de IA: ${tokens ?? 'cargando'}. Ver detalle`}
+            className="group w-full rounded-xl bg-navy-raised px-4 py-3.5 text-left transition-colors duration-150 hover:bg-navy-line focus-visible:outline-2 focus-visible:outline-turquoise"
+          >
+            <span className="flex items-center justify-between text-[13px] text-on-navy-muted">
+              Créditos de IA
+              <span className="text-turquoise-soft transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true">
+                Ver detalle
+              </span>
+            </span>
+            <span className="mt-1 flex items-center gap-2">
+              <Coins className="h-5 w-5 text-turquoise" aria-hidden="true" />
+              <span className="text-2xl font-bold tabular-nums text-on-navy">{tokens ?? '—'}</span>
+            </span>
+            {tokens === 0 && <span className="mt-1 block text-[13px] font-medium text-on-navy-error">Cuota agotada: pide un reinicio al admin</span>}
+          </button>
+        </div>
+      )}
+
+      <div className="border-t border-navy-line px-3 pb-4 pt-4">
+        <div className="flex items-center gap-3 px-2">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-turquoise text-sm font-bold text-navy"
+            aria-hidden="true"
+          >
+            {iniciales}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-on-navy">{nombre || 'Usuario'}</p>
+            <p className="text-[13px] text-on-navy-muted">{ROLE_LABEL[role] ?? role}</p>
+          </div>
+          <ThemeToggle tone="navy" />
+        </div>
+        <div className="mt-3 space-y-0.5">
+          <NavLink
+            to={role === 'cliente' ? '/client-help' : '/prompt-guide'}
+            onClick={onNavigate}
+            className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-on-navy-muted transition-colors hover:bg-white/[0.07] hover:text-on-navy"
+          >
+            <LifeBuoy className="h-4 w-4" aria-hidden="true" />
+            Soporte y guía
+          </NavLink>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-on-navy-muted transition-colors hover:bg-white/[0.07] hover:text-on-navy-error"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AppLayout() {
-  const { logout, getRole, getNombre } = useAuth()
+  const { logout, getNombre } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const role = getRole() || 'cliente'
-  const nombre = getNombre() || ''
-  const navItems = NAV_ITEMS[role] ?? NAV_ITEMS.cliente
+  const verified = useVerifiedUser()
+  const role = verified?.rol || 'cliente'
+  const nombre = getNombre() || verified?.nombre || ''
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const menuButtonRef = useRef(null)
+  const drawerRef = useRef(null)
 
   // Créditos de IA vivos (solo roles que crean campañas en Django).
-  // Refresca al navegar Y cuando alguna página dispara 'credits-updated'
-  // (p. ej. al generar/regenerar — el descuento se refleja al instante).
-  const [tokens, setTokens] = useState(null)
+  // Refresca al navegar Y cuando alguna página dispara 'credits-updated'.
+  const [tokens, setTokens] = useState(verified?.tokens_disponibles ?? null)
   const [creditsTick, setCreditsTick] = useState(0)
   const showCredits = role === 'marketero' || role === 'superadmin'
 
@@ -89,105 +206,111 @@ export default function AppLayout() {
     }
   }, [showCredits, location.key, creditsTick])
 
+  // Cajón móvil: Esc cierra, el foco entra al cajón y vuelve al botón al cerrar.
+  useEffect(() => {
+    if (!drawerOpen) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusTimer = setTimeout(() => drawerRef.current?.querySelector('a, button')?.focus(), 50)
+    const onKey = (event) => {
+      if (event.key === 'Escape') setDrawerOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    const menuButton = menuButtonRef.current
+    return () => {
+      clearTimeout(focusTimer)
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+      menuButton?.focus()
+    }
+  }, [drawerOpen])
+
   async function handleLogout() {
+    setDrawerOpen(false)
     await logout()
     navigate('/login', { replace: true })
   }
 
-  const iniciales =
-    nombre
-      .split(' ')
-      .map((p) => p[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || 'U'
+  const sidebarProps = {
+    role,
+    nombre,
+    tokens,
+    showCredits,
+    onNavigate: () => setDrawerOpen(false),
+    onLogout: handleLogout,
+    onCredits: () => {
+      setDrawerOpen(false)
+      navigate('/credits')
+    },
+  }
 
   return (
-    <div className="app-shell liquid-app-shell flex h-screen bg-background p-3">
-      <aside className="glass-sidebar liquid-panel flex w-64 flex-col overflow-hidden rounded-3xl border border-outline-variant">
-        <div className="px-6 py-6">
-          <span className="text-xl font-bold tracking-tight text-primary">NexoMark IA</span>
-        </div>
-
-        <nav className="flex-1 space-y-1 px-3">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/dashboard'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
-                  isActive
-                    ? 'liquid-nav-active text-on-surface'
-                    : 'text-on-surface-variant hover:bg-surface-container-high/70 hover:text-on-surface'
-                }`
-              }
-            >
-              <Icon className="h-5 w-5" />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* Token Balance — clic lleva a Configuración (detalle de cuota) */}
-        {showCredits && (
-          <div className="px-4 py-4">
-            <button
-              onClick={() => navigate('/credits')}
-              aria-label="Ver detalle de créditos de IA"
-              className="glass-soft glass-float w-full rounded-xl p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary/70">
-                Créditos de IA
-              </p>
-              <div className="flex items-center gap-2">
-                <Coins className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold text-primary tabular-nums">
-                  {tokens ?? '—'}
-                </span>
-              </div>
-              <p className={`mt-1 text-xs font-medium ${tokens === 0 ? 'text-error' : 'text-on-surface-variant'}`}>
-                {tokens === 0 ? 'Cuota agotada — pide reset al admin' : 'Ver detalle →'}
-              </p>
-            </button>
-          </div>
-        )}
-
-        {/* Usuario + rol + acciones */}
-        <div className="mx-4 mb-4 space-y-3 border-t border-outline-variant pt-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-on-primary">
-              {iniciales}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-on-surface">{nombre || 'Usuario'}</p>
-              <span className="inline-block rounded-full bg-primary-fixed px-2 py-0.5 text-xs font-semibold text-on-primary-fixed">
-                {ROLE_LABEL[role] ?? role}
-              </span>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <NavLink
-              to={role === 'cliente' ? '/client-help' : '/prompt-guide'}
-              className="flex items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-primary"
-            >
-              <LifeBuoy className="h-4 w-4" />
-              Soporte y guía
-            </NavLink>
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 px-1 py-1.5 text-sm text-on-surface-variant transition-colors hover:text-error"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar sesión
-            </button>
-          </div>
+    <div className="app-shell flex min-h-screen bg-background">
+      {/* Barra lateral fija (escritorio) */}
+      <aside className="hidden w-64 shrink-0 bg-navy lg:block" aria-label="Menú principal">
+        <div className="sticky top-0 h-screen">
+          <SidebarContent {...sidebarProps} />
         </div>
       </aside>
 
-      {/* Contenido */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <main className="liquid-main relative flex-1 overflow-auto bg-transparent p-6 lg:p-8">
+      {/* Cajón (móvil y tableta) */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              className="absolute inset-0 bg-navy-deep/60"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setDrawerOpen(false)}
+              aria-hidden="true"
+            />
+            <motion.aside
+              ref={drawerRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menú principal"
+              className="absolute inset-y-0 left-0 w-[min(18rem,86vw)] bg-navy shadow-2xl"
+              initial={{ transform: 'translateX(-100%)' }}
+              animate={{ transform: 'translateX(0%)' }}
+              exit={{ transform: 'translateX(-100%)' }}
+              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+            >
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Cerrar menú"
+                className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-lg text-on-navy-muted hover:bg-white/10 hover:text-on-navy"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <SidebarContent {...sidebarProps} />
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Barra superior (móvil y tableta) */}
+        <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-outline-variant bg-surface-container-lowest px-2 lg:hidden">
+          <button
+            ref={menuButtonRef}
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Abrir menú"
+            aria-expanded={drawerOpen}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-on-surface hover:bg-surface-container-high"
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <BrandLogo className="text-base" />
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
+        </header>
+
+        <main className="relative min-w-0 flex-1 overflow-x-clip px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
           <div className="mx-auto max-w-[1440px]">
             <Outlet />
           </div>

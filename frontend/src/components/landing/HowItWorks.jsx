@@ -1,61 +1,66 @@
 import { motion } from 'motion/react'
-import { FileText, PenLine, Image as ImageIcon, CheckCheck, Rocket } from 'lucide-react'
 
 /**
- * "Cómo funciona": el pipeline real de MarketMind como 5 pasos animados
- * al hacer scroll. Refleja el flujo Brief → Copy IA → Imagen IA → Aprobación → Publicar.
+ * "Cómo funciona": el recorrido real, paso por paso, con lo que garantiza cada
+ * uno. La barra turquesa crece con el avance (la pieza turquesa de la N).
  */
 const STEPS = [
-  { icon: FileText, titulo: 'Brief', desc: 'Describe tu producto, tono y plataforma objetivo.' },
-  { icon: PenLine, titulo: 'Copy con IA', desc: 'Gemini redacta el mensaje persuasivo del anuncio.' },
-  { icon: ImageIcon, titulo: 'Imagen con IA', desc: 'Se genera la imagen del anuncio a partir del brief.' },
-  { icon: CheckCheck, titulo: 'Aprobación', desc: 'Tu cliente revisa y aprueba desde web o móvil.' },
-  { icon: Rocket, titulo: 'Publicar', desc: 'La campaña queda lista para lanzarse.' },
+  {
+    verbo: 'Dicta',
+    texto: 'Habla en Chrome, Edge o la app Android. A NexoMark llega solo el texto: el audio no se guarda.',
+  },
+  {
+    verbo: 'Revisa',
+    texto: 'La IA propone título, tono, plataforma y público. Corriges lo que quieras; interpretar no gasta créditos.',
+  },
+  {
+    verbo: 'Genera',
+    texto: 'Gemini escribe el copy y crea la imagen. Cuesta 1 crédito y, si la generación falla, se devuelve.',
+  },
+  {
+    verbo: 'Aprueba',
+    texto: 'Tu cliente ve la versión exacta y dónde se publicará. La aprueba o la rechaza con un comentario.',
+  },
+  {
+    verbo: 'Publica y mide',
+    texto: 'Al aprobar, se publica sola en Instagram y Facebook. Si Meta aún no da una métrica, verás «sin dato», nunca un cero.',
+  },
 ]
 
 export default function HowItWorks() {
   return (
-    <section id="como-funciona" className="bg-surface-container-low py-24">
-      <div className="mx-auto max-w-[1440px] px-6 md:px-10">
-        <div className="mb-16 text-center">
-          <motion.h2
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.5 }}
-            className="mb-4 text-4xl font-bold tracking-tight text-on-surface text-balance"
+    <section id="como-funciona" aria-labelledby="como-funciona-title" className="scroll-mt-16 px-4 py-24 sm:px-6 lg:px-10 lg:py-36">
+      <div className="mx-auto max-w-[1440px]">
+        <div className="grid gap-6 lg:grid-cols-12">
+          <h2
+            id="como-funciona-title"
+            className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold leading-[1.05] tracking-[-0.03em] text-on-surface lg:col-span-5"
           >
-            De la idea a la campaña, guiado por IA
-          </motion.h2>
-          <p className="mx-auto max-w-xl text-base text-on-surface-variant">
-            El motor de IA te acompaña en cada paso, desde el brief inicial hasta
-            la aprobación del cliente.
+            Un solo flujo, de la voz a las métricas
+          </h2>
+          <p className="max-w-[34rem] text-lg leading-relaxed text-on-surface lg:col-span-6 lg:col-start-7 lg:pt-2">
+            Las herramientas de redes publican y miden. NexoMark además crea la campaña desde tu voz y ata la
+            publicación a la aprobación del cliente.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
-          {STEPS.map((step, i) => {
-            const Icon = step.icon
-            return (
-              <motion.div
-                key={step.titulo}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="group text-center"
-              >
-                <div className="step-gradient mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition-transform group-hover:scale-110">
-                  <Icon className="h-7 w-7" />
-                </div>
-                <h3 className="mb-2 text-2xl font-semibold text-on-surface">
-                  {step.titulo}
-                </h3>
-                <p className="px-4 text-sm text-on-surface-variant">{step.desc}</p>
-              </motion.div>
-            )
-          })}
-        </div>
+        <ol className="mt-16 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:mt-24 lg:grid-cols-5">
+          {STEPS.map((step, i) => (
+            <motion.li
+              key={step.verbo}
+              initial={{ opacity: 0, transform: 'translateY(16px)' }}
+              whileInView={{ opacity: 1, transform: 'translateY(0px)' }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5, delay: i * 0.07, ease: [0.23, 1, 0.32, 1] }}
+            >
+              <div className="h-1.5 overflow-hidden rounded-full bg-surface-container-high" aria-hidden="true">
+                <div className="h-full rounded-full bg-turquoise" style={{ width: `${((i + 1) / STEPS.length) * 100}%` }} />
+              </div>
+              <h3 className="mt-6 text-2xl font-bold tracking-[-0.02em] text-on-surface">{step.verbo}</h3>
+              <p className="mt-3 text-base leading-relaxed text-on-surface-variant">{step.texto}</p>
+            </motion.li>
+          ))}
+        </ol>
       </div>
     </section>
   )

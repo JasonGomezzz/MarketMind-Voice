@@ -4,6 +4,7 @@ import { Plus, Megaphone, AlertCircle, ChevronLeft, ChevronRight, Trash2 } from 
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/StatusBadge'
+import { getAuthItem } from '../services/session'
 
 /**
  * Lista de campañas (Marketero/SuperAdmin). Consume Django con paginación DRF.
@@ -12,7 +13,7 @@ import StatusBadge from '@/components/StatusBadge'
  * Usa StatusBadge (fuente única de estados FSM) para consistencia.
  */
 export default function CampaignListPage() {
-  const role = localStorage.getItem('user_role') || ''
+  const role = getAuthItem('user_role') || ''
   const navigate = useNavigate()
 
   const [campaigns, setCampaigns] = useState([])

@@ -3,23 +3,30 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, Eye, EyeOff, Rocket, Users, Sparkles } from 'lucide-react'
+import { ArrowLeft, Check, Mic, Users } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
+import AuthField from '@/components/auth/AuthField'
+import BrandLogo from '@/components/BrandLogo'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthBrandContent } from '../hooks/useAuthBrandContent'
+import { cn } from '@/lib/utils'
+
+const ROLES = [
+  { val: 'marketero', label: 'Marketero', desc: 'Creo campañas para mis clientes' },
+  { val: 'cliente', label: 'Cliente', desc: 'Reviso y apruebo lo que se publica' },
+]
 
 /**
- * Registro rediseñado (sistema Lumina Creative). Mismo split que Login.
- * Consume el endpoint real POST /api/auth/register/ con {email, nombre, password, rol}.
- * Sin OAuth. Roles ofrecidos: marketero (crea campañas) y cliente (revisa/aprueba).
+ * Registro: mismo marco que el login. POST /api/auth/register/ con
+ * {email, nombre, password, rol}; solo marketero o cliente (nunca superadmin).
  */
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
   const brandContent = useAuthBrandContent('register')
 
   const {
@@ -29,8 +36,7 @@ export default function RegisterPage() {
     formState: { errors },
   } = useForm({ defaultValues: { rol: 'marketero' } })
 
-  // Estado local en vez de watch(): mismo comportamiento y el React Compiler
-  // puede optimizar el componente (watch usa mutabilidad interior).
+  // Estado local en vez de watch(): el React Compiler puede optimizar el componente.
   const [rolSel, setRolSel] = useState('marketero')
 
   async function onSubmit({ nombre, email, password, rol }) {
@@ -61,149 +67,116 @@ export default function RegisterPage() {
     }
   }
 
-  const roles = [
-    { val: 'marketero', label: 'Marketero', desc: 'Creo campañas con IA' },
-    { val: 'cliente', label: 'Cliente', desc: 'Reviso y apruebo campañas' },
-  ]
-
   return (
-    <main className="auth-shell flex min-h-screen flex-col overflow-hidden md:flex-row">
+    <div className="flex min-h-screen bg-background">
       <AppToaster />
-      <Link
-        to="/"
-        className="glass-soft fixed left-5 top-5 z-30 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-on-surface shadow-sm transition hover:-translate-y-0.5 hover:bg-surface-container-low"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Home
-      </Link>
+      <main className="flex min-h-screen flex-1 flex-col px-4 py-5 sm:px-8 lg:px-16">
+        <div className="flex items-center justify-between">
+          <Link
+            to="/"
+            className="inline-flex h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Volver al inicio
+          </Link>
+          <ThemeToggle />
+        </div>
 
-      {/* Izquierda: formulario */}
-      <section className="auth-form-panel z-10 flex w-full items-center justify-center p-8 md:w-[54%] md:p-16 lg:p-20">
-        <div className="glass-liquid w-full max-w-md rounded-[2rem] p-7 md:p-9">
-          <div className="mb-10">
-            <Link to="/" className="text-3xl font-bold tracking-tight text-primary">
-              NexoMark IA
+        <div className="flex flex-1 items-center justify-center py-10">
+          <div className="w-full max-w-[26rem]">
+            <Link to="/" aria-label="NexoMark IA, ir al inicio" className="inline-block text-2xl">
+              <BrandLogo />
             </Link>
+            <h1 className="mt-10 text-[2rem] font-bold leading-tight tracking-[-0.02em] text-on-surface">
+              Crea tu cuenta
+            </h1>
             <p className="mt-2 text-base text-on-surface-variant">
-              Impulsa tu marketing con inteligencia artificial de alto rendimiento.
+              Las cuentas de marketero empiezan con 100 créditos de IA: uno por campaña generada.
             </p>
-          </div>
 
-          <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-              <h2 className="text-2xl font-semibold text-on-surface">Crea tu cuenta</h2>
-              <p className="text-base text-on-surface-variant">
-                Empieza a generar campañas con IA en minutos.
-              </p>
-            </div>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-5">
+              <AuthField
+                id="nombre"
+                label="Nombre completo"
+                autoComplete="name"
+                error={errors.nombre?.message}
+                {...register('nombre', { required: 'Escribe tu nombre' })}
+              />
 
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-              <div className="space-y-1.5">
-                <label htmlFor="nombre" className="px-1 text-sm font-medium text-on-surface-variant">
-                  Nombre completo
-                </label>
-                <input
-                  id="nombre"
-                  type="text"
-                  autoComplete="name"
-                  placeholder="Tu nombre"
-                  className={`w-full rounded-xl border px-4 py-3 text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary ${
-                    errors.nombre ? 'border-error' : 'border-outline-variant'
-                  }`}
-                  {...register('nombre', { required: 'El nombre es requerido' })}
-                />
-                {errors.nombre && <p className="px-1 text-xs text-error">{errors.nombre.message}</p>}
-              </div>
+              <AuthField
+                id="email"
+                type="email"
+                label="Correo electrónico"
+                autoComplete="email"
+                placeholder="nombre@empresa.com"
+                error={errors.email?.message}
+                {...register('email', {
+                  required: 'Escribe tu correo',
+                  pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Ese correo no parece válido' },
+                })}
+              />
 
-              <div className="space-y-1.5">
-                <label htmlFor="email" className="px-1 text-sm font-medium text-on-surface-variant">
-                  Correo electrónico
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="nombre@empresa.com"
-                  className={`w-full rounded-xl border px-4 py-3 text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary ${
-                    errors.email ? 'border-error' : 'border-outline-variant'
-                  }`}
-                  {...register('email', {
-                    required: 'El email es requerido',
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: 'Ingresa un email válido',
-                    },
+              <AuthField
+                id="password"
+                type="password"
+                label="Contraseña"
+                autoComplete="new-password"
+                hint="Mínimo 8 caracteres."
+                error={errors.password?.message}
+                {...register('password', {
+                  required: 'Escribe una contraseña',
+                  minLength: { value: 8, message: 'Usa al menos 8 caracteres' },
+                })}
+              />
+
+              <fieldset>
+                <legend className="text-sm font-medium text-on-surface">¿Cómo usarás NexoMark?</legend>
+                <div role="radiogroup" aria-label="Tipo de cuenta" className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {ROLES.map((r) => {
+                    const selected = rolSel === r.val
+                    return (
+                      <button
+                        key={r.val}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => {
+                          setRolSel(r.val)
+                          setValue('rol', r.val)
+                        }}
+                        className={cn(
+                          'relative rounded-xl border p-4 text-left transition-[border-color,background-color] duration-150 active:scale-[0.99]',
+                          selected
+                            ? 'border-primary bg-primary-fixed'
+                            : 'border-outline-variant bg-surface-container-lowest hover:border-outline',
+                        )}
+                      >
+                        <span className="flex items-center justify-between">
+                          <span className="text-[15px] font-semibold text-on-surface">{r.label}</span>
+                          <span
+                            className={cn(
+                              'flex h-5 w-5 items-center justify-center rounded-full border',
+                              selected ? 'border-primary bg-primary text-on-primary' : 'border-outline',
+                            )}
+                            aria-hidden="true"
+                          >
+                            {selected && <Check className="h-3 w-3" strokeWidth={3} />}
+                          </span>
+                        </span>
+                        <span className="mt-1 block text-[13px] text-on-surface-variant">{r.desc}</span>
+                      </button>
+                    )
                   })}
-                />
-                {errors.email && <p className="px-1 text-xs text-error">{errors.email.message}</p>}
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="password" className="px-1 text-sm font-medium text-on-surface-variant">
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    placeholder="Mínimo 8 caracteres"
-                    className={`w-full rounded-xl border px-4 py-3 pr-12 text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary ${
-                      errors.password ? 'border-error' : 'border-outline-variant'
-                    }`}
-                    {...register('password', {
-                      required: 'La contraseña es requerida',
-                      minLength: { value: 8, message: 'Mínimo 8 caracteres' },
-                    })}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((value) => !value)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-on-surface-variant transition hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="px-1 text-xs text-error">{errors.password.message}</p>
-                )}
-              </div>
-
-              {/* Selector de rol */}
-              <div className="space-y-2">
-                <span className="px-1 text-sm font-medium text-on-surface-variant">
-                  ¿Cómo usarás NexoMark IA?
-                </span>
-                <div className="grid grid-cols-2 gap-3">
-                  {roles.map((r) => (
-                    <button
-                      key={r.val}
-                      type="button"
-                      onClick={() => {
-                        setRolSel(r.val)
-                        setValue('rol', r.val)
-                      }}
-                      className={`rounded-xl border p-4 text-left transition-all ${
-                        rolSel === r.val
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                          : 'border-outline-variant hover:bg-surface-container-low'
-                      }`}
-                    >
-                      <span className="block text-sm font-semibold text-on-surface">{r.label}</span>
-                      <span className="mt-0.5 block text-xs text-on-surface-variant">{r.desc}</span>
-                    </button>
-                  ))}
                 </div>
                 <input type="hidden" {...register('rol', { required: true })} />
-              </div>
+              </fieldset>
 
-              <Button type="submit" size="lg" disabled={loading} className="w-full text-lg">
+              <Button type="submit" size="lg" disabled={loading} className="w-full">
                 {loading ? 'Creando cuenta…' : 'Crear cuenta'}
               </Button>
             </form>
 
-            <p className="text-center text-base text-on-surface-variant">
+            <p className="mt-8 text-[15px] text-on-surface-variant">
               ¿Ya tienes una cuenta?{' '}
               <Link to="/login" className="font-semibold text-primary hover:underline">
                 Inicia sesión
@@ -211,20 +184,17 @@ export default function RegisterPage() {
             </p>
           </div>
         </div>
-      </section>
+      </main>
 
-      {/* Derecha: panel de marca */}
       <AuthBrandPanel
         highlights={[
-          { icon: Rocket, titulo: 'Tu primera campaña en minutos', desc: 'Del brief al anuncio, guiado por IA.' },
-          { icon: Users, titulo: 'Colabora con tus clientes', desc: 'Aprobaciones desde web y móvil.' },
+          { icon: Mic, titulo: 'Dicta la campaña', desc: 'Habla en Chrome o Edge; a NexoMark solo llega el texto.' },
+          { icon: Users, titulo: 'Colabora con tus clientes', desc: 'Aprueban desde la web o la app Android.' },
         ]}
-        badgeIcon={Sparkles}
         quote={brandContent.quote}
         personName={brandContent.person_name}
         personRole={brandContent.person_role}
-        personImage={brandContent.person_image}
       />
-    </main>
+    </div>
   )
 }

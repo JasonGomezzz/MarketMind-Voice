@@ -24,21 +24,21 @@ export default function CampaignStepper({ estado }) {
     : FLOW.findIndex((s) => s.key === estado)
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-start">
       {FLOW.map((step, i) => {
         const done = i < currentIndex
         const active = i === currentIndex
         const isLast = i === FLOW.length - 1
 
         return (
-          <div key={step.key} className="flex flex-1 items-center last:flex-none">
+          <div key={step.key} className="flex flex-1 items-start last:flex-none">
             {/* Nodo */}
             <div className="flex flex-col items-center gap-2">
               <div
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-colors',
-                  done && 'bg-success text-white',
-                  active && !rejected && !failed && 'bg-primary text-white ring-4 ring-primary/20',
+                  done && 'bg-primary text-on-primary',
+                  active && !rejected && !failed && 'bg-primary text-on-primary ring-4 ring-primary/25',
                   active && (rejected || failed) && 'bg-error text-white ring-4 ring-error/20',
                   !done && !active && 'bg-surface-container-high text-outline',
                 )}
@@ -48,7 +48,8 @@ export default function CampaignStepper({ estado }) {
               <span
                 className={cn(
                   'whitespace-nowrap text-xs font-medium',
-                  active ? 'text-on-surface' : 'text-on-surface-variant',
+                  // En pantallas angostas solo se rotula el paso actual.
+                  active ? 'text-on-surface' : 'hidden text-on-surface-variant sm:block',
                 )}
               >
                 {active && rejected ? 'Rechazado' : active && failed ? 'Fracaso' : step.label}
@@ -59,8 +60,8 @@ export default function CampaignStepper({ estado }) {
             {!isLast && (
               <div
                 className={cn(
-                  'mx-2 h-0.5 flex-1 rounded-full transition-colors',
-                  i < currentIndex ? 'bg-success' : 'bg-outline-variant',
+                  'mx-1 mt-[17px] h-0.5 flex-1 rounded-full transition-colors sm:mx-2',
+                  i < currentIndex ? 'bg-primary' : 'bg-outline-variant',
                 )}
               />
             )}
