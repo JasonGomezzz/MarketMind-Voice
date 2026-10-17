@@ -164,6 +164,11 @@ class Publication(models.Model):
     permalink = models.URLField(max_length=500, blank=True, default="")
     error = models.TextField(blank=True, default="")
     intentos = models.PositiveSmallIntegerField(default=0)
+    publicando_desde = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Inicio del último intento. Si el proceso murió, pasado un margen se puede reintentar.",
+    )
 
     solicitada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,

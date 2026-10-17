@@ -41,7 +41,7 @@ class PublicationSerializer(serializers.ModelSerializer):
         fields = [
             "id", "campaign", "campaign_titulo", "cliente_nombre", "marketero_nombre", "red",
             "cuenta_nombre", "estado", "permalink", "error", "intentos", "version_aprobada",
-            "publicado_at", "fecha_creacion", "ultima_metrica",
+            "publicando_desde", "publicado_at", "fecha_creacion", "ultima_metrica",
         ]
         read_only_fields = fields
 

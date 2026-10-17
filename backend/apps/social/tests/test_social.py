@@ -219,10 +219,13 @@ class TestPublicarAlAprobar:
             evento_aprobado(programada.campaign_id)
         Campaign.objects.filter(pk=programada.campaign_id).update(texto_generado="Texto cambiado después")
 
-        with patch.object(meta_graph, "publicar_instagram", return_value=RESULTADO_OK) as publicar:
+        # Reintento sin contenedor: primero se busca si el intento anterior llegó a publicar.
+        with patch.object(meta_graph, "buscar_publicacion_instagram", return_value=None) as buscar, \
+                patch.object(meta_graph, "publicar_instagram", return_value=RESULTADO_OK) as publicar:
             response = cliente_api(user_marketero).post(f"/api/social/publications/{programada.id}/publish/")
 
         assert response.status_code == 200
+        assert buscar.call_args.args[2] == "Copy aprobado por el cliente"
         assert publicar.call_args.args[3] == "Copy aprobado por el cliente"
         programada.refresh_from_db()
         assert programada.estado == PublicacionEstado.PUBLICADO and programada.intentos == 2
@@ -236,12 +239,17 @@ class TestPublicarAlAprobar:
         programada.refresh_from_db()
         assert programada.contenedor_id == "cont-9" and "incierto" in programada.error
 
-        with patch.object(meta_graph, "contenedor_publicado", return_value=True), \
+        encontrado = meta_graph.ResultadoPublicacion(externo_id="media-9", permalink="https://www.instagram.com/p/9/")
+        with patch.object(meta_graph, "estado_contenedor", return_value="PUBLISHED"), \
+                patch.object(meta_graph, "buscar_publicacion_instagram", return_value=encontrado), \
                 patch.object(meta_graph, "publicar_instagram") as publicar:
             cliente_api(user_marketero).post(f"/api/social/publications/{programada.id}/publish/")
         publicar.assert_not_called()
         programada.refresh_from_db()
         assert programada.estado == PublicacionEstado.PUBLICADO
+        # Antes quedaba publicado sin id: sin enlace ni métricas.
+        assert (programada.externo_id, programada.permalink) == ("media-9", "https://www.instagram.com/p/9/")
+        assert programada.contenedor_id == "cont-9" and programada.error == ""
 
     def test_reintento_requiere_aprobacion_y_ser_el_dueno(self, programada, cliente):
         assert cliente_api(cliente).post(f"/api/social/publications/{programada.id}/publish/").status_code == 403

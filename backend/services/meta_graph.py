@@ -1,12 +1,19 @@
 """
 Cliente mínimo de la Graph API de Meta: OAuth, cuentas y publicación.
 
-Documentación consultada el 2026-10-05 (API v25.0):
+Documentación consultada el 2026-10-05 (API v25.0) y revisada el 2026-10-16:
 - Login manual: /dialog/oauth → /oauth/access_token (code) → fb_exchange_token (≈60 días).
+  El canje usa exactamente el mismo redirect_uri que el diálogo.
 - /me/accounts devuelve tokens de página sin vencimiento informado.
 - Instagram: POST /{ig-id}/media (image_url JPEG público + caption) → espera
-  status_code FINISHED → POST /{ig-id}/media_publish.
-- Facebook: POST /{page-id}/photos con url + caption.
+  status_code FINISHED → POST /{ig-id}/media_publish (devuelve el id del media).
+- El contenedor (IG Container) solo expone id, status, status_code y
+  copyright_check_status: si quedó PUBLISHED no dice qué media creó. Para
+  recuperarlo se buscan los media recientes de la cuenta con el mismo caption
+  (GET /{ig-id}/media con since); si no hay exactamente uno, no se adivina.
+- Facebook: POST /{page-id}/photos con url + caption (devuelve id y post_id).
+  Para comprobar un intento dudoso se lee /{page-id}/feed (requiere
+  pages_read_engagement y pages_read_user_content).
 
 Todas las llamadas pasan por _graph() para poder simularlas en tests.
 """
@@ -14,7 +21,8 @@ Todas las llamadas pasan por _graph() para poder simularlas en tests.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Callable
+from datetime import datetime
+from typing import Any, Callable, Iterable
 from urllib.parse import urlencode
 
 import httpx
@@ -46,6 +54,8 @@ class ResultadoPublicacion:
     externo_id: str
     permalink: str
     contenedor_id: str = ""
+    # Nota para el usuario cuando se publicó pero falta un dato (p. ej. el id).
+    aviso: str = ""
 
 
 def _base() -> str:
@@ -124,20 +134,26 @@ def paginas_con_instagram(token_usuario: str) -> list[dict[str, Any]]:
 # ── Publicación ──────────────────────────────────────────────────────────
 
 
-def publicar_instagram(
+def crear_contenedor(ig_id: str, token_pagina: str, imagen_url: str, caption: str) -> str:
+    return _graph("POST", f"{ig_id}/media", access_token=token_pagina, image_url=imagen_url, caption=caption)["id"]
+
+
+def estado_contenedor(contenedor_id: str, token_pagina: str) -> str:
+    """EXPIRED, ERROR, FINISHED, IN_PROGRESS o PUBLISHED (o "" si Meta no lo informa)."""
+    return _graph("GET", contenedor_id, access_token=token_pagina, fields="status_code").get("status_code") or ""
+
+
+def publicar_contenedor(
     ig_id: str,
     token_pagina: str,
-    imagen_url: str,
-    caption: str,
+    contenedor: str,
     esperar: Callable[[float], None] = time.sleep,
     intentos_estado: int = 15,
 ) -> ResultadoPublicacion:
-    contenedor = _graph(
-        "POST", f"{ig_id}/media", access_token=token_pagina, image_url=imagen_url, caption=caption
-    )["id"]
+    """Espera a que el contenedor esté listo y lo publica. Un MetaError lleva el contenedor_id."""
     try:
         for _ in range(intentos_estado):
-            estado = _graph("GET", contenedor, access_token=token_pagina, fields="status_code").get("status_code")
+            estado = estado_contenedor(contenedor, token_pagina)
             if estado == "FINISHED":
                 break
             if estado in ("ERROR", "EXPIRED"):
@@ -150,22 +166,95 @@ def publicar_instagram(
     except MetaError as exc:
         exc.contenedor_id = contenedor
         raise
-    detalle = _graph("GET", media, access_token=token_pagina, fields="permalink")
-    return ResultadoPublicacion(externo_id=media, permalink=detalle.get("permalink", ""), contenedor_id=contenedor)
+    # Ya está publicado: si falla la lectura del enlace no es un fallo de publicación.
+    return ResultadoPublicacion(
+        externo_id=media, permalink=_enlace(media, token_pagina, "permalink"), contenedor_id=contenedor
+    )
 
 
-def contenedor_publicado(contenedor_id: str, token_pagina: str) -> bool:
-    """Tras un fallo ambiguo: ¿el contenedor ya quedó publicado en Instagram?"""
-    estado = _graph("GET", contenedor_id, access_token=token_pagina, fields="status_code").get("status_code")
-    return estado == "PUBLISHED"
+def publicar_instagram(
+    ig_id: str,
+    token_pagina: str,
+    imagen_url: str,
+    caption: str,
+    esperar: Callable[[float], None] = time.sleep,
+    intentos_estado: int = 15,
+    al_crear_contenedor: Callable[[str], None] | None = None,
+) -> ResultadoPublicacion:
+    """
+    Crea el contenedor y lo publica. al_crear_contenedor recibe su id antes de
+    publicar, para guardarlo: si el proceso muere después, un reintento puede
+    consultar ese contenedor en vez de crear otro post.
+    """
+    contenedor = crear_contenedor(ig_id, token_pagina, imagen_url, caption)
+    if al_crear_contenedor:
+        al_crear_contenedor(contenedor)
+    return publicar_contenedor(ig_id, token_pagina, contenedor, esperar=esperar, intentos_estado=intentos_estado)
 
 
 def publicar_facebook(pagina_id: str, token_pagina: str, imagen_url: str, caption: str) -> ResultadoPublicacion:
     data = _graph("POST", f"{pagina_id}/photos", access_token=token_pagina, url=imagen_url, caption=caption)
     post_id = data.get("post_id") or data.get("id", "")
-    detalle = _graph("GET", post_id, access_token=token_pagina, fields="permalink_url") if post_id else {}
-    return ResultadoPublicacion(externo_id=post_id, permalink=detalle.get("permalink_url", ""))
+    permalink = _enlace(post_id, token_pagina, "permalink_url") if post_id else ""
+    return ResultadoPublicacion(externo_id=post_id, permalink=permalink)
 
+
+def _enlace(objeto_id: str, token_pagina: str, campo: str) -> str:
+    try:
+        return _graph("GET", objeto_id, access_token=token_pagina, fields=campo).get(campo, "")
+    except MetaError as exc:
+        logger.warning("Publicado %s, pero no se pudo leer su enlace: %s", objeto_id, exc)
+        return ""
+
+
+# ── Comprobar si un intento dudoso ya publicó ────────────────────────────
+
+
+def _fecha_meta(valor: str | None) -> datetime | None:
+    """Meta devuelve fechas como 2026-10-06T03:31:00+0000."""
+    try:
+        return datetime.strptime(valor or "", "%Y-%m-%dT%H:%M:%S%z")
+    except ValueError:
+        return None
+
+
+def _unico_con_texto(
+    items: list[dict[str, Any]], campo_texto: str, texto: str, desde: datetime, excluir: Iterable[str], campo_fecha: str
+) -> dict[str, Any] | None:
+    """El único item con exactamente ese texto, creado desde `desde` y no usado por otra publicación."""
+    excluir = set(excluir)
+    buscado = texto.strip()
+    coincidencias = [
+        item for item in items
+        if item.get("id") not in excluir
+        and (item.get(campo_texto) or "").strip() == buscado
+        and (fecha := _fecha_meta(item.get(campo_fecha))) is not None and fecha >= desde
+    ]
+    return coincidencias[0] if len(coincidencias) == 1 else None
+
+
+def buscar_publicacion_instagram(
+    ig_id: str, token_pagina: str, caption: str, desde: datetime, excluir: Iterable[str] = ()
+) -> ResultadoPublicacion | None:
+    """Media de la cuenta con ese caption publicado desde `desde`. None si no hay exactamente uno."""
+    data = _graph(
+        "GET", f"{ig_id}/media", access_token=token_pagina,
+        fields="id,caption,permalink,timestamp", since=int(desde.timestamp()), limit=25,
+    )
+    item = _unico_con_texto(data.get("data", []), "caption", caption, desde, excluir, "timestamp")
+    return ResultadoPublicacion(externo_id=item["id"], permalink=item.get("permalink", "")) if item else None
+
+
+def buscar_publicacion_facebook(
+    pagina_id: str, token_pagina: str, caption: str, desde: datetime, excluir: Iterable[str] = ()
+) -> ResultadoPublicacion | None:
+    """Post de la página con ese texto publicado desde `desde`. None si no hay exactamente uno."""
+    data = _graph(
+        "GET", f"{pagina_id}/feed", access_token=token_pagina,
+        fields="id,message,permalink_url,created_time", since=int(desde.timestamp()), limit=25,
+    )
+    item = _unico_con_texto(data.get("data", []), "message", caption, desde, excluir, "created_time")
+    return ResultadoPublicacion(externo_id=item["id"], permalink=item.get("permalink_url", "")) if item else None
 
 
 # ── Métricas ─────────────────────────────────────────────────────────────
