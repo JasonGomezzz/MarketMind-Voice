@@ -17,7 +17,7 @@
     <div class="summary">
       <strong>En resumen</strong>
       <ul>
-        <li>Si dictas el brief, el audio lo transcribe tu navegador o tu teléfono. A NexoMark solo llega el texto; no recibimos ni guardamos audio.</li>
+        <li>Si dictas el brief, la voz la transcribe tu navegador o tu teléfono, en el propio equipo cuando es posible. A NexoMark solo llega el texto; no recibimos ni guardamos audio.</li>
         <li>Usamos Google Gemini para interpretar el brief y generar el texto y la imagen de la campaña.</li>
         <li>Solo publicamos en Instagram o Facebook cuando el cliente aprueba la campaña, y solo en la cuenta que su titular autorizó con el inicio de sesión de Meta.</li>
         <li>No vendemos datos, no mostramos publicidad y no cobramos: la compra de créditos es simulada.</li>
@@ -53,9 +53,12 @@
     <p>Datos de tarjetas o de pago (la compra de créditos es simulada), grabaciones de voz ni datos sensibles a propósito. Te pedimos no incluir en los briefs datos sensibles ni datos de terceros que no estés autorizado a usar.</p>
 
     <h2>4. Cómo funciona el dictado por voz</h2>
-    <p>En la web, el dictado usa la función de reconocimiento de voz del navegador (Web Speech API). En la app Android usa el reconocedor de voz del sistema. NexoMark recibe únicamente el texto resultante.</p>
-    <p>Ese reconocimiento no siempre ocurre dentro de tu dispositivo. Según la <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API/Using_the_Web_Speech_API">documentación de la Web Speech API</a>, por defecto el audio se envía a un servicio web de reconocimiento; en Chrome ese servicio es de Google. La <a href="https://developer.android.com/reference/android/speech/SpeechRecognizer">documentación de Android</a> advierte que el reconocedor del sistema probablemente transmita el audio a servidores remotos; en muchos teléfonos ese servicio es de Google. Ese tratamiento del audio lo realiza el proveedor de tu navegador o de tu sistema bajo su propia política (por ejemplo, la <a href="https://policies.google.com/privacy">Política de privacidad de Google</a>), no NexoMark.</p>
-    <p>Si prefieres no usar el dictado, puedes escribir el brief: el resultado es el mismo.</p>
+    <p>NexoMark recibe únicamente el texto del dictado. Dónde se transcribe la voz depende de tu navegador o de tu teléfono, y la pantalla de dictado te indica qué modo se está usando:</p>
+    <ul>
+      <li><strong>Web:</strong> se usa el reconocimiento de voz del navegador (Web Speech API). Si el navegador permite transcribir en el propio equipo y tiene el español instalado, NexoMark lo pide así y puede ofrecerte descargar el idioma. Si no, según la <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API/Using_the_Web_Speech_API">documentación de la Web Speech API</a>, el audio se envía a un servicio web de reconocimiento; en Chrome ese servicio es de Google.</li>
+      <li><strong>Android:</strong> en Android 12 o superior, si el teléfono tiene un reconocedor en el dispositivo, el audio no sale del teléfono. Si no, se usa el reconocedor del sistema pidiéndole que trabaje sin conexión, pero esa preferencia puede no cumplirse: la <a href="https://developer.android.com/reference/android/speech/SpeechRecognizer">documentación de Android</a> advierte que el reconocedor probablemente transmita el audio a servidores remotos, y en muchos teléfonos ese servicio es de Google.</li>
+    </ul>
+    <p>Cuando el audio sale de tu equipo, ese tratamiento lo realiza el proveedor de tu navegador o de tu sistema bajo su propia política (por ejemplo, la <a href="https://policies.google.com/privacy">Política de privacidad de Google</a>), no NexoMark. Si prefieres no usar el dictado, puedes escribir el brief: el resultado es el mismo.</p>
 
     <h2>5. Para qué usamos los datos y con qué base</h2>
     <ul>
@@ -116,7 +119,7 @@
     <p>Tras la evaluación académica, prevista para fines de noviembre de 2026, los responsables revisarán los datos y eliminarán o anonimizarán los que ya no sean necesarios. Las evidencias de la tesis usarán datos anonimizados o ficticios. La continuidad del proyecto después de esa fecha no está decidida.</p>
 
     <h2>10. Seguridad</h2>
-    <p>Usamos conexión cifrada (HTTPS) en la demostración desplegada, contraseñas guardadas como hash, sesiones con caducidad que se pueden invalidar, tokens de redes sociales cifrados, almacenamiento cifrado en Android, verificación de rol y propiedad en el servidor y claves de proveedores fuera del código. Ninguna medida es infalible. Si ocurre un incidente de seguridad que afecte datos personales, lo comunicaremos a la ANPD y a las personas afectadas según el Reglamento.</p>
+    <p>Usamos conexión cifrada (HTTPS) en la demostración desplegada, contraseñas guardadas como hash, sesiones con caducidad que se pueden invalidar, tokens de redes sociales cifrados, almacenamiento cifrado en Android, verificación de rol y propiedad en el servidor, un secreto compartido entre los servicios propios y n8n, y claves de proveedores fuera del código. Ninguna medida es infalible. Si ocurre un incidente de seguridad que afecte datos personales, lo comunicaremos a la ANPD y a las personas afectadas según el Reglamento.</p>
 
     <h2>11. Tus derechos</h2>
     <p>Puedes ejercer tus derechos de información, acceso (incluida la portabilidad, cuando sea técnicamente posible), rectificación, cancelación o supresión y oposición, y revocar tu consentimiento. Escribe a <a href="mailto:nexomarkia@gmail.com">nexomarkia@gmail.com</a> desde el correo de tu cuenta, con el asunto «Derechos ARCO» e indica tu nombre, tu rol y lo que pides. Podemos pedirte una verificación proporcional de identidad; nunca te pediremos tu contraseña ni tus tokens. La solicitud es gratuita y responderemos dentro de los plazos que fija el Reglamento.</p>

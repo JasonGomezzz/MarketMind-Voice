@@ -5,7 +5,9 @@
 - Privacidad y términos reescritos para describir la rama `remejora` (código revisado el 16/10),
   no la rama `piero`: el audio ya no se sube a Gemini ni existe TTS.
 - Voz: transcripción en el navegador (Web Speech API) o en el reconocedor de Android; a Django
-  solo llega texto. Se advierte que Chrome y muchos Android envían el audio a servidores de Google.
+  solo llega texto. Desde el PR #2 se pide transcribir en el equipo cuando es posible
+  (`processLocally` en la web, reconocedor en el dispositivo en Android 12+); si no, se advierte
+  que Chrome y muchos Android envían el audio a servidores de Google.
 - Gemini: interpretación del brief y mejora de texto desde Django; copy, prompt de imagen e imagen
   vía n8n. Correos vía n8n + Resend (ya no se menciona Gmail SMTP: no existe en `remejora`).
 - Meta: conexión por OAuth del titular, 7 permisos reales de `META_OAUTH_SCOPES`, token Fernet,
