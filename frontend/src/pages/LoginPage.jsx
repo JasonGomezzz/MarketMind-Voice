@@ -1,23 +1,24 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
-import { useState } from 'react'
 import toast from 'react-hot-toast'
 import AppToaster from '@/components/ui/AppToaster'
-import { ArrowLeft, Eye, EyeOff, Zap, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft, Zap, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
+import AuthField from '@/components/auth/AuthField'
+import BrandLogo from '@/components/BrandLogo'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 import { useAuthBrandContent } from '../hooks/useAuthBrandContent'
 
 /**
- * Login rediseñado (sistema Lumina Creative). Split: formulario + panel de marca.
- * LÓGICA INTACTA: useForm + useAuth().login → shape plano JWT → /dashboard.
- * Sin OAuth social (el backend solo emite JWT).
+ * Inicio de sesión: formulario a la izquierda, panel marino de marca a la derecha.
+ * useAuth().login → JWT → /dashboard. "Mantener sesión iniciada" decide si la
+ * sesión vive en este navegador o solo en esta pestaña. Sin OAuth social.
  */
 export default function LoginPage() {
   const { login, loading } = useAuth()
   const navigate = useNavigate()
-  const [showPassword, setShowPassword] = useState(false)
   const brandContent = useAuthBrandContent('login')
 
   const {
@@ -32,154 +33,126 @@ export default function LoginPage() {
     if (!result.ok) {
       const msg =
         result.status === 401
-          ? 'Credenciales inválidas'
+          ? 'Correo o contraseña incorrectos'
           : result.status === 429
             ? result.message || 'Demasiados intentos. Espera unos minutos.'
-            : 'Error del servidor. Intenta de nuevo.'
+            : 'El servidor no respondió. Intenta de nuevo en unos segundos.'
       toast.error(msg)
       return
     }
 
-    // Todos los roles van a /dashboard por ahora (HU8 diferenciará)
     navigate('/dashboard', { replace: true })
   }
 
   return (
-    <main className="auth-shell flex min-h-screen flex-col overflow-hidden md:flex-row">
+    <div className="flex min-h-screen bg-background">
       <AppToaster />
-      <Link
-        to="/"
-        className="glass-soft fixed left-5 top-5 z-30 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-on-surface shadow-sm transition hover:-translate-y-0.5 hover:bg-surface-container-low"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Home
-      </Link>
+      <main className="flex min-h-screen flex-1 flex-col px-4 py-5 sm:px-8 lg:px-16">
+        <div className="flex items-center justify-between">
+          <Link
+            to="/"
+            className="inline-flex h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Volver al inicio
+          </Link>
+          <ThemeToggle />
+        </div>
 
-      {/* Izquierda: formulario */}
-      <section className="auth-form-panel z-10 flex w-full items-center justify-center p-8 md:w-[54%] md:p-16 lg:p-24">
-        <div className="glass-liquid w-full max-w-md rounded-[2rem] p-7 md:p-9">
-          <div className="mb-12">
-            <Link to="/" className="text-3xl font-bold tracking-tight text-primary">
-              NexoMark IA
+        <div className="flex flex-1 items-center justify-center py-10">
+          <div className="w-full max-w-[26rem]">
+            <Link to="/" aria-label="NexoMark IA, ir al inicio" className="inline-block text-2xl">
+              <BrandLogo />
             </Link>
+            <h1 className="mt-10 text-[2rem] font-bold leading-tight tracking-[-0.02em] text-on-surface">
+              Inicia sesión
+            </h1>
             <p className="mt-2 text-base text-on-surface-variant">
-              Impulsa tu marketing con inteligencia artificial de alto rendimiento.
+              Entra a tu panel para dictar campañas, revisarlas o ver cómo rinden.
             </p>
-          </div>
 
-          <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-              <h2 className="text-2xl font-semibold text-on-surface">Bienvenido de nuevo</h2>
-              <p className="text-base text-on-surface-variant">
-                Ingresa tus credenciales para acceder a tu panel.
-              </p>
-            </div>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-5">
+              <AuthField
+                id="email"
+                type="email"
+                label="Correo electrónico"
+                autoComplete="email"
+                placeholder="nombre@empresa.com"
+                error={errors.email?.message}
+                {...register('email', {
+                  required: 'Escribe tu correo',
+                  pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Ese correo no parece válido' },
+                })}
+              />
 
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="email"
-                  className="px-1 text-sm font-medium text-on-surface-variant"
-                >
-                  Correo electrónico
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="nombre@empresa.com"
-                  className={`w-full rounded-xl border px-4 py-3 text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary ${
-                    errors.email ? 'border-error' : 'border-outline-variant'
-                  }`}
-                  {...register('email', {
-                    required: 'El email es requerido',
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: 'Ingresa un email válido',
-                    },
-                  })}
-                />
-                {errors.email && (
-                  <p className="px-1 text-xs text-error">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between px-1">
-                  <label htmlFor="password" className="text-sm font-medium text-on-surface-variant">
-                    Contraseña
-                  </label>
-                  <a href="#" className="text-sm font-medium text-primary hover:underline">
+              <AuthField
+                id="password"
+                type="password"
+                label="Contraseña"
+                autoComplete="current-password"
+                error={errors.password?.message}
+                aside={
+                  <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">
                     ¿Olvidaste tu contraseña?
-                  </a>
-                </div>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    className={`w-full rounded-xl border px-4 py-3 pr-12 text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-primary ${
-                      errors.password ? 'border-error' : 'border-outline-variant'
-                    }`}
-                    {...register('password', {
-                      required: 'La contraseña es requerida',
-                      minLength: { value: 8, message: 'Mínimo 8 caracteres' },
-                    })}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((value) => !value)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-on-surface-variant transition hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="px-1 text-xs text-error">{errors.password.message}</p>
-                )}
-              </div>
+                  </Link>
+                }
+                {...register('password', {
+                  required: 'Escribe tu contraseña',
+                  minLength: { value: 8, message: 'Tiene al menos 8 caracteres' },
+                })}
+              />
 
-              <div className="flex items-center gap-2 px-1">
+              <div className="flex items-start gap-3">
                 <input
                   id="remember"
                   type="checkbox"
+                  aria-describedby="remember-hint"
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-outline"
                   {...register('remember')}
-                  className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
                 />
-                <label htmlFor="remember" className="text-sm text-on-surface-variant">
-                  Mantener sesión iniciada
-                </label>
+                <div>
+                  <label htmlFor="remember" className="text-sm font-medium text-on-surface">
+                    Mantener sesión iniciada
+                  </label>
+                  <p id="remember-hint" className="text-[13px] text-on-surface-variant">
+                    Sin marcar, la sesión se cierra al cerrar esta pestaña.
+                  </p>
+                </div>
               </div>
 
-              <Button type="submit" size="lg" disabled={loading} className="w-full text-lg">
+              <Button type="submit" size="lg" disabled={loading} className="w-full">
                 {loading ? 'Ingresando…' : 'Iniciar sesión'}
               </Button>
             </form>
 
-            <p className="text-center text-base text-on-surface-variant">
+            <p className="mt-8 text-[15px] text-on-surface-variant">
               ¿No tienes una cuenta?{' '}
               <Link to="/register" className="font-semibold text-primary hover:underline">
-                Regístrate ahora
+                Regístrate
               </Link>
             </p>
           </div>
         </div>
-      </section>
+      </main>
 
-      {/* Derecha: panel de marca */}
       <AuthBrandPanel
         highlights={[
-          { icon: Zap, titulo: 'Generación 10× más rápida', desc: 'Crea activos publicitarios en segundos, no horas.' },
-          { icon: ShieldCheck, titulo: 'Aprobaciones simplificadas', desc: 'Flujos colaborativos entre marketero y cliente.' },
+          {
+            icon: Zap,
+            titulo: 'Generación 10× más rápida',
+            desc: 'Crea activos publicitarios en segundos, no horas.',
+            demo: true,
+          },
+          {
+            icon: ShieldCheck,
+            titulo: 'Lo aprobado es lo publicado',
+            desc: 'Tu cliente aprueba la versión exacta que saldrá en sus redes.',
+          },
         ]}
-        badgeIcon={Sparkles}
         quote={brandContent.quote}
         personName={brandContent.person_name}
         personRole={brandContent.person_role}
-        personImage={brandContent.person_image}
       />
-    </main>
+    </div>
   )
 }
