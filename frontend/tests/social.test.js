@@ -7,22 +7,28 @@ import {
   filtrarPublicaciones,
   formatoMetrica,
   haceCuanto,
-  mensajeRetornoMeta,
+  leerRetornoMeta,
+  mensajeMotivoRetornoMeta,
   metricasDeRed,
   puedeReintentar,
   serieMensual,
+  textoCuentasConectadas,
 } from '../src/services/social.js'
 
-test('mensajeRetornoMeta explains every way back from Meta and ignores normal visits', () => {
-  assert.equal(mensajeRetornoMeta(new URLSearchParams('')), null)
-  assert.deepEqual(mensajeRetornoMeta(new URLSearchParams('redes=conectadas&cuentas=2')), {
-    tipo: 'ok',
-    texto: 'Se conectaron 2 cuentas.',
-  })
-  assert.equal(mensajeRetornoMeta(new URLSearchParams('redes=conectadas&cuentas=1')).texto, 'Se conectó 1 cuenta.')
-  assert.equal(mensajeRetornoMeta(new URLSearchParams('redes=cancelado')).tipo, 'info')
-  assert.match(mensajeRetornoMeta(new URLSearchParams('redes=error&motivo=sin_paginas')).texto, /página/)
-  assert.equal(mensajeRetornoMeta(new URLSearchParams('redes=error&motivo=raro')).tipo, 'error')
+test('leerRetornoMeta reads code and state from the fragment and reports every error', () => {
+  assert.deepEqual(leerRetornoMeta('#code=AQB%2Fx&state=abc'), { tipo: 'codigo', code: 'AQB/x', state: 'abc' })
+  assert.deepEqual(leerRetornoMeta('#error=cancelado'), { tipo: 'error', motivo: 'cancelado' })
+  assert.deepEqual(leerRetornoMeta('#code=solo-codigo'), { tipo: 'error', motivo: 'sin_datos' })
+  assert.deepEqual(leerRetornoMeta(''), { tipo: 'error', motivo: 'sin_datos' })
+  assert.deepEqual(leerRetornoMeta(undefined), { tipo: 'error', motivo: 'sin_datos' })
+})
+
+test('mensajeMotivoRetornoMeta explains each way back from Meta in Spanish', () => {
+  assert.match(mensajeMotivoRetornoMeta('cancelado'), /Cancelaste/)
+  assert.match(mensajeMotivoRetornoMeta('sesion'), /caducó o ya se usó/)
+  assert.equal(mensajeMotivoRetornoMeta('raro'), 'No se pudo conectar la cuenta.')
+  assert.equal(textoCuentasConectadas(1), 'Se conectó 1 cuenta.')
+  assert.equal(textoCuentasConectadas(2), 'Se conectaron 2 cuentas.')
 })
 
 test('puedeReintentar only offers publishing for approved campaigns with attempts left', () => {

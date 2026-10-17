@@ -31,24 +31,34 @@ export function puedeReintentar(publicacion, estadoCampana) {
 }
 
 /**
- * Mensaje tras volver de Meta a /settings?redes=...
- * @returns {{ tipo: 'ok'|'error'|'info', texto: string } | null}
+ * Lee el fragmento (#) con el que Django devuelve el navegador tras el login de Meta.
+ * El code y el state viajan en el fragmento para que no lleguen a ningún servidor.
+ * @returns {{ tipo: 'codigo', code: string, state: string } | { tipo: 'error', motivo: string }}
  */
-export function mensajeRetornoMeta(params) {
-  const redes = params.get('redes')
-  if (!redes) return null
-  if (redes === 'conectadas') {
-    const n = Number(params.get('cuentas')) || 0
-    return { tipo: 'ok', texto: n === 1 ? 'Se conectó 1 cuenta.' : `Se conectaron ${n} cuentas.` }
-  }
-  if (redes === 'cancelado') return { tipo: 'info', texto: 'Cancelaste la conexión con Meta.' }
-  const motivos = {
-    sesion: 'El enlace de conexión caducó. Vuelve a intentarlo.',
-    sin_paginas:
-      'Meta no devolvió páginas. Marca tu página de Facebook (y su Instagram) en el diálogo de permisos.',
-    meta: 'Meta rechazó la conexión. Intenta de nuevo en unos minutos.',
-  }
-  return { tipo: 'error', texto: motivos[params.get('motivo')] ?? 'No se pudo conectar la cuenta.' }
+export function leerRetornoMeta(hash) {
+  const params = new URLSearchParams((hash ?? '').replace(/^#/, ''))
+  const error = params.get('error')
+  if (error) return { tipo: 'error', motivo: error }
+  const code = params.get('code')
+  const state = params.get('state')
+  if (code && state) return { tipo: 'codigo', code, state }
+  return { tipo: 'error', motivo: 'sin_datos' }
+}
+
+const MOTIVOS_RETORNO_META = {
+  cancelado: 'Cancelaste la conexión con Meta. No se conectó ninguna cuenta.',
+  sesion: 'El enlace de conexión caducó o ya se usó. Vuelve a conectar la cuenta desde Redes conectadas.',
+  sin_codigo: 'Meta no devolvió la autorización. Vuelve a intentarlo.',
+  sin_datos: 'No llegaron los datos de Meta. Vuelve a conectar la cuenta desde Redes conectadas.',
+}
+
+export function mensajeMotivoRetornoMeta(motivo) {
+  return MOTIVOS_RETORNO_META[motivo] ?? 'No se pudo conectar la cuenta.'
+}
+
+export function textoCuentasConectadas(cantidad) {
+  const n = Number(cantidad) || 0
+  return n === 1 ? 'Se conectó 1 cuenta.' : `Se conectaron ${n} cuentas.`
 }
 
 // ── Estadísticas (Fase 4) ────────────────────────────────────────────────
