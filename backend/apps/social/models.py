@@ -73,6 +73,45 @@ class SocialConnection(models.Model):
         return f"{self.red}:{self.cuenta_nombre} ({self.estado})"
 
 
+class ProveedorOAuth(models.TextChoices):
+    META = "meta", "Meta (Facebook e Instagram)"
+
+
+class OAuthAutorizacion(models.Model):
+    """
+    Intento de conectar cuentas por OAuth, ligado al usuario que lo inició.
+
+    El `state` viaja por el navegador y vuelve en el callback de Meta; aquí
+    solo se guarda su sha256. Es de un solo uso, caduca a los 10 minutos y
+    deja de valer si cambia el token_version del usuario (sesiones
+    invalidadas). El código de Meta se canjea solo cuando el mismo usuario,
+    autenticado con su JWT, presenta el state (ver apps/social/oauth.py).
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="autorizaciones_oauth",
+    )
+    proveedor = models.CharField(max_length=20, choices=ProveedorOAuth.choices, default=ProveedorOAuth.META)
+    state_hash = models.CharField(max_length=64, unique=True, help_text="sha256 del state; el state no se guarda.")
+    token_version = models.IntegerField(help_text="token_version del usuario al iniciar la conexión.")
+    redirect_uri = models.CharField(
+        max_length=500,
+        help_text="redirect_uri enviado a Meta; el canje del código debe usar exactamente el mismo.",
+    )
+    expira_at = models.DateTimeField()
+    usada_at = models.DateTimeField(null=True, blank=True, help_text="Null: todavía no se canjeó.")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "social_oauth_autorizaciones"
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self) -> str:
+        return f"OAuth {self.proveedor} de usuario {self.usuario_id} ({'usada' if self.usada_at else 'pendiente'})"
+
+
 class PublicacionEstado(models.TextChoices):
     ESPERANDO_APROBACION = "esperando_aprobacion", "Esperando aprobación"
     PUBLICANDO = "publicando", "Publicando"

@@ -75,10 +75,10 @@ def _graph(metodo: str, ruta: str, **params: Any) -> dict[str, Any]:
 # ── OAuth ────────────────────────────────────────────────────────────────
 
 
-def url_autorizacion(state: str) -> str:
+def url_autorizacion(state: str, redirect_uri: str | None = None) -> str:
     params = {
         "client_id": settings.META_APP_ID,
-        "redirect_uri": settings.META_REDIRECT_URI,
+        "redirect_uri": redirect_uri or settings.META_REDIRECT_URI,
         "state": state,
         "response_type": "code",
     }
@@ -91,14 +91,14 @@ def url_autorizacion(state: str) -> str:
     return f"https://www.facebook.com/{settings.META_GRAPH_VERSION}/dialog/oauth?{urlencode(params)}"
 
 
-def canjear_codigo(code: str) -> str:
+def canjear_codigo(code: str, redirect_uri: str | None = None) -> str:
     """code → token de usuario de corta duración → token de larga duración."""
     corto = _graph(
         "GET",
         "oauth/access_token",
         client_id=settings.META_APP_ID,
         client_secret=settings.META_APP_SECRET,
-        redirect_uri=settings.META_REDIRECT_URI,
+        redirect_uri=redirect_uri or settings.META_REDIRECT_URI,
         code=code,
     )["access_token"]
     return _graph(

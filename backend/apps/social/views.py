@@ -2,7 +2,9 @@
 MarketMind Voice — Endpoints de redes sociales.
 
     GET    /api/social/meta/connect/                 URL de autorización de Meta (marketero o cliente)
-    GET    /api/social/meta/callback/                Meta vuelve aquí con ?code&state (sin JWT)
+    GET    /api/social/meta/callback/                Meta vuelve aquí con ?code&state (sin JWT); no canjea:
+                                                     redirige al frontend con code y state en el fragmento (#)
+    POST   /api/social/meta/complete/                {code, state} con JWT: valida el state y canjea el código
     GET    /api/social/connections/                  cuentas que conectó el usuario
     GET    /api/social/connections/destinos/?cliente_email=   destinos posibles al enviar (marketero)
     DELETE /api/social/connections/{id}/             desconectar
@@ -17,7 +19,6 @@ MarketMind Voice — Endpoints de redes sociales.
 
 import hmac
 import logging
-import secrets
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -50,6 +51,7 @@ from services.publication_service import (
 )
 from services.social_tokens import cifrar
 
+from . import oauth
 from .models import ConexionEstado, PublicacionEstado, Publication, RedSocial, SocialConnection
 from .serializers import (
     PublicationDetailSerializer,
@@ -60,81 +62,147 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
-STATE_SALT = "marketmind.meta-oauth"
-STATE_MAX_AGE = 600
+RUTA_RETORNO_META = "/redes/meta-retorno"
+MAX_LARGO_CODE = 4096
 
 
-def _redirigir_a_ajustes(**params: str) -> HttpResponseRedirect:
-    return HttpResponseRedirect(f"{settings.FRONTEND_URL.rstrip('/')}/settings?{urlencode(params)}")
+def _puede_conectar(usuario) -> bool:
+    return usuario.rol in (UserRole.MARKETERO, UserRole.CLIENTE)
+
+
+def _sin_permiso_para_conectar() -> Response:
+    return Response(
+        api_response(False, "Solo marketeros y clientes conectan redes.", {}),
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
+def _redirigir_al_frontend(**params: str) -> HttpResponseRedirect:
+    """El fragmento (#) no se envía a ningún servidor: code y state solo los lee la página del usuario."""
+    response = HttpResponseRedirect(f"{settings.FRONTEND_URL.rstrip('/')}{RUTA_RETORNO_META}#{urlencode(params)}")
+    response["Cache-Control"] = "no-store"
+    response["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 class MetaConnectView(APIView):
-    """Devuelve la URL del diálogo de Meta. El state firmado identifica al usuario al volver."""
+    """Devuelve la URL del diálogo de Meta con un state de un solo uso ligado al usuario."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        if request.user.rol not in (UserRole.MARKETERO, UserRole.CLIENTE):
-            return Response(
-                api_response(False, "Solo marketeros y clientes conectan redes.", {}),
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        if not _puede_conectar(request.user):
+            return _sin_permiso_para_conectar()
         if not (settings.META_APP_ID and settings.META_APP_SECRET):
             return Response(
                 api_response(False, "La conexión con Meta todavía no está configurada en el servidor.", {}),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        state = signing.dumps({"u": request.user.id, "n": secrets.token_urlsafe(8)}, salt=STATE_SALT)
-        return Response(api_response(True, "Redirige al usuario a Meta.", {"url": meta_graph.url_autorizacion(state)}))
+        redirect_uri = settings.META_REDIRECT_URI
+        state = oauth.iniciar(request.user, redirect_uri)
+        return Response(api_response(True, "Redirige al usuario a Meta.", {
+            "url": meta_graph.url_autorizacion(state, redirect_uri),
+        }))
 
 
 class MetaCallbackView(APIView):
-    """Meta redirige el navegador aquí. Sin JWT: el usuario sale del state firmado."""
+    """
+    Meta redirige el navegador aquí (sin JWT). No se canjea el código ni se sabe
+    quién es el usuario: solo se comprueba que el state siga vigente y se pasa
+    al frontend, que lo completa con la sesión del usuario (MetaCompleteView).
+    """
 
     authentication_classes: list = []
     permission_classes = [AllowAny]
 
     def get(self, request: Request) -> HttpResponseRedirect:
+        state = request.query_params.get("state", "")
         if request.query_params.get("error"):
-            return _redirigir_a_ajustes(redes="cancelado")
+            oauth.cancelar(state)
+            return _redirigir_al_frontend(error="cancelado")
+        if oauth.vigente_para_callback(state) is None:
+            return _redirigir_al_frontend(error="sesion")
+        code = request.query_params.get("code", "")
+        if not code or len(code) > MAX_LARGO_CODE:
+            return _redirigir_al_frontend(error="sin_codigo")
+        return _redirigir_al_frontend(code=code, state=state)
+
+
+class MetaCompleteView(APIView):
+    """El frontend presenta code + state con el JWT del usuario: recién aquí se canjea el código."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        if not _puede_conectar(request.user):
+            return _sin_permiso_para_conectar()
+        code, state = request.data.get("code"), request.data.get("state")
+        if not (isinstance(code, str) and isinstance(state, str) and code and state) or len(code) > MAX_LARGO_CODE:
+            return Response(
+                api_response(False, "Faltan los datos que devolvió Meta. Vuelve a conectar la cuenta.", {}),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
-            datos = signing.loads(request.query_params.get("state", ""), salt=STATE_SALT, max_age=STATE_MAX_AGE)
-            usuario_id = int(datos["u"])
-        except (signing.BadSignature, KeyError, TypeError, ValueError):
-            return _redirigir_a_ajustes(redes="error", motivo="sesion")
-        code = request.query_params.get("code")
-        if not code:
-            return _redirigir_a_ajustes(redes="error", motivo="sin_codigo")
+            autorizacion = oauth.reclamar(request.user, state)
+        except oauth.AutorizacionInvalida as exc:
+            logger.warning("Conexión con Meta rechazada para usuario %s: %s", request.user.id, exc.motivo)
+            return Response(api_response(False, exc.mensaje, {"motivo": exc.motivo}), status=exc.status)
 
         try:
-            token_usuario = meta_graph.canjear_codigo(code)
+            token_usuario = meta_graph.canjear_codigo(code, autorizacion.redirect_uri)
             paginas = meta_graph.paginas_con_instagram(token_usuario)
         except meta_graph.MetaError as exc:
-            logger.warning("Callback de Meta falló para usuario %s: %s", usuario_id, exc)
-            return _redirigir_a_ajustes(redes="error", motivo="meta")
+            logger.warning("Canje del código de Meta falló para usuario %s: %s", request.user.id, exc)
+            return Response(
+                api_response(
+                    False,
+                    "Meta rechazó la autorización (el código caduca en minutos y sirve una sola vez). "
+                    "Vuelve a conectar la cuenta.",
+                    {"motivo": "meta"},
+                ),
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
-        conectadas = 0
-        with transaction.atomic():
-            for pagina in paginas:
-                token = pagina.get("access_token")
-                if not token:
-                    continue
-                token_cifrado = cifrar(token)
-                conectadas += _guardar(usuario_id, RedSocial.FACEBOOK, pagina["id"], pagina.get("name", ""),
-                                       pagina["id"], token_cifrado)
-                instagram = pagina.get("instagram_business_account")
-                if instagram:
-                    conectadas += _guardar(usuario_id, RedSocial.INSTAGRAM, instagram["id"],
+        conexiones = _guardar_conexiones(request.user, paginas)
+        if not conexiones:
+            return Response(
+                api_response(
+                    False,
+                    "Meta no devolvió páginas. En el diálogo de permisos marca tu página de Facebook "
+                    "(y su cuenta de Instagram).",
+                    {"motivo": "sin_paginas"},
+                ),
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        cantidad = len(conexiones)
+        return Response(api_response(
+            True,
+            "Se conectó 1 cuenta." if cantidad == 1 else f"Se conectaron {cantidad} cuentas.",
+            {"conectadas": cantidad, "conexiones": SocialConnectionSerializer(conexiones, many=True).data},
+        ))
+
+
+def _guardar_conexiones(usuario, paginas: list[dict]) -> list[SocialConnection]:
+    conexiones = []
+    with transaction.atomic():
+        for pagina in paginas:
+            token = pagina.get("access_token")
+            if not token or not pagina.get("id"):
+                continue
+            token_cifrado = cifrar(token)
+            conexiones.append(_guardar(usuario, RedSocial.FACEBOOK, pagina["id"], pagina.get("name", ""),
+                                       pagina["id"], token_cifrado))
+            instagram = pagina.get("instagram_business_account")
+            if instagram and instagram.get("id"):
+                conexiones.append(_guardar(usuario, RedSocial.INSTAGRAM, instagram["id"],
                                            f"@{instagram.get('username', instagram['id'])}", pagina["id"],
-                                           token_cifrado)
-        if not conectadas:
-            return _redirigir_a_ajustes(redes="error", motivo="sin_paginas")
-        return _redirigir_a_ajustes(redes="conectadas", cuentas=str(conectadas))
+                                           token_cifrado))
+    return conexiones
 
 
-def _guardar(usuario_id: int, red: str, cuenta_id: str, nombre: str, pagina_id: str, token_cifrado: str) -> int:
-    SocialConnection.objects.update_or_create(
-        usuario_id=usuario_id,
+def _guardar(usuario, red: str, cuenta_id: str, nombre: str, pagina_id: str, token_cifrado: str) -> SocialConnection:
+    conexion, _ = SocialConnection.objects.update_or_create(
+        usuario=usuario,
         red=red,
         cuenta_id=cuenta_id,
         defaults={
@@ -144,7 +212,7 @@ def _guardar(usuario_id: int, red: str, cuenta_id: str, nombre: str, pagina_id: 
             "estado": ConexionEstado.ACTIVA,
         },
     )
-    return 1
+    return conexion
 
 
 class SocialConnectionViewSet(viewsets.GenericViewSet):
