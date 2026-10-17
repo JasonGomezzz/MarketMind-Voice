@@ -10,6 +10,7 @@ import {
   leerRetornoMeta,
   mensajeMotivoRetornoMeta,
   metricasDeRed,
+  publicacionAtascada,
   puedeReintentar,
   serieMensual,
   textoCuentasConectadas,
@@ -37,6 +38,18 @@ test('puedeReintentar only offers publishing for approved campaigns with attempt
   assert.equal(puedeReintentar({ estado: 'fallido', intentos: 3 }, 'aprobado'), false)
   assert.equal(puedeReintentar({ estado: 'publicado', intentos: 1 }, 'aprobado'), false)
   assert.equal(puedeReintentar({ estado: 'esperando_aprobacion', intentos: 0 }, 'pendiente_aprobacion'), false)
+})
+
+test('a publication stuck in publicando for more than 5 minutes can be retried', () => {
+  const ahora = new Date('2026-10-16T12:00:00Z')
+  const atascada = { estado: 'publicando', intentos: 3, publicando_desde: '2026-10-16T11:54:00Z' }
+  const reciente = { estado: 'publicando', intentos: 1, publicando_desde: '2026-10-16T11:58:00Z' }
+  assert.equal(publicacionAtascada(atascada, ahora), true)
+  assert.equal(publicacionAtascada(reciente, ahora), false)
+  assert.equal(publicacionAtascada({ estado: 'publicando' }, ahora), false)
+  assert.equal(puedeReintentar(atascada, 'aprobado', ahora), true)
+  assert.equal(puedeReintentar(reciente, 'aprobado', ahora), false)
+  assert.equal(puedeReintentar(atascada, 'pendiente_aprobacion', ahora), false)
 })
 
 test('labels fall back to the raw value for unknown networks and states', () => {

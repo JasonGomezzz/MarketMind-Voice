@@ -21,12 +21,21 @@ export function estadoPublicacion(estado) {
   return ESTADOS[estado] ?? { texto: estado, tono: 'neutral' }
 }
 
+/** Igual que MARGEN_ATASCADA en Django: pasado este tiempo en 'publicando' se asume que el proceso murió. */
+const MARGEN_ATASCADA_MS = 5 * 60 * 1000
+
+/** ¿Lleva más de 5 minutos en 'publicando'? Entonces se puede reintentar (el servidor revisa antes de repetir). */
+export function publicacionAtascada(publicacion, ahora = new Date()) {
+  if (publicacion.estado !== 'publicando' || !publicacion.publicando_desde) return false
+  return ahora - new Date(publicacion.publicando_desde) > MARGEN_ATASCADA_MS
+}
+
 /** ¿Puede el marketero pulsar "Publicar ahora / Reintentar"? */
-export function puedeReintentar(publicacion, estadoCampana) {
+export function puedeReintentar(publicacion, estadoCampana, ahora = new Date()) {
+  if (estadoCampana !== 'aprobado') return false
+  if (publicacionAtascada(publicacion, ahora)) return true
   return (
-    estadoCampana === 'aprobado' &&
-    ['fallido', 'esperando_aprobacion'].includes(publicacion.estado) &&
-    (publicacion.intentos ?? 0) < 3
+    ['fallido', 'esperando_aprobacion'].includes(publicacion.estado) && (publicacion.intentos ?? 0) < 3
   )
 }
 
