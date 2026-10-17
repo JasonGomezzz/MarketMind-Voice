@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
@@ -48,12 +49,14 @@ public class DjangoEventClient {
         this.executor = executor;
     }
 
-    private static RestTemplate defaultRestTemplate() {
+    static RestTemplate defaultRestTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(3000);
         // Django publica en Meta dentro de esta llamada (contenedor + espera + publicación).
         factory.setReadTimeout(90000);
-        return new RestTemplate(factory);
+        // Desde Spring 6.1 el cuerpo se envía en streaming (chunked, sin Content-Length)
+        // y el servidor WSGI de Django lo lee vacío: se bufferiza para mandar Content-Length.
+        return new RestTemplate(new BufferingClientHttpRequestFactory(factory));
     }
 
     public void notifyApprovedAsync(Long campaignId) {
