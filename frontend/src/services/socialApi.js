@@ -8,6 +8,9 @@ export const socialApi = {
       .get('/api/social/connections/destinos/', { params: { cliente_email: clienteEmail } })
       .then((r) => r.data.data.conexiones),
   urlConexion: () => api.get('/api/social/meta/connect/').then((r) => r.data.data.url),
+  /** Termina la conexión con la sesión del usuario: Django comprueba que el state sea suyo y canjea el código. */
+  completarConexionMeta: (code, state) =>
+    api.post('/api/social/meta/complete/', { code, state }).then((r) => r.data.data),
   desconectar: (id) => api.delete(`/api/social/connections/${id}/`),
   publicaciones: (campaignId) =>
     api

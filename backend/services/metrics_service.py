@@ -44,8 +44,12 @@ def ultima_metrica(publicacion: Publication) -> PublicationMetric | None:
 
 def refrescar_metricas(publicacion: Publication, forzar: bool = False) -> PublicationMetric:
     """Devuelve la foto más reciente; consulta a Meta solo si la última es vieja."""
-    if publicacion.estado != PublicacionEstado.PUBLICADO or not publicacion.externo_id:
+    if publicacion.estado != PublicacionEstado.PUBLICADO:
         raise MetricasNoDisponibles("La publicación todavía no está en la red social.")
+    if not publicacion.externo_id:
+        raise MetricasNoDisponibles(
+            "Meta confirmó la publicación, pero no se pudo identificar el post: no hay estadísticas."
+        )
 
     ultima = ultima_metrica(publicacion)
     if ultima and not forzar and timezone.now() - ultima.obtenida_at < INTERVALO_MINIMO:

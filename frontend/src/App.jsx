@@ -17,6 +17,7 @@ import UsersAdminPage from './pages/UsersAdminPage'
 import AccountSettingsPage from './pages/AccountSettingsPage'
 import PromptGuidePage from './pages/PromptGuidePage'
 import CreditsDetailPage from './pages/CreditsDetailPage'
+import MetaRetornoPage from './pages/MetaRetornoPage'
 import PrivateRoute from './components/PrivateRoute'
 import AppLayout from './components/AppLayout'
 
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="/settings" element={<AccountSettingsPage />} />
               <Route path="/prompt-guide" element={<PromptGuideRouter />} />
               <Route path="/credits" element={<CreditsDetailPage />} />
+              <Route path="/redes/meta-retorno" element={<MetaRetornoPage />} />
             </Route>
           </Route>
 

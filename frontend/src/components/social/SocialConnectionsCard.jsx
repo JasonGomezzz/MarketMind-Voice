@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Link2, Loader2, Unlink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import RedIcon from './RedIcon'
-import { etiquetaRed, mensajeRetornoMeta } from '../../services/social'
+import { etiquetaRed } from '../../services/social'
 import { socialApi } from '../../services/socialApi'
 
 /**
  * "Redes conectadas": el dueño de la cuenta (cliente) o el marketero autoriza
  * su página de Facebook y su Instagram con el login de Meta. La contraseña
  * nunca pasa por MarketMind; el servidor guarda un token cifrado.
+ * Al volver de Meta, /redes/meta-retorno termina la conexión y regresa aquí.
  */
 export default function SocialConnectionsCard() {
   const [conexiones, setConexiones] = useState([])
   const [cargando, setCargando] = useState(true)
   const [conectando, setConectando] = useState(false)
-  const [params, setParams] = useSearchParams()
 
   useEffect(() => {
     let vigente = true
@@ -29,16 +28,6 @@ export default function SocialConnectionsCard() {
       vigente = false
     }
   }, [])
-
-  // Al volver de Meta llega ?redes=... : avisar y limpiar la URL.
-  useEffect(() => {
-    const mensaje = mensajeRetornoMeta(params)
-    if (!mensaje) return
-    if (mensaje.tipo === 'ok') toast.success(mensaje.texto)
-    else if (mensaje.tipo === 'error') toast.error(mensaje.texto)
-    else toast(mensaje.texto)
-    setParams({}, { replace: true })
-  }, [params, setParams])
 
   async function conectar() {
     setConectando(true)

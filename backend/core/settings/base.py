@@ -291,10 +291,16 @@ META_REDIRECT_URI = config(
     "META_REDIRECT_URI",
     default=f"{DJANGO_BASE_URL}/api/social/meta/callback/",
 )
+# Con META_LOGIN_CONFIG_ID los permisos los fija la configuración de Facebook
+# Login para empresas en el panel de Meta: mantenerla igual a esta lista.
 META_OAUTH_SCOPES = [
     "pages_show_list",
     "pages_read_engagement",
     "pages_manage_posts",
+    # /{post-id}/insights de Facebook (alcance, vistas, clics) pide read_insights + pages_read_engagement.
+    "read_insights",
+    # Comentarios de usuarios en la página y /{page-id}/feed (comprobar un post dudoso antes de reintentar).
+    "pages_read_user_content",
     "instagram_basic",
     "instagram_content_publish",
     "instagram_manage_insights",

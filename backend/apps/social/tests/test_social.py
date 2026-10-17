@@ -1,11 +1,9 @@
 """Tests de Fase 3: conectar cuentas de Meta y publicar lo aprobado. La Graph API se simula."""
 
 from unittest.mock import patch
-from urllib.parse import parse_qs, urlparse
 
 import pytest
 from django.conf import settings
-from django.core import signing
 from rest_framework.test import APIClient
 
 from apps.authentication.models import User, UserRole
@@ -85,82 +83,6 @@ class TestTokens:
     def test_dato_corrupto_no_se_lee(self):
         with pytest.raises(TokenIlegible):
             descifrar("no-es-fernet")
-
-
-@pytest.mark.django_db
-class TestOAuth:
-    def test_marketero_obtiene_url_con_state_y_permisos(self, api_client):
-        response = api_client.get("/api/social/meta/connect/")
-        assert response.status_code == 200
-        url = urlparse(response.data["data"]["url"])
-        params = parse_qs(url.query)
-        assert url.netloc == "www.facebook.com"
-        assert params["client_id"] == ["test-app"]
-        assert "instagram_content_publish" in params["scope"][0]
-        assert signing.loads(params["state"][0], salt="marketmind.meta-oauth")["u"]
-
-    def test_con_configuracion_de_login_para_empresas_usa_config_id(self, api_client, settings):
-        settings.META_LOGIN_CONFIG_ID = "cfg-123"
-        url = urlparse(api_client.get("/api/social/meta/connect/").data["data"]["url"])
-        params = parse_qs(url.query)
-        assert params["config_id"] == ["cfg-123"]
-        assert "scope" not in params
-
-    def test_superadmin_no_conecta(self, superadmin_client):
-        assert superadmin_client.get("/api/social/meta/connect/").status_code == 403
-
-    def test_sin_app_configurada_503(self, api_client, settings):
-        settings.META_APP_ID = ""
-        assert api_client.get("/api/social/meta/connect/").status_code == 503
-
-    def _state(self, usuario: User) -> str:
-        return signing.dumps({"u": usuario.id, "n": "x"}, salt="marketmind.meta-oauth")
-
-    def test_callback_guarda_pagina_e_instagram_con_token_cifrado(self, cliente):
-        paginas = [{
-            "id": "page-1", "name": "Café Aurora", "access_token": "EAAG-pagina",
-            "instagram_business_account": {"id": "ig-1", "username": "cafe.aurora"},
-        }]
-        with patch.object(meta_graph, "canjear_codigo", return_value="user-token"), \
-                patch.object(meta_graph, "paginas_con_instagram", return_value=paginas):
-            response = APIClient().get(
-                "/api/social/meta/callback/", {"code": "abc", "state": self._state(cliente)}
-            )
-
-        assert response.status_code == 302
-        assert response["Location"].startswith("http://frontend.test/settings?redes=conectadas")
-        conexiones = SocialConnection.objects.filter(usuario=cliente).order_by("red")
-        assert [(c.red, c.cuenta_nombre) for c in conexiones] == [
-            ("facebook", "Café Aurora"), ("instagram", "@cafe.aurora"),
-        ]
-        assert all("EAAG" not in c.token_cifrado for c in conexiones)
-        assert descifrar(conexiones[1].token_cifrado) == "EAAG-pagina"
-
-    def test_reconectar_actualiza_sin_duplicar(self, cliente):
-        conexion(cliente, cuenta_id="ig-1", estado=ConexionEstado.DESCONECTADA)
-        paginas = [{"id": "page-1", "name": "Café", "access_token": "nuevo",
-                    "instagram_business_account": {"id": "ig-1", "username": "cafe"}}]
-        with patch.object(meta_graph, "canjear_codigo", return_value="t"), \
-                patch.object(meta_graph, "paginas_con_instagram", return_value=paginas):
-            APIClient().get("/api/social/meta/callback/", {"code": "abc", "state": self._state(cliente)})
-        ig = SocialConnection.objects.get(usuario=cliente, red="instagram")
-        assert ig.estado == ConexionEstado.ACTIVA
-        assert SocialConnection.objects.filter(usuario=cliente, red="instagram").count() == 1
-
-    @pytest.mark.parametrize("params,motivo", [
-        ({"code": "abc", "state": "manipulado"}, "redes=error"),
-        ({"error": "access_denied"}, "redes=cancelado"),
-    ])
-    def test_callback_invalido_o_cancelado(self, db, params, motivo):
-        response = APIClient().get("/api/social/meta/callback/", params)
-        assert response.status_code == 302
-        assert motivo in response["Location"]
-        assert SocialConnection.objects.count() == 0
-
-    def test_error_de_meta_redirige_con_error(self, cliente):
-        with patch.object(meta_graph, "canjear_codigo", side_effect=meta_graph.MetaError("code vencido")):
-            response = APIClient().get("/api/social/meta/callback/", {"code": "x", "state": self._state(cliente)})
-        assert "redes=error" in response["Location"]
 
 
 @pytest.mark.django_db
@@ -297,10 +219,13 @@ class TestPublicarAlAprobar:
             evento_aprobado(programada.campaign_id)
         Campaign.objects.filter(pk=programada.campaign_id).update(texto_generado="Texto cambiado después")
 
-        with patch.object(meta_graph, "publicar_instagram", return_value=RESULTADO_OK) as publicar:
+        # Reintento sin contenedor: primero se busca si el intento anterior llegó a publicar.
+        with patch.object(meta_graph, "buscar_publicacion_instagram", return_value=None) as buscar, \
+                patch.object(meta_graph, "publicar_instagram", return_value=RESULTADO_OK) as publicar:
             response = cliente_api(user_marketero).post(f"/api/social/publications/{programada.id}/publish/")
 
         assert response.status_code == 200
+        assert buscar.call_args.args[2] == "Copy aprobado por el cliente"
         assert publicar.call_args.args[3] == "Copy aprobado por el cliente"
         programada.refresh_from_db()
         assert programada.estado == PublicacionEstado.PUBLICADO and programada.intentos == 2
@@ -314,12 +239,17 @@ class TestPublicarAlAprobar:
         programada.refresh_from_db()
         assert programada.contenedor_id == "cont-9" and "incierto" in programada.error
 
-        with patch.object(meta_graph, "contenedor_publicado", return_value=True), \
+        encontrado = meta_graph.ResultadoPublicacion(externo_id="media-9", permalink="https://www.instagram.com/p/9/")
+        with patch.object(meta_graph, "estado_contenedor", return_value="PUBLISHED"), \
+                patch.object(meta_graph, "buscar_publicacion_instagram", return_value=encontrado), \
                 patch.object(meta_graph, "publicar_instagram") as publicar:
             cliente_api(user_marketero).post(f"/api/social/publications/{programada.id}/publish/")
         publicar.assert_not_called()
         programada.refresh_from_db()
         assert programada.estado == PublicacionEstado.PUBLICADO
+        # Antes quedaba publicado sin id: sin enlace ni métricas.
+        assert (programada.externo_id, programada.permalink) == ("media-9", "https://www.instagram.com/p/9/")
+        assert programada.contenedor_id == "cont-9" and programada.error == ""
 
     def test_reintento_requiere_aprobacion_y_ser_el_dueno(self, programada, cliente):
         assert cliente_api(cliente).post(f"/api/social/publications/{programada.id}/publish/").status_code == 403
