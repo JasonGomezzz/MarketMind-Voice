@@ -15,6 +15,7 @@ import api from '../services/api'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '../hooks/useTheme'
 import SocialConnectionsCard from '@/components/social/SocialConnectionsCard'
+import { setAuthItem } from '../services/session'
 
 /**
  * Configuración de cuenta (portado de Stitch: account_settings, adaptado a los
@@ -75,7 +76,7 @@ export default function AccountSettingsPage() {
     try {
       const { data } = await api.patch('/api/auth/me/', { nombre: nombre.trim() })
       setUser(data.data.user)
-      localStorage.setItem('user_nombre', data.data.user.nombre)
+      setAuthItem('user_nombre', data.data.user.nombre)
       toast.success('Perfil actualizado')
     } catch (err) {
       const fieldError = err.response?.data?.data?.nombre?.[0]

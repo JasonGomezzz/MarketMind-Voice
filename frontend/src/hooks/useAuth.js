@@ -1,22 +1,22 @@
 import { useState, useCallback } from 'react'
 import api from '../services/api'
-import { clearSession, storeTokens } from '../services/session'
+import { clearSession, getAuthItem, setAuthItem, startSession } from '../services/session'
 
 export function useAuth() {
   const [loading, setLoading] = useState(false)
 
-  const login = useCallback(async (email, password) => {
+  /** `remember`: true guarda la sesión en este navegador; false, solo en esta pestaña. */
+  const login = useCallback(async (email, password, { remember = false } = {}) => {
     setLoading(true)
     try {
       const { data } = await api.post('/api/auth/token/', { email, password })
-      storeTokens(data)
-      localStorage.setItem('user_role', data.role)
-      localStorage.setItem('user_nombre', data.nombre)
+      startSession(data, { remember })
       const me = await api.get('/api/auth/me/')
       const user = me.data?.data?.user
-      if (user?.email) localStorage.setItem('user_email', user.email)
+      if (user?.email) setAuthItem('user_email', user.email)
       return { ok: true, role: data.role }
     } catch (err) {
+      clearSession({ redirect: false })
       const status = err.response?.status
       const message = err.response?.data?.message
       return { ok: false, status, message }
@@ -26,7 +26,7 @@ export function useAuth() {
   }, [])
 
   const logout = useCallback(async () => {
-    const refresh = localStorage.getItem('refresh_token')
+    const refresh = getAuthItem('refresh_token')
     try {
       if (refresh) await api.post('/api/auth/logout/', { refresh })
     } catch {
@@ -36,13 +36,13 @@ export function useAuth() {
     }
   }, [])
 
-  const isAuthenticated = () => Boolean(localStorage.getItem('access_token'))
+  const isAuthenticated = () => Boolean(getAuthItem('access_token'))
 
-  const getRole = () => localStorage.getItem('user_role')
+  const getRole = () => getAuthItem('user_role')
 
-  const getNombre = () => localStorage.getItem('user_nombre')
+  const getNombre = () => getAuthItem('user_nombre')
 
-  const getEmail = () => localStorage.getItem('user_email')
+  const getEmail = () => getAuthItem('user_email')
 
   return { login, logout, isAuthenticated, getRole, getNombre, getEmail, loading }
 }

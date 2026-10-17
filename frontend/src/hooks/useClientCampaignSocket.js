@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { getCampaignById } from '../services/clientCampaigns'
 import { connectClientCampaignSocket } from '../services/clientCampaignSocket'
-import { clearSession, refreshAccessToken, SESSION_CHANGED } from '../services/session'
+import { clearSession, getAuthItem, refreshAccessToken, SESSION_CHANGED } from '../services/session'
 
 function getWsUrl() {
   const url = new URL(import.meta.env.VITE_USER_API_URL || 'http://localhost:8080', window.location.origin)
@@ -18,21 +18,21 @@ export function useClientCampaignSocket({ onCampaignSubmitted, onCampaignStatusC
     if (typeof WebSocket === 'undefined') return undefined
     let cancelled = false
     let generation = 0
-    let accessToken = localStorage.getItem('access_token')
+    let accessToken = getAuthItem('access_token')
     let disconnect = () => {}
 
     function connect() {
       const currentGeneration = ++generation
       return connectClientCampaignSocket({
         url: getWsUrl(),
-        getToken: () => localStorage.getItem('access_token'),
+        getToken: () => getAuthItem('access_token'),
         refreshToken: refreshAccessToken,
         endSession: clearSession,
         onConnected,
         onNotification: async ({ type, campaignId }) => {
           try {
             const campaign = await getCampaignById(campaignId)
-            if (cancelled || currentGeneration !== generation || !localStorage.getItem('access_token')) return
+            if (cancelled || currentGeneration !== generation || !getAuthItem('access_token')) return
             if (type === 'campaign_submitted') onCampaignSubmitted?.(campaign)
             else onCampaignStatusChanged?.(campaign)
           } catch {
@@ -43,7 +43,7 @@ export function useClientCampaignSocket({ onCampaignSubmitted, onCampaignStatusC
     }
 
     const sessionChanged = () => {
-      const current = localStorage.getItem('access_token')
+      const current = getAuthItem('access_token')
       if (accessToken === current) return
       accessToken = current
       generation++

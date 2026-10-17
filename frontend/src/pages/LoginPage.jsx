@@ -26,8 +26,8 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm()
 
-  async function onSubmit({ email, password }) {
-    const result = await login(email, password)
+  async function onSubmit({ email, password, remember }) {
+    const result = await login(email, password, { remember: Boolean(remember) })
 
     if (!result.ok) {
       const msg =
@@ -145,6 +145,7 @@ export default function LoginPage() {
                 <input
                   id="remember"
                   type="checkbox"
+                  {...register('remember')}
                   className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
                 />
                 <label htmlFor="remember" className="text-sm text-on-surface-variant">

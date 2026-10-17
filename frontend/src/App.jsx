@@ -20,6 +20,7 @@ import CreditsDetailPage from './pages/CreditsDetailPage'
 import MetaRetornoPage from './pages/MetaRetornoPage'
 import PrivateRoute from './components/PrivateRoute'
 import AppLayout from './components/AppLayout'
+import { getAuthItem } from './services/session'
 
 /**
  * Ruta /dashboard según rol: el cliente ve su dashboard (Spring Boot :8080),
@@ -27,12 +28,12 @@ import AppLayout from './components/AppLayout'
  * así sus hooks viven aislados (sin violar las reglas de hooks de React).
  */
 function DashboardRouter() {
-  const role = localStorage.getItem('user_role') || ''
+  const role = getAuthItem('user_role') || ''
   return role === 'cliente' ? <ClientDashboardPage /> : <DashboardPage />
 }
 
 function PromptGuideRouter() {
-  const role = localStorage.getItem('user_role') || ''
+  const role = getAuthItem('user_role') || ''
   return role === 'cliente' ? <Navigate to="/client-help" replace /> : <PromptGuidePage />
 }
 

@@ -1,11 +1,18 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import axios from 'axios'
-import { refreshAccessToken, clearSession, attachSessionInterceptors } from '../src/services/session.js'
+import {
+  refreshAccessToken, clearSession, attachSessionInterceptors, startSession, getAuthItem, setAuthItem,
+} from '../src/services/session.js'
+
+function memoryStorage(entries = []) {
+  const values = new Map(entries)
+  return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: (key) => values.delete(key) }
+}
 
 beforeEach(() => {
-  const values = new Map([['access_token', 'old-access'], ['refresh_token', 'old-refresh']])
-  globalThis.localStorage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) }
+  globalThis.localStorage = memoryStorage([['access_token', 'old-access'], ['refresh_token', 'old-refresh']])
+  globalThis.sessionStorage = memoryStorage()
   globalThis.window = { dispatchEvent() {}, location: { href: '' } }
 })
 
@@ -59,4 +66,36 @@ test('Django and Spring interceptors retry simultaneous 401s with one rotation',
   const responses = await Promise.all([client().get('/api/campaigns/'), client().get('/api/v1/campaigns/mine')])
   assert.deepEqual(responses.map((response) => response.data), ['authorized', 'authorized'])
   assert.equal(refreshes, 1)
+})
+
+const credentials = { access: 'access', refresh: 'refresh', role: 'marketero', nombre: 'Prueba' }
+
+test('sin "recordarme" la sesión y su renovación quedan solo en esta pestaña', async () => {
+  startSession(credentials)
+  assert.equal(sessionStorage.getItem('access_token'), 'access')
+  assert.equal(localStorage.getItem('access_token'), null)
+  axios.post = async () => ({ data: { access: 'renewed', refresh: 'renewed-refresh' } })
+  assert.equal(await refreshAccessToken('access'), 'renewed')
+  assert.equal(sessionStorage.getItem('refresh_token'), 'renewed-refresh')
+  assert.equal(localStorage.getItem('refresh_token'), null)
+  assert.equal(getAuthItem('user_role'), 'marketero')
+})
+
+test('con "recordarme" la sesión persiste en localStorage', () => {
+  startSession(credentials, { remember: true })
+  setAuthItem('user_email', 'marketero@test.com')
+  assert.equal(localStorage.getItem('user_email'), 'marketero@test.com')
+  assert.equal(sessionStorage.getItem('access_token'), null)
+})
+
+test('cambiar de modo o cerrar sesión borra credenciales viejas y conserva preferencias', () => {
+  localStorage.setItem('marketmind_theme', 'dark')
+  startSession(credentials, { remember: true })
+  startSession({ ...credentials, role: 'cliente' })
+  assert.equal(localStorage.getItem('user_role'), null)
+  assert.equal(getAuthItem('user_role'), 'cliente')
+  clearSession({ redirect: false })
+  assert.equal(getAuthItem('access_token'), null)
+  assert.equal(sessionStorage.getItem('user_role'), null)
+  assert.equal(localStorage.getItem('marketmind_theme'), 'dark')
 })

@@ -15,6 +15,7 @@ import { getPendingCampaigns, getCampaignSummary } from '../services/clientCampa
 import { Button } from '@/components/ui/button'
 import { useClientCampaignSocket } from '../hooks/useClientCampaignSocket'
 import { campaignSentAt, relativeTimeFrom } from '../utils/date'
+import { getAuthItem } from '../services/session'
 
 /**
  * Dashboard del rol CLIENTE. Consume Spring Boot :8080 (arquitectura políglota).
@@ -22,7 +23,7 @@ import { campaignSentAt, relativeTimeFrom } from '../utils/date'
  * El cliente revisa/aprueba, NO crea campañas.
  */
 export default function ClientDashboardPage() {
-  const nombre = localStorage.getItem('user_nombre') || 'usuario'
+  const nombre = getAuthItem('user_nombre') || 'usuario'
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -35,7 +36,7 @@ export default function ClientDashboardPage() {
 
   const handleRealtimeCampaign = useCallback((campaign) => {
     if (campaign.estado !== 'pendiente_aprobacion') return
-    const userEmail = localStorage.getItem('user_email')
+    const userEmail = getAuthItem('user_email')
     if (!userEmail || campaign.clienteEmail?.toLowerCase() !== userEmail.toLowerCase()) return
     setPending((current) => {
       const withoutDuplicate = current.filter((item) => item.id !== campaign.id)
@@ -49,7 +50,7 @@ export default function ClientDashboardPage() {
   }, [])
 
   const handleStatusChanged = useCallback((campaign) => {
-    const userEmail = localStorage.getItem('user_email')
+    const userEmail = getAuthItem('user_email')
     if (!userEmail || campaign.clienteEmail?.toLowerCase() !== userEmail.toLowerCase()) return
     setPending((current) => current.filter((item) => item.id !== campaign.id))
     setSummary((current) => {

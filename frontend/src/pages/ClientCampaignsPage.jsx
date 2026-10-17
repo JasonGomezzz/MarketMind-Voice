@@ -5,6 +5,7 @@ import { getMyCampaigns } from '../services/clientCampaigns'
 import { Button } from '@/components/ui/button'
 import { useClientCampaignSocket } from '../hooks/useClientCampaignSocket'
 import { campaignSentAt, relativeTimeFrom } from '../utils/date'
+import { getAuthItem } from '../services/session'
 
 export default function ClientCampaignsPage() {
   const navigate = useNavigate()
@@ -50,7 +51,7 @@ export default function ClientCampaignsPage() {
   const handleCampaignSubmitted = useCallback(
     (campaign) => {
       if (page !== 0 || (filters.estado && filters.estado !== 'pendiente_aprobacion')) return
-      const userEmail = localStorage.getItem('user_email')
+      const userEmail = getAuthItem('user_email')
       if (!userEmail || campaign.clienteEmail?.toLowerCase() !== userEmail.toLowerCase()) return
       setData((current) => {
         if (!current || current.content.some((c) => c.id === campaign.id)) return current
