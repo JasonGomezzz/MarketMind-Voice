@@ -41,15 +41,15 @@ const FEATURES = [
     titulo: 'Copy e imagen con IA',
     texto: 'Gemini redacta el texto y genera la imagen del anuncio. Regenerar cuesta un crédito; mejorar el texto, nada.',
     fragment: (
-      <Fragment className="flex gap-3">
-        <img src={featureImage} alt="Botella cobre sobre agua turquesa, imagen generada con IA" width="80" height="80" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
-        <div className="min-w-0">
-          <p className="leading-relaxed text-on-surface">Hidratación que se nota. La nueva fórmula llega este mes.</p>
-          <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md border border-outline px-2.5 py-1 text-[13px] font-semibold text-on-surface">
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-            Regenerar · 1 crédito
-          </span>
+      <Fragment className="flex flex-col gap-3">
+        <div className="flex gap-3">
+          <img src={featureImage} alt="Botella cobre sobre agua turquesa, imagen generada con IA" width="80" height="80" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+          <p className="min-w-0 leading-relaxed text-on-surface">Hidratación que se nota. La nueva fórmula llega este mes.</p>
         </div>
+        <span className="inline-flex items-center gap-1.5 self-start whitespace-nowrap rounded-md border border-outline px-2.5 py-1 text-[13px] font-semibold text-on-surface">
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+          Regenerar · 1&nbsp;crédito
+        </span>
       </Fragment>
     ),
   },
@@ -164,7 +164,7 @@ export default function FeaturesBento() {
         <p className="mt-4 px-2 text-base text-on-surface-variant sm:px-3 lg:px-8">
           Fragmentos de la interfaz con contenido de ejemplo.
         </p>
-        <div className="mt-12 grid gap-2 sm:gap-3 md:grid-cols-2 lg:mt-16 lg:grid-cols-4">
+        <div className="mt-12 grid gap-2 sm:gap-3 md:grid-cols-2 lg:mt-16 xl:grid-cols-4">
           {FEATURES.map((f, i) => {
             const fragmentFirst = i % 2 === 1
             const wide = i === 0 || i === FEATURES.length - 1
