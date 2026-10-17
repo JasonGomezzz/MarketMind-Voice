@@ -61,7 +61,7 @@ test('the real legal site prepares with valid links and the deletion page', asyn
   const result = await prepareLegalSite({ source: REAL_SOURCE, target, allowDrafts: true })
   for (const name of PAGES) assert.ok(result.files.includes(name), `${name} falta en el sitio`)
   assert.ok(!result.files.some(name => /\.md$/i.test(name)), 'no se publican archivos Markdown')
-  for (const name of ['index.html']) {
+  for (const name of ['index.html', 'privacidad.html', 'terminos.html']) {
     const html = await readFile(path.join(target, name), 'utf8')
     assert.match(html, /href="eliminacion-datos\.html"/, `${name} debe enlazar la eliminación de datos`)
   }

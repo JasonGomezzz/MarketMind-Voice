@@ -13,3 +13,10 @@ a:focus-visible { outline: 3px solid #7669e1; outline-offset: 4px; }
 .notice { font-size: .92rem; }
 footer { font-size: .9rem; }
 @media (max-width: 600px) { header, main, footer { padding: 18px; } main { border-radius: 0; } }
+h3 { line-height: 1.35; margin-top: 24px; font-size: 1.05rem; }
+.summary { padding: 16px 20px; border: 1px solid #dedce9; background: #f6f5fc; border-radius: 10px; }
+.summary ul { margin: 8px 0 0; padding-left: 20px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid #dedce9; }
+th { background: #f6f5fc; font-weight: 650; }
