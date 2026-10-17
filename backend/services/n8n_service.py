@@ -4,16 +4,17 @@ MarketMind IA — n8n Service (Orquestador Asíncrono)
 Flujo producción (USE_MOCK_AI=False):
   1. Valida tokens_disponibles > 0 (defensa en profundidad).
   2. En transaction.atomic(): descuenta 1 token con un UPDATE condicional
-     (credit_service; no se gasta dos veces el último), incrementa intentos y
-     transiciona campaña → PENDIENTE_IA.
+     (credit_service; no se gasta dos veces el último), rota n8n_callback_token,
+     incrementa intentos y transiciona campaña → PENDIENTE_IA.
   3. Dispara webhook a n8n con el secreto compartido (X-NexoMark-Token) y el
-     n8n_callback_token de la campaña. n8n valida el secreto antes de procesar y
+     n8n_callback_token del intento. n8n valida el secreto antes de procesar y
      responde 202 enseguida; la URL de callback la arma n8n con su propia
      variable DJANGO_CALLBACK_BASE_URL (no la toma del payload).
   4. Si n8n no responde o rechaza (401/403/5xx): devuelve el crédito y
      estado → BORRADOR.
   5. El resultado real llega por POST /api/campaigns/webhook/ia-result/ con el
-     mismo secreto.
+     mismo secreto. Como el token se rota en cada intento, un callback de un
+     intento anterior ya no corresponde a ninguna campaña y se rechaza.
 
 Flujo mock (USE_MOCK_AI=True):
   Simula el callback directamente sin llamar a n8n.
@@ -22,6 +23,7 @@ Flujo mock (USE_MOCK_AI=True):
 
 import hmac
 import logging
+import uuid
 from typing import TYPE_CHECKING, Any
 
 import requests
@@ -113,9 +115,19 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             # Otra petición gastó el último crédito entre la validación y el cobro.
             return {"dispatched": False, "error": "Sin tokens disponibles."}
 
+        # Token nuevo por intento: el callback de un intento anterior (p. ej. uno
+        # que n8n terminó después de un timeout) ya no autentica contra esta campaña.
+        campaign.n8n_callback_token = uuid.uuid4()
         campaign.intentos_generacion += 1
         campaign.tokens_consumidos += 1
-        campaign.save(update_fields=["intentos_generacion", "tokens_consumidos", "fecha_actualizacion"])
+        campaign.save(
+            update_fields=[
+                "n8n_callback_token",
+                "intentos_generacion",
+                "tokens_consumidos",
+                "fecha_actualizacion",
+            ]
+        )
 
         campaign.transition_to(CampaignStatus.PENDIENTE_IA)
 

@@ -1,8 +1,9 @@
 """
-Secreto compartido Django ↔ n8n (riesgo 3).
+Secreto compartido Django ↔ n8n y callback por intento (riesgos 3 y 5).
 
 - Django envía X-NexoMark-Token al disparar los webhooks de n8n.
 - Los callbacks exigen ese secreto además del n8n_callback_token.
+- El n8n_callback_token se rota en cada intento: un callback viejo no se aplica.
 """
 
 import os
@@ -104,8 +105,89 @@ class TestCallbackExigeSecreto:
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("ia_real")
+class TestCallbackPorIntento:
+    def test_callback_de_un_intento_anterior_se_rechaza_y_vale_el_ultimo(
+        self, campaign, user_marketero, n8n_client
+    ):
+        User.objects.filter(pk=user_marketero.pk).update(tokens_disponibles=10)
+        campaign.marketero.refresh_from_db()
+        enviados = []
+
+        def primero_timeout_luego_acepta(url, json, headers, timeout):
+            enviados.append(json["n8n_callback_token"])
+            if len(enviados) == 1:
+                # n8n recibió el intento 1 pero Django se cansó de esperar.
+                raise requests.exceptions.Timeout("n8n tardó demasiado")
+            return respuesta_n8n(202)
+
+        with patch.object(n8n_service.requests, "post", side_effect=primero_timeout_luego_acepta):
+            assert n8n_service.trigger_ia_generation(campaign)["dispatched"] is False
+            campaign.refresh_from_db()
+            assert n8n_service.trigger_ia_generation(campaign)["dispatched"] is True
+
+        token_viejo, token_nuevo = enviados
+        assert token_viejo != token_nuevo
+        campaign.refresh_from_db()
+        assert str(campaign.n8n_callback_token) == token_nuevo
+        assert saldo(user_marketero) == 9  # intento 1 devuelto, intento 2 cobrado
+
+        # n8n termina el intento 1 y avisa tarde: ya no corresponde a la campaña.
+        viejo = n8n_client.post(CALLBACK_URL, {
+            "n8n_callback_token": token_viejo,
+            "success": True,
+            "copy": "resultado del intento 1",
+        }, format="json")
+        assert viejo.status_code == 403
+        campaign.refresh_from_db()
+        assert campaign.estado == CampaignStatus.PENDIENTE_IA
+        assert campaign.texto_generado == ""
+
+        nuevo = n8n_client.post(CALLBACK_URL, {
+            "n8n_callback_token": token_nuevo,
+            "success": True,
+            "copy": "resultado del intento 2",
+        }, format="json")
+        assert nuevo.status_code == 200
+        campaign.refresh_from_db()
+        assert campaign.estado == CampaignStatus.GENERADO
+        assert campaign.texto_generado == "resultado del intento 2"
+        assert saldo(user_marketero) == 9
+
+    def test_callback_tardio_tras_timeout_no_devuelve_otro_credito(self, campaign, user_marketero, n8n_client):
+        User.objects.filter(pk=user_marketero.pk).update(tokens_disponibles=10)
+        campaign.marketero.refresh_from_db()
+        with patch.object(n8n_service.requests, "post", side_effect=requests.exceptions.Timeout("lento")):
+            n8n_service.trigger_ia_generation(campaign)
+        campaign.refresh_from_db()
+        assert campaign.estado == CampaignStatus.BORRADOR
+        assert saldo(user_marketero) == 10
+
+        tardio = n8n_client.post(CALLBACK_URL, {
+            "n8n_callback_token": str(campaign.n8n_callback_token),
+            "success": False,
+            "error": "Gemini no respondió",
+        }, format="json")
+
+        assert tardio.status_code == 409
+        campaign.refresh_from_db()
+        assert campaign.estado == CampaignStatus.BORRADOR
+        assert saldo(user_marketero) == 10  # el crédito ya se devolvió una vez
+
+    def test_callback_repetido_no_pisa_el_contenido(self, campaign_pendiente_ia, n8n_client):
+        cuerpo = {"n8n_callback_token": str(campaign_pendiente_ia.n8n_callback_token), "success": True}
+        assert n8n_client.post(CALLBACK_URL, {**cuerpo, "copy": "primero"}, format="json").status_code == 200
+        repetido = n8n_client.post(CALLBACK_URL, {**cuerpo, "copy": "segundo"}, format="json")
+
+        assert repetido.status_code == 409
+        campaign_pendiente_ia.refresh_from_db()
+        assert campaign_pendiente_ia.texto_generado == "primero"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("ia_real")
 class TestDisparoAN8n:
-    def test_envia_el_secreto_y_el_token_de_la_campana(self, campaign):
+    def test_envia_el_secreto_y_el_token_rotado(self, campaign):
+        token_anterior = campaign.n8n_callback_token
         with patch.object(n8n_service.requests, "post", return_value=respuesta_n8n(202)) as post:
             resultado = n8n_service.trigger_ia_generation(campaign)
 
@@ -113,6 +195,7 @@ class TestDisparoAN8n:
         kwargs = post.call_args.kwargs
         assert kwargs["headers"] == {"X-NexoMark-Token": settings.N8N_WEBHOOK_TOKEN}
         campaign.refresh_from_db()
+        assert campaign.n8n_callback_token != token_anterior
         assert kwargs["json"]["n8n_callback_token"] == str(campaign.n8n_callback_token)
         assert campaign.estado == CampaignStatus.PENDIENTE_IA
 

@@ -714,9 +714,11 @@ class IaResultCallbackView(APIView):
     Endpoint de callback para n8n. Recibe el resultado de la generación IA
     (éxito o fallo) y actualiza el estado de la campaña en consecuencia.
 
-    Autenticación: N8nCallbackPermission (secreto X-NexoMark-Token +
-    n8n_callback_token de la campaña).
+    Autenticación: N8nCallbackPermission (secreto X-NexoMark-Token + el
+    n8n_callback_token del intento en curso, que se rota en cada generación).
     No requiere JWT — diseñado para llamadas machine-to-machine desde n8n.
+    Solo se aplica a una campaña en PENDIENTE_IA: un callback repetido o tardío
+    responde 409 sin tocar contenido ni créditos.
 
     Body éxito:
         {n8n_callback_token, success: true, copy: str}
@@ -745,6 +747,18 @@ class IaResultCallbackView(APIView):
                     .select_for_update()
                     .get(n8n_callback_token=token)
                 )
+
+                if campaign.estado != CampaignStatus.PENDIENTE_IA:
+                    # Callback repetido, o tardío tras un timeout que ya devolvió
+                    # el crédito: no se aplica (ni se devuelve otro crédito).
+                    return Response(
+                        api_response(
+                            success=False,
+                            message="La campaña no tiene una generación en curso.",
+                            data={"campaign_id": campaign.id, "estado": campaign.estado},
+                        ),
+                        status=status.HTTP_409_CONFLICT,
+                    )
 
                 if success:
                     copy = request.data.get("copy", "")
