@@ -13,7 +13,7 @@ Modo: Operate. Ruta `/stats`, visible para cliente, marketero y superadmin con e
 
 THESIS: Cada número nace de una versión aprobada. La página une "lo que el cliente aprobó" con "lo que rindió en la red", en vez del tablero genérico de KPIs sueltos.
 
-OWN-WORLD: Lumina Creative sin cambios: fondo lila claro, tarjetas blancas glass, acento índigo, Inter, cifras tabulares. Los logos reales de Instagram y Facebook son el único color de marca ajeno.
+OWN-WORLD: Sistema visual NexoMark (DESIGN.md, 2026-10-17): fondo #F5FAFA / oscuro #0B1929, tarjetas sólidas con borde fino, acento turquesa, Inter, cifras tabulares. Los logos reales de Instagram y Facebook son el único color de marca ajeno.
 
 STORY: El visitante ve primero cuánto rinde cada red, después qué publicación lo produjo, y abre una para ver su cadena aprobada → publicada → métricas y actualizarla desde Meta.
 
