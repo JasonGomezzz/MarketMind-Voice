@@ -1,5 +1,28 @@
 # Historial de documentos — NexoMark
 
+## Borrador v0.11 — 16 de octubre de 2026
+
+- Privacidad y términos reescritos para describir la rama `remejora` (código revisado el 16/10),
+  no la rama `piero`: el audio ya no se sube a Gemini ni existe TTS.
+- Voz: transcripción en el navegador (Web Speech API) o en el reconocedor de Android; a Django
+  solo llega texto. Se advierte que Chrome y muchos Android envían el audio a servidores de Google.
+- Gemini: interpretación del brief y mejora de texto desde Django; copy, prompt de imagen e imagen
+  vía n8n. Correos vía n8n + Resend (ya no se menciona Gmail SMTP: no existe en `remejora`).
+- Meta: conexión por OAuth del titular, 7 permisos reales de `META_OAUTH_SCOPES`, token Fernet,
+  publicación al aprobar el cliente, enlace firmado de 1 h para la imagen y métricas agregadas.
+- X y TikTok descritos como no activos; condiciones si se activan (X apagada por defecto con
+  confirmación; TikTok sin auditoría solo `SELF_ONLY` o borrador en la bandeja del usuario).
+- Infraestructura: Render, Vercel, Neon, ngrok (solo pruebas) y GitHub Pages; transferencia
+  internacional (art. 15 de la Ley N.° 29733).
+- Marco legal: Ley N.° 29733 y Reglamento D.S. N.° 016-2024-JUS (vigente desde el 31/03/2025);
+  base legal, derechos ARCO y portabilidad, tutela ante la ANPD (art. 24), menores de 18 años.
+- Nueva página `eliminacion-datos.html` (URL de instrucciones que pide Meta), enlazada desde
+  índice, privacidad y términos; el preparador de Pages la exige y su test lo comprueba.
+- Conservada en `historial/` solo la v0.10, la única que llegó a publicarse en Pages.
+- Pendientes visibles: modalidad de facturación de Gemini y región de Render y Neon.
+- Sigue siendo borrador: los responsables deben aprobar el texto antes de quitar los avisos.
+  Lista de requisitos de Meta, TikTok y X en `REQUISITOS-AUDITORIA.md`.
+
 ## Borrador v0.10 — 11 de octubre de 2026
 
 - Conservada v0.9 en `historial/`.

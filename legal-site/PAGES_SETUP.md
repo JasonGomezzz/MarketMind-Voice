@@ -1,15 +1,15 @@
 # Configurar GitHub Pages para documentos de NexoMark
 
-Estado: incorporación autorizada de estos archivos al repo público en `piero`.
-Jason confirmó la fuente GitHub Actions en Pages; el workflow no se ha ejecutado
-y no hay URL pública verificada. Subir el código no despliega el sitio.
-La aplicación sigue en laptop. Pages no incluye servidor, PostgreSQL, backups ni Obsidian.
+Estado (16/10/2026): el workflow `legal-pages.yml` ya está en `main` (PR #1) y se ejecutó una vez
+con `allow_drafts`: Pages sirve el borrador v0.10 con avisos de "no vigente". La v0.11 vive en
+`remejora` y no está publicada. Subir el código no despliega el sitio.
+Pages no incluye servidor, PostgreSQL ni respaldos.
 
 ## Para Jason
 
 1. Abrir `JasonGomezzz/MarketMind-Voice` con la cuenta que administra el repo.
 2. En Settings → Pages → Build and deployment, elegir **GitHub Actions**.
-   No seleccionar la raíz de `piero` para publicar todo el proyecto.
+   No publicar la raíz del repositorio.
 3. Revisar el environment `github-pages`: permitir la rama que se publicará y, si lo desean,
    exigir un revisor. No cambiar la rama predeterminada ni conceder administración solo para esto.
 4. Habilitar Actions si está desactivado. Estas acciones usan permisos mínimos del token
@@ -17,13 +17,10 @@ La aplicación sigue en laptop. Pages no incluye servidor, PostgreSQL, backups n
 
 ## Archivos y rama de ejecución
 
-Se autorizó subir únicamente `legal-site/`, `.github/workflows/legal-pages.yml`
-y los dos archivos `scripts/prepare-legal-site*.mjs`. No incluye scripts/backups de PostgreSQL.
-El repo de trabajo sigue en `piero`; **GitHub requiere que el workflow manual exista también
-en la rama predeterminada** para mostrar Run workflow. El administrador debe incorporar
-esos archivos allí mediante un cambio revisado; no fusionar automáticamente todas las diferencias
-de `piero`, ni cambiar la rama por defecto para resolverlo. No se ha creado una PR para este paso.
-Una vez disponible, seleccionar explícitamente la rama revisada al ejecutar.
+El sitio sale solo de `legal-site/`, `.github/workflows/legal-pages.yml` y
+`scripts/prepare-legal-site*.mjs`. GitHub exige que el workflow manual exista en la rama
+predeterminada para mostrar Run workflow (ya está en `main`). Al ejecutarlo, elegir
+explícitamente la rama revisada que contiene la versión aprobada de los textos.
 
 ## Publicación manual posterior
 
@@ -36,7 +33,8 @@ En Actions → Publicar documentos NexoMark → Run workflow:
 - Revisar que el entorno permita esa rama y autorizar el despliegue si existe revisor.
 - Esperar éxito y usar la URL exacta emitida por GitHub; no asumir una URL ya activa.
 
-El preparador incluye index, privacidad, términos, estilos e historial HTML con enlaces válidos.
+El preparador incluye index, privacidad, términos, eliminación de datos, estilos e historial HTML
+con enlaces válidos; falla si falta `eliminacion-datos.html`.
 No publica README, CAMBIOS, estas instrucciones ni la raíz del repositorio. Sin embargo,
 si estos documentos se suben al repo público, su código e historial serán visibles allí.
 Nombres y correo del proyecto serán públicos; no incluye claves ni datos de campañas.
