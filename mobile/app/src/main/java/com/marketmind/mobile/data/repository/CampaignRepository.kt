@@ -129,9 +129,9 @@ class CampaignRepository @Inject constructor(
     }
 
     /** Edición manual del copy por el marketero (letra por letra). */
-    suspend fun editText(id: Long, texto: String): Result<CampaignDto> {
+    suspend fun editText(id: Long, texto: String, version: Int): Result<CampaignDto> {
         return try {
-            val envelope = api.editText(id, EditTextRequest(textoGenerado = texto))
+            val envelope = api.editText(id, EditTextRequest(textoGenerado = texto, version = version))
             val data = envelope.data?.campaign
             if (envelope.success && data != null) {
                 Result.success(data)
@@ -143,6 +143,7 @@ class CampaignRepository @Inject constructor(
                 when (http.code()) {
                     403 -> CampaignFetchException("Solo el marketero puede editar el copy.")
                     400 -> CampaignFetchException("El texto no es válido. Revisa la longitud.")
+                    409 -> CampaignFetchException("La campaña cambió o ya no se puede editar en su estado. Actualiza e intenta de nuevo.")
                     else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
                 }
             )
@@ -165,7 +166,7 @@ class CampaignRepository @Inject constructor(
             Result.failure(
                 when (http.code()) {
                     403 -> CampaignFetchException("Solo el marketero puede mejorar el copy.")
-                    409 -> CampaignFetchException("No hay texto generado para mejorar.")
+                    409 -> CampaignFetchException("No se puede mejorar: no hay texto, la campaña cambió o su estado no admite cambios.")
                     else -> CampaignFetchException("Error de servidor (HTTP ${http.code()}).")
                 }
             )
