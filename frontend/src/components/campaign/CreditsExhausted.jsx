@@ -1,18 +1,18 @@
 import { useState } from 'react'
-import toast from 'react-hot-toast'
-import { AlertTriangle, ShieldQuestion } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import AppToaster from '@/components/ui/AppToaster'
 import PlanesModal from '@/components/campaign/PlanesModal'
-import { MSG_RESET, PLANS } from '@/lib/credits'
+import CreditRequestButton from '@/components/campaign/CreditRequestButton'
+import { PLANS } from '@/lib/credits'
 
 /**
  * Estado "Créditos agotados" (portado de Stitch: ai_generation_credits_notice).
  * Se muestra cuando el backend devuelve HTTP 402 (tokens_disponibles == 0).
  * El reset lo hace el SuperAdmin (PATCH /api/admin/users/{id}/reset-quota/);
- * el marketero solo puede SOLICITARLO, no auto-resetearse. "Elegir plan" abre
- * PlanesModal (réplica fiel del PNG de Stitch); MSG_RESET/PLANS viven en
- * lib/credits.js (fuente única compartida con el modal).
+ * el marketero puede pedir créditos (CreditRequestButton) y el superadmin
+ * aprueba o rechaza la solicitud. "Elegir plan" abre PlanesModal (compra
+ * simulada); PLANS vive en lib/credits.js (fuente única compartida con el modal).
  */
 export default function CreditsExhausted({ onClose }) {
   const [showPlanes, setShowPlanes] = useState(false)
@@ -74,14 +74,8 @@ export default function CreditsExhausted({ onClose }) {
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-2 border-t border-outline-variant pt-4">
-        <ShieldQuestion className="h-4 w-4 text-primary" />
-        <button
-          onClick={() => toast.success(MSG_RESET)}
-          className="text-sm font-semibold text-primary hover:underline"
-        >
-          Pedir reset al administrador
-        </button>
+      <div className="flex justify-center border-t border-outline-variant pt-4 text-center">
+        <CreditRequestButton />
       </div>
 
       {onClose && (

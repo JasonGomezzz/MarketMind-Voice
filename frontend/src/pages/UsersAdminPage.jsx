@@ -4,6 +4,7 @@ import AppToaster from '@/components/ui/AppToaster'
 import { Users, AlertCircle, RotateCcw, Ban, CircleCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '../services/api'
 import { Button } from '@/components/ui/button'
+import CreditRequestsAdminPanel from '@/components/CreditRequestsAdminPanel'
 
 /**
  * Gestión de usuarios (SuperAdmin). Consume Django /api/admin/users/.
@@ -268,6 +269,8 @@ export default function UsersAdminPage() {
           </div>
         </>
       ) : null}
+
+      <CreditRequestsAdminPanel onResolved={() => fetchUsers(page)} />
 
       {confirm && (
         <ConfirmModal
