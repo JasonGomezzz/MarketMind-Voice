@@ -57,6 +57,10 @@ services:
       - https_proxy=
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
       - N8N_WORKFLOW_ID=QAkaxptDCI9ahjQU
+      # Secreto que exigen los webhooks y que se devuelve en los callbacks (= backend/.env).
+      - N8N_WEBHOOK_TOKEN=${N8N_WEBHOOK_TOKEN:-dev-n8n-webhook-token}
+      # Django corre fuera de Docker en desarrollo; base fija de los callbacks.
+      - DJANGO_CALLBACK_BASE_URL=${DJANGO_CALLBACK_BASE_URL:-http://host.docker.internal:8000}
     volumes:
       - n8n_data:/home/node/.n8n
     networks:

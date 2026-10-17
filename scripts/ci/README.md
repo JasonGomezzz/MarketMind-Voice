@@ -82,6 +82,8 @@ actionlint .github/workflows/ci.yml
 
 El validador inspecciona todos los exports `n8n/*.json`, incluidas copias backup: JSON válido, nombres/IDs únicos, conexiones existentes y patrones habituales de claves, JWT, claves privadas y credenciales literales. Los errores no muestran el valor encontrado. Las expresiones y referencias de credenciales son permitidas; no se ejecutan.
 
+También exige el contrato de autenticación de los webhooks: cada webhook responde desde un nodo "Respond to Webhook" y pasa primero por un Code node que compara `x-nexomark-token` con `$env.N8N_WEBHOOK_TOKEN`; ningún HTTP Request toma `callback_url` del payload, y los que llaman a `$env.DJANGO_CALLBACK_BASE_URL` envían `X-NexoMark-Token`. Comprueba la forma del export, no que la instancia desplegada se comporte así.
+
 Es una protección estática acotada, no un escáner exhaustivo de secretos, ni prueba del contrato, HMAC, reintentos o seguridad de n8n. **NO VERIFICADO CONTRA INSTANCIA**. No necesita instalar dependencias Python adicionales.
 
 ## Límites y mantenimiento
