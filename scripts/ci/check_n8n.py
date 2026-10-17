@@ -1,4 +1,6 @@
-"""Static checks only: exported graph integrity and common embedded credentials.
+"""Static checks only: exported graph integrity, common embedded credentials and
+the webhook authentication contract (shared secret in X-NexoMark-Token, callback
+URL from DJANGO_CALLBACK_BASE_URL instead of the payload).
 
 No nodes, expressions or JavaScript are executed. Findings never include values.
 This is not an n8n runtime validator or a complete repository secret scanner.
@@ -18,7 +20,11 @@ KNOWN_SECRETS = [
     re.compile(r"\b(?:Bearer|Basic)\s+[A-Za-z0-9+/_.=-]{20,}", re.IGNORECASE),
     re.compile(r"[?&](?:key|api_key|access_token)=[A-Za-z0-9_-]{20,}", re.IGNORECASE),
 ]
-SENSITIVE_FIELDS = {"apikey", "password", "secret", "accesstoken", "refreshtoken", "authorization", "xgoogapikey"}
+SENSITIVE_FIELDS = {"apikey", "password", "secret", "accesstoken", "refreshtoken", "authorization", "xgoogapikey",
+                    "xnexomarktoken"}
+TOKEN_HEADER = "x-nexomark-token"
+TOKEN_ENV = "$env.N8N_WEBHOOK_TOKEN"
+CALLBACK_ENV = "$env.DJANGO_CALLBACK_BASE_URL"
 
 
 def configured_reference(value):
@@ -49,6 +55,40 @@ def inspect_secrets(value, location, issues):
         if (isinstance(name, str) and re.sub(r"[^a-z]", "", name.lower()) in SENSITIVE_FIELDS
                 and isinstance(header_value, str) and not configured_reference(header_value)):
             issues.append(f"{location}.value: literal credential header (value redacted)")
+
+
+def inspect_webhook_security(nodes, connections, issues):
+    """Webhooks reject before processing; callbacks use a fixed base and the secret."""
+    by_name = {node.get("name"): node for node in nodes if isinstance(node, dict)}
+    for i, node in enumerate(nodes):
+        if not isinstance(node, dict) or not isinstance(node.get("parameters"), dict):
+            continue
+        params = node["parameters"]
+        if node.get("type") == "n8n-nodes-base.webhook":
+            if params.get("responseMode") != "responseNode":
+                issues.append(f"$.nodes[{i}]: webhook must answer from a Respond node after the token check")
+            outputs = connections.get(node.get("name"))
+            outputs = outputs if isinstance(outputs, dict) else {}
+            first = [edge.get("node") for groups in outputs.values() if isinstance(groups, list)
+                     for group in groups[:1] if isinstance(group, list)
+                     for edge in group if isinstance(edge, dict)]
+            guards = [by_name.get(name) for name in first]
+            if not first or not all(
+                    isinstance(guard, dict) and guard.get("type") == "n8n-nodes-base.code"
+                    and TOKEN_HEADER in str(guard.get("parameters", {}).get("jsCode", "")).lower()
+                    and TOKEN_ENV in str(guard.get("parameters", {}).get("jsCode", ""))
+                    for guard in guards):
+                issues.append(f"$.nodes[{i}]: webhook must go first to a Code node that checks {TOKEN_HEADER}")
+        if node.get("type") == "n8n-nodes-base.httpRequest":
+            url = str(params.get("url", ""))
+            if "callback_url" in url:
+                issues.append(f"$.nodes[{i}].parameters.url: callback URL must not come from the payload")
+            if CALLBACK_ENV in url:
+                headers = params.get("headerParameters", {}).get("parameters", [])
+                if not params.get("sendHeaders") or not any(
+                        isinstance(h, dict) and str(h.get("name", "")).lower() == TOKEN_HEADER
+                        and TOKEN_ENV in str(h.get("value", "")) for h in headers):
+                    issues.append(f"$.nodes[{i}]: callback to Django must send {TOKEN_HEADER} from {TOKEN_ENV}")
 
 
 def validate_workflow(document):
@@ -95,6 +135,7 @@ def validate_workflow(document):
                             or not isinstance(edge.get("type"), str)
                             or type(edge.get("index")) is not int or edge["index"] < 0):
                         issues.append("$.connections: malformed edge or unknown destination")
+    inspect_webhook_security(nodes, connections, issues)
     return issues
 
 
@@ -128,7 +169,7 @@ def main():
             print(f"ERROR {path.relative_to(root)}: {issue}", file=sys.stderr)
         failed |= bool(issues)
         if not issues:
-            print(f"OK {path.relative_to(root)}: JSON, graph references and credential patterns")
+            print(f"OK {path.relative_to(root)}: JSON, graph references, credential patterns and webhook auth")
     return int(failed)
 
 

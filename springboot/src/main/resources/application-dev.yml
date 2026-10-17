@@ -27,6 +27,8 @@ app:
 # si Spring Boot corre fuera de Docker, sobrescribir a http://localhost:5678.
 n8n:
   webhook-url: ${N8N_WEBHOOK_URL:http://host.docker.internal:5678}
+  # Secreto compartido que exige el webhook de email (mismo valor que Django y n8n).
+  webhook-token: ${N8N_WEBHOOK_TOKEN:dev-n8n-webhook-token}
 
 logging:
   level:

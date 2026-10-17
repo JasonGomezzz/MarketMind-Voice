@@ -4,19 +4,26 @@ MarketMind IA — n8n Service (Orquestador Asíncrono)
 Flujo producción (USE_MOCK_AI=False):
   1. Valida tokens_disponibles > 0 (defensa en profundidad).
   2. En transaction.atomic(): descuenta 1 token con un UPDATE condicional
-     (credit_service; no se gasta dos veces el último), incrementa intentos y
-     transiciona campaña → PENDIENTE_IA.
-  3. Dispara webhook a n8n con callback_token + callback_url.
-     Timeout de 5s: n8n responde inmediatamente (modo "Respond Immediately").
-  4. Si n8n no responde: rollback token + estado → BORRADOR.
-  5. El resultado real llega por POST /api/campaigns/webhook/ia-result/.
+     (credit_service; no se gasta dos veces el último), rota n8n_callback_token,
+     incrementa intentos y transiciona campaña → PENDIENTE_IA.
+  3. Dispara webhook a n8n con el secreto compartido (X-NexoMark-Token) y el
+     n8n_callback_token del intento. n8n valida el secreto antes de procesar y
+     responde 202 enseguida; la URL de callback la arma n8n con su propia
+     variable DJANGO_CALLBACK_BASE_URL (no la toma del payload).
+  4. Si n8n no responde o rechaza (401/403/5xx): devuelve el crédito y
+     estado → BORRADOR.
+  5. El resultado real llega por POST /api/campaigns/webhook/ia-result/ con el
+     mismo secreto. Como el token se rota en cada intento, un callback de un
+     intento anterior ya no corresponde a ninguna campaña y se rechaza.
 
 Flujo mock (USE_MOCK_AI=True):
   Simula el callback directamente sin llamar a n8n.
   Útil para desarrollo local sin Docker n8n activo.
 """
 
+import hmac
 import logging
+import uuid
 from typing import TYPE_CHECKING, Any
 
 import requests
@@ -31,6 +38,34 @@ if TYPE_CHECKING:
     from apps.campaigns.models import Campaign
 
 logger = logging.getLogger(__name__)
+
+# Encabezado con el secreto compartido N8N_WEBHOOK_TOKEN, en ambos sentidos:
+# Django → n8n (webhooks) y n8n → Django (callbacks).
+N8N_TOKEN_HEADER = "X-NexoMark-Token"
+
+
+def cabeceras_n8n() -> dict[str, str]:
+    """Encabezados que exige el workflow de n8n para aceptar un webhook."""
+    return {N8N_TOKEN_HEADER: settings.N8N_WEBHOOK_TOKEN}
+
+
+def secreto_n8n_valido(recibido: str | None) -> bool:
+    """
+    Compara el secreto recibido con N8N_WEBHOOK_TOKEN en tiempo constante.
+
+    Un secreto vacío nunca autentica: ni el configurado (compare_digest("", "")
+    sería verdadero) ni el recibido.
+    """
+    esperado = settings.N8N_WEBHOOK_TOKEN or ""
+    if not esperado or not recibido:
+        return False
+    return hmac.compare_digest(recibido.encode(), esperado.encode())
+
+
+def _motivo_rechazo(status_code: int) -> str:
+    if status_code in (401, 403):
+        return f"n8n rechazó el secreto compartido ({status_code}); revisar N8N_WEBHOOK_TOKEN"
+    return f"n8n respondió {status_code}"
 
 
 def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
@@ -80,9 +115,19 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
             # Otra petición gastó el último crédito entre la validación y el cobro.
             return {"dispatched": False, "error": "Sin tokens disponibles."}
 
+        # Token nuevo por intento: el callback de un intento anterior (p. ej. uno
+        # que n8n terminó después de un timeout) ya no autentica contra esta campaña.
+        campaign.n8n_callback_token = uuid.uuid4()
         campaign.intentos_generacion += 1
         campaign.tokens_consumidos += 1
-        campaign.save(update_fields=["intentos_generacion", "tokens_consumidos", "fecha_actualizacion"])
+        campaign.save(
+            update_fields=[
+                "n8n_callback_token",
+                "intentos_generacion",
+                "tokens_consumidos",
+                "fecha_actualizacion",
+            ]
+        )
 
         campaign.transition_to(CampaignStatus.PENDIENTE_IA)
 
@@ -114,9 +159,6 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
 
     # ── Flujo real: disparar webhook n8n ───────────────────────────────
     webhook_url = f"{settings.N8N_WEBHOOK_BASE_URL}/webhook/marketmind"
-    callback_url = (
-        f"{settings.DJANGO_BASE_URL}/api/campaigns/webhook/ia-result/"
-    )
 
     payload = {
         "campaign_id": campaign.id,
@@ -125,7 +167,9 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
         "tono": campaign.tono,
         "plataforma": campaign.plataforma,
         "n8n_callback_token": str(campaign.n8n_callback_token),
-        "callback_url": callback_url,
+        # Solo por compatibilidad del payload: el workflow lo ignora y arma la
+        # URL con su variable DJANGO_CALLBACK_BASE_URL.
+        "callback_url": f"{settings.DJANGO_BASE_URL}/api/campaigns/webhook/ia-result/",
         "use_mock": False,
     }
 
@@ -133,12 +177,11 @@ def trigger_ia_generation(campaign: "Campaign") -> dict[str, Any]:
         response = requests.post(
             webhook_url,
             json=payload,
+            headers=cabeceras_n8n(),
             timeout=settings.N8N_WEBHOOK_TIMEOUT,
         )
         if response.status_code not in (200, 202):
-            raise requests.exceptions.RequestException(
-                f"n8n respondió {response.status_code}"
-            )
+            raise requests.exceptions.RequestException(_motivo_rechazo(response.status_code))
 
         logger.info(
             "Webhook n8n aceptado para campaña %s (status %s). Esperando callback.",

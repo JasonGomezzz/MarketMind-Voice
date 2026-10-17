@@ -5,6 +5,7 @@ import com.marketmind.entity.UserEntity;
 import com.marketmind.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -25,24 +26,42 @@ import java.util.Map;
  *
  * Patrón fire-and-forget: si el webhook falla, se loguea pero NO se rolea la
  * transición. n8n se encarga de los 3 reintentos a Resend.
+ *
+ * El webhook exige el secreto compartido N8N_WEBHOOK_TOKEN en el encabezado
+ * X-NexoMark-Token (el mismo que envía Django); sin él n8n responde 401/403.
  */
 @Component
 public class N8nEmailClient {
 
     private static final Logger log = LoggerFactory.getLogger(N8nEmailClient.class);
 
+    static final String TOKEN_HEADER = "X-NexoMark-Token";
+
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
+    private final String n8nBaseUrl;
+    private final String webhookToken;
 
-    @Value("${n8n.webhook-url:http://host.docker.internal:5678}")
-    private String n8nBaseUrl;
+    @Autowired
+    public N8nEmailClient(
+            UserRepository userRepository,
+            @Value("${n8n.webhook-url:http://host.docker.internal:5678}") String n8nBaseUrl,
+            @Value("${n8n.webhook-token:dev-n8n-webhook-token}") String webhookToken) {
+        this(userRepository, defaultRestTemplate(), n8nBaseUrl, webhookToken);
+    }
 
-    public N8nEmailClient(UserRepository userRepository) {
+    N8nEmailClient(UserRepository userRepository, RestTemplate restTemplate, String n8nBaseUrl, String webhookToken) {
         this.userRepository = userRepository;
+        this.restTemplate = restTemplate;
+        this.n8nBaseUrl = n8nBaseUrl.replaceAll("/+$", "");
+        this.webhookToken = webhookToken;
+    }
+
+    private static RestTemplate defaultRestTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(2000);
         factory.setReadTimeout(3000);
-        this.restTemplate = new RestTemplate(factory);
+        return new RestTemplate(factory);
     }
 
     /**
@@ -78,6 +97,7 @@ public class N8nEmailClient {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(TOKEN_HEADER, webhookToken);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
         String url = n8nBaseUrl + "/webhook/marketmind-email";

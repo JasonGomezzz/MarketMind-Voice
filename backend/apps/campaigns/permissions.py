@@ -1,33 +1,39 @@
 """
 MarketMind IA — Campaign Permissions
-Permiso especial para el callback de n8n: valida el n8n_callback_token
-del modelo Campaign en lugar de un JWT. No requiere usuario autenticado.
+Permiso especial para los callbacks de n8n: secreto compartido en cabecera más
+el n8n_callback_token de la campaña, en lugar de un JWT.
 """
 
 from rest_framework.permissions import BasePermission
+
+from services.n8n_service import N8N_TOKEN_HEADER, secreto_n8n_valido
 
 from .models import Campaign
 
 
 class N8nCallbackPermission(BasePermission):
     """
-    Autenticación sin JWT para el endpoint de callback de n8n.
+    Autenticación sin JWT para los callbacks de n8n. Exige las dos cosas:
 
-    Valida que el campo 'n8n_callback_token' del body corresponda a una
-    campaña existente en base de datos. Solo n8n conoce este UUID ya que
-    Django lo incluye en el payload del webhook outgoing y nunca lo
-    expone al frontend.
+    1. El secreto compartido N8N_WEBHOOK_TOKEN en el encabezado X-NexoMark-Token
+       (comparación en tiempo constante; un secreto vacío nunca autentica).
+    2. Un 'n8n_callback_token' en el body que corresponda a una campaña. Django
+       lo rota en cada intento de generación, así que solo vale el del último
+       intento: un callback viejo no encuentra campaña y se rechaza.
 
     Uso: authentication_classes = [], permission_classes = [N8nCallbackPermission]
     """
 
-    message = "Token de callback inválido o ausente."
+    message = "Callback de n8n no autorizado."
 
     def has_permission(self, request, view) -> bool:
+        if not secreto_n8n_valido(request.headers.get(N8N_TOKEN_HEADER)):
+            return False
         token = request.data.get("n8n_callback_token")
         if not token:
             return False
         try:
             return Campaign.objects.filter(n8n_callback_token=token).exists()
         except Exception:
+            # Un valor que no es UUID no autentica (y no debe dar 500).
             return False

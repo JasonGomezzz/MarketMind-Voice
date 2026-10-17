@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 import requests
 from django.test import override_settings
-from rest_framework.test import APIClient
 
 from apps.authentication.models import User
 from apps.campaigns.models import CampaignStatus
@@ -71,9 +70,11 @@ class TestCobroDeGeneracion:
 
 @pytest.mark.django_db
 class TestDevolucionPorCallback:
-    def test_fallo_de_ia_devuelve_el_credito_sobre_el_saldo_actual(self, campaign_pendiente_ia, user_marketero):
+    def test_fallo_de_ia_devuelve_el_credito_sobre_el_saldo_actual(
+        self, campaign_pendiente_ia, user_marketero, n8n_client
+    ):
         User.objects.filter(pk=user_marketero.pk).update(tokens_disponibles=3)
-        respuesta = APIClient().post(CALLBACK_URL, {
+        respuesta = n8n_client.post(CALLBACK_URL, {
             "n8n_callback_token": str(campaign_pendiente_ia.n8n_callback_token),
             "success": False,
             "error": "Gemini no respondió",

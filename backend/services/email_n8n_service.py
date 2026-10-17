@@ -7,6 +7,9 @@ n8n se encarga del envío vía Resend con 3 reintentos a nivel de nodo HTTP Requ
 Patrón fire-and-forget: si el webhook falla, se loguea pero NO se revierte la
 transición de la campaña. El callback de n8n (POST /api/campaigns/webhook/email-sent/)
 es la fuente de verdad para marcar email_enviado=True.
+
+El webhook exige el secreto compartido (X-NexoMark-Token = N8N_WEBHOOK_TOKEN) y
+n8n arma la URL del callback con su variable DJANGO_CALLBACK_BASE_URL.
 """
 
 import logging
@@ -14,6 +17,8 @@ from typing import TYPE_CHECKING
 
 import requests
 from django.conf import settings
+
+from services.n8n_service import cabeceras_n8n
 
 if TYPE_CHECKING:
     from apps.campaigns.models import Campaign
@@ -55,17 +60,27 @@ def disparar_email_cliente(campaign: "Campaign") -> None:
         "marketero_email": campaign.marketero.email,
         "marketero_nombre": campaign.marketero.nombre,
         "n8n_callback_token": str(campaign.n8n_callback_token),
-        "callback_url": (
-            f"{settings.DJANGO_BASE_URL}/api/campaigns/webhook/email-sent/"
-        ),
+        # Solo por compatibilidad del payload: el workflow lo ignora.
+        "callback_url": f"{settings.DJANGO_BASE_URL}/api/campaigns/webhook/email-sent/",
     }
 
     url = f"{settings.N8N_WEBHOOK_BASE_URL}/webhook/marketmind-email"
 
     try:
         response = requests.post(
-            url, json=payload, timeout=settings.N8N_WEBHOOK_TIMEOUT
+            url,
+            json=payload,
+            headers=cabeceras_n8n(),
+            timeout=settings.N8N_WEBHOOK_TIMEOUT,
         )
+        if response.status_code in (401, 403):
+            logger.warning(
+                "n8n rechazó el secreto compartido (%s) en el email de la campaña %s; "
+                "revisar N8N_WEBHOOK_TOKEN.",
+                response.status_code,
+                campaign.pk,
+            )
+            return
         if response.status_code not in (200, 202):
             logger.warning(
                 "n8n email webhook respondió %s para campaña %s",
