@@ -2,7 +2,8 @@ import { lstat, readFile, readdir, mkdir, writeFile, access } from 'node:fs/prom
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT_FILES = ['index.html', 'privacidad.html', 'terminos.html', 'styles.css']
+// eliminacion-datos.html is the "data deletion instructions URL" Meta asks for.
+export const ROOT_FILES = ['index.html', 'privacidad.html', 'terminos.html', 'eliminacion-datos.html', 'styles.css']
 
 export async function prepareLegalSite({ source, target, allowDrafts = false }) {
   source = path.resolve(source)
